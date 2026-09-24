@@ -9,12 +9,9 @@ export default $config({
 			home: "aws",
 			providers: {
 				aws: {
-					// profile: process.env.CI ? undefined : 'pawl-dev',
-					// profile: input?.stage === "prod" ? "sigil-platform-prod" : "sigil-platform-dev",
 					profile: "sandbox",
 					region: "ap-southeast-2"
 				},
-				neon: "0.9.0"
 			}
 		};
 	},
