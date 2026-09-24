@@ -1,37 +1,38 @@
 {
-    "name": "sst-console",
-    "version": "0.0.0",
-    "workspaces": [
-        "packages/*"
-    ],
-    "type": "module",
-    "scripts": {
-        "auth": "aws sso login --profile sandbox",
-        "dev": "sst dev",
-        "remove:local": "sst remove",
-        "deploy": "sst deploy --stage prod",
-        "remove:prod": "sst remove --stage prod",
-        "format": "oxfmt",
-        "format:check": "oxfmt --check",
-        "lint": "oxlint --fix",
-        "lint:check": "oxlint",
-        "typecheck": "bun run --cwd packages/web/app typecheck",
-        "check": "bun run format:check && bun run lint:check && bun run typecheck",
-        "tree": "mkdir -p .tmp-tree && git ls-tree -r --name-only HEAD   | sed 's|/[^/]*$||'   | sort -u   | xargs -I{} mkdir -p .tmp-tree/{} && tree -d .tmp-tree && rm -rf .tmp-tree"
-    },
-    "dependencies": {
-        "sst": "^4.16.0"
-    },
-    "devDependencies": {
-        "@tsconfig/node20": "^20.1.4",
-        "@types/bun": "latest",
-        "oxfmt": "^0.x",
-        "oxlint": "^1.x",
-        "oxlint-tsgolint": "^0.x",
-        "typescript": "^6.0.0",
-        "vitest": "^4.0.10"
-    },
-    "peerDependencies": {
-        "typescript": ">=5 <7"
-    }
+	"name": "sst-console-workspace",
+	"version": "0.0.0",
+	"workspaces": [
+		"component",
+		"dev"
+	],
+	"type": "module",
+	"scripts": {
+		"auth": "aws sso login --profile sandbox",
+		"dev": "cd dev && sst dev",
+		"remove:local": "cd dev && sst remove",
+		"deploy": "cd dev && sst deploy --stage prod",
+		"remove:prod": "cd dev && sst remove --stage prod",
+		"format": "oxfmt package.json component/package.json dev/package.json component/src dev/sst.config.ts",
+		"format:check": "oxfmt --check package.json component/package.json dev/package.json component/src dev/sst.config.ts",
+		"lint": "oxlint --fix component/src/functions/connector/probe.ts",
+		"lint:check": "oxlint component/src/functions/connector/probe.ts",
+		"typecheck": "bunx tsc --noEmit --target esnext --module preserve --moduleResolution bundler --types bun --skipLibCheck component/src/functions/connector/probe.ts",
+		"check": "bun run format:check && bun run lint:check && bun run typecheck",
+		"tree": "mkdir -p .tmp-tree && git ls-tree -r --name-only HEAD   | sed 's|/[^/]*$||'   | sort -u   | xargs -I{} mkdir -p .tmp-tree/{} && tree -d .tmp-tree && rm -rf .tmp-tree"
+	},
+	"dependencies": {
+		"sst": "^4.16.0"
+	},
+	"devDependencies": {
+		"@tsconfig/node20": "^20.1.4",
+		"@types/bun": "latest",
+		"oxfmt": "^0.x",
+		"oxlint": "^1.x",
+		"oxlint-tsgolint": "^0.x",
+		"typescript": "^6.0.0",
+		"vitest": "^4.0.10"
+	},
+	"peerDependencies": {
+		"typescript": ">=5 <7"
+	}
 }
