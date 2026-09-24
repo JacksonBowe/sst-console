@@ -6,6 +6,14 @@
 
 declare module "sst" {
   export interface Resource {
+    "ConnectionProbe": {
+      "name": string
+      "type": "sst.aws.Function"
+    }
+    "ConnectorTemplates": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
   }
 }
 

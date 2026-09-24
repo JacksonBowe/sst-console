@@ -5,6 +5,9 @@
     "": {
       "name": "sst-console-workspace",
       "dependencies": {
+        "@aws-sdk/client-s3": "^3.1139.0",
+        "@aws-sdk/client-ssm": "^3.1139.0",
+        "@aws-sdk/client-sts": "^3.1139.0",
         "sst": "^4.16.0",
       },
       "devDependencies": {
@@ -15,28 +18,6 @@
         "oxlint-tsgolint": "^0.x",
         "typescript": "^6.0.0",
         "vitest": "^4.0.10",
-      },
-      "peerDependencies": {
-        "typescript": ">=5 <7",
-      },
-    },
-    "component": {
-      "name": "sst-console",
-      "version": "0.0.0",
-      "dependencies": {
-        "@aws-sdk/client-s3": "^3.1139.0",
-        "@aws-sdk/client-ssm": "^3.1139.0",
-        "@aws-sdk/client-sts": "^3.1139.0",
-      },
-      "peerDependencies": {
-        "sst": "^4.16.0",
-      },
-    },
-    "dev": {
-      "name": "sst-console-dev",
-      "dependencies": {
-        "sst": "^4.16.0",
-        "sst-console": "workspace:*",
       },
     },
   },
@@ -334,10 +315,6 @@
     "source-map-js": ["source-map-js@1.2.1", "", {}, "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA=="],
 
     "sst": ["sst@4.17.1", "", { "dependencies": { "@aws/durable-execution-sdk-js": "1.0.2", "aws4fetch": "1.0.18", "jose": "5.2.3", "openid-client": "5.6.4" }, "optionalDependencies": { "sst-darwin-arm64": "4.17.1", "sst-darwin-x64": "4.17.1", "sst-linux-arm64": "4.17.1", "sst-linux-x64": "4.17.1", "sst-linux-x86": "4.17.1", "sst-win32-arm64": "4.17.1", "sst-win32-x64": "4.17.1", "sst-win32-x86": "4.17.1" }, "bin": { "sst": "bin/sst.mjs" } }, "sha512-06z0R8MICyvlsMAnPhQSga0JyijwlxwFXatnPtPA1h38PjSafrVR7bUhVIHFmUAtDLNC8hTlR/KMbKBlKGrRnQ=="],
-
-    "sst-console": ["sst-console@workspace:component"],
-
-    "sst-console-dev": ["sst-console-dev@workspace:dev"],
 
     "sst-darwin-arm64": ["sst-darwin-arm64@4.17.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-Y9qZTBk4Fcwba+td+Dz3lz0wT9pQIbkJ5JqNfU4UwaVQtA58kz02F/BluhACi0vpI7PJULY7Tp1orHg86iy9+w=="],
 

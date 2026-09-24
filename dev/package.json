@@ -1,9 +1,0 @@
-{
-	"name": "sst-console-dev",
-	"private": true,
-	"type": "module",
-	"dependencies": {
-		"sst": "^4.16.0",
-		"sst-console": "workspace:*"
-	}
-}

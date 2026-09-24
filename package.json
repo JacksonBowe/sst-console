@@ -1,26 +1,25 @@
 {
-	"name": "sst-console-workspace",
+	"name": "sst-console",
 	"version": "0.0.0",
-	"workspaces": [
-		"component",
-		"dev"
-	],
 	"type": "module",
 	"scripts": {
-		"auth": "aws sso login --profile sandbox",
-		"dev": "bun run --cwd component build && cd dev && sst dev",
-		"remove:local": "cd dev && sst remove",
-		"deploy": "bun run --cwd component build && cd dev && sst deploy --stage prod",
-		"remove:prod": "cd dev && sst remove --stage prod",
-		"format": "oxfmt package.json component/package.json component/dev-env.d.ts dev/package.json component/src dev/sst.config.ts",
-		"format:check": "oxfmt --check package.json component/package.json component/dev-env.d.ts dev/package.json component/src dev/sst.config.ts",
-		"lint": "oxlint --fix component/src/console.ts component/src/infra/connector.ts component/src/functions/connector/probe.ts",
-		"lint:check": "oxlint component/src/console.ts component/src/infra/connector.ts component/src/functions/connector/probe.ts",
-		"typecheck": "bunx tsc --noEmit --target esnext --module preserve --moduleResolution bundler --types bun --skipLibCheck component/src/functions/connector/probe.ts",
+		"auth": "aws sso login",
+		"dev": "sst dev",
+		"remove:local": "sst remove",
+		"deploy": "sst deploy --stage prod",
+		"remove:prod": "sst remove --stage prod",
+		"format": "oxfmt package.json tsconfig.json sst.config.ts console.config.example.ts infra packages/functions/src",
+		"format:check": "oxfmt --check package.json tsconfig.json sst.config.ts console.config.example.ts infra packages/functions/src",
+		"lint": "oxlint --fix packages/functions/src",
+		"lint:check": "oxlint packages/functions/src",
+		"typecheck": "bunx tsc --noEmit",
 		"check": "bun run format:check && bun run lint:check && bun run typecheck",
 		"tree": "mkdir -p .tmp-tree && git ls-tree -r --name-only HEAD   | sed 's|/[^/]*$||'   | sort -u   | xargs -I{} mkdir -p .tmp-tree/{} && tree -d .tmp-tree && rm -rf .tmp-tree"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.1139.0",
+		"@aws-sdk/client-ssm": "^3.1139.0",
+		"@aws-sdk/client-sts": "^3.1139.0",
 		"sst": "^4.16.0"
 	},
 	"devDependencies": {
@@ -31,8 +30,5 @@
 		"oxlint-tsgolint": "^0.x",
 		"typescript": "^6.0.0",
 		"vitest": "^4.0.10"
-	},
-	"peerDependencies": {
-		"typescript": ">=5 <7"
 	}
 }
