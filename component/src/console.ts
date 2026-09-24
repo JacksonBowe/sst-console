@@ -1,10 +1,16 @@
-import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 
 export type ConsoleArgs = {};
 
-const connectionProbeHandler = `${fileURLToPath(
-	new URL("./functions/connector/probe", import.meta.url)
-)}.handler`;
+const require = createRequire(import.meta.url);
+const componentPath = dirname(require.resolve("sst-console/package.json"));
+const connectionProbeBundle = join(
+	componentPath,
+	"dist",
+	"functions",
+	"connector"
+);
 
 export class Console extends $util.ComponentResource {
 	readonly __name: string;
@@ -37,7 +43,9 @@ export class Console extends $util.ComponentResource {
 		const connectionProbe = new sst.aws.Function(
 			`${name}ConnectionProbe`,
 			{
-				handler: connectionProbeHandler,
+				bundle: connectionProbeBundle,
+				handler: "index.handler",
+				dev: false,
 				environment: {
 					SST_CONSOLE_EXTERNAL_ID: this.externalId
 				},
