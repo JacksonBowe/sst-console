@@ -1,0 +1,23 @@
+---
+name: GitHub issue
+description: Create or refine a GitHub issue with repository context, labels, acceptance criteria, and GitHub Project assignment.
+---
+
+Use for requests to create, file, draft, or refine a GitHub issue for this repository.
+
+## Workflow
+
+1. Inspect relevant code, tests, and existing issues before drafting. Do not infer implementation details.
+2. Keep each issue to one coherent unit of work. Split unrelated requests into separate issues.
+3. Draft a concise title and body with:
+    - problem or requested outcome;
+    - relevant code and implementation context;
+    - acceptance criteria when they make completion measurable.
+4. Determine appropriate existing labels with `gh label list`. Do not invent labels.
+5. If requirements or scope are ambiguous, present the draft and ask before creating the issue.
+6. Create with `gh issue create`.
+7. Add every created issue to the Sigil Platform GitHub Project under the sigil-software Github Organisation (project number = 1). If the nubmer supplied doesn't work, discover the project.
+8. Report the issue URL and assigned labels/project.
+9. When starting work on a new issue ensure it is moved to In Progress if it is part of a GH Project.
+
+Never create an issue until the relevant repository area is inspected and scope is clear.

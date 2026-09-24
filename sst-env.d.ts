@@ -6,9 +6,19 @@
 
 declare module "sst" {
   export interface Resource {
-    "ConnectionProbe": {
+    "Accounts": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
+    "Api": {
       "name": string
       "type": "sst.aws.Function"
+      "url": string
+    }
+    "ConnectorEvent": {
+      "name": string
+      "type": "sst.aws.Function"
+      "url": string
     }
     "ConnectorTemplates": {
       "name": string

@@ -3,10 +3,24 @@
     "module": "index.ts",
     "type": "module",
     "private": true,
+    "exports": {
+        "./account": "./src/account/index.ts",
+        "./*": "./src/*.ts",
+        "./user*": "./src/user/index.ts"
+    },
     "devDependencies": {
         "@types/bun": "latest"
     },
     "peerDependencies": {
         "typescript": "^5"
+    },
+    "dependencies": {
+        "@aws-sdk/client-dynamodb": "^3.1139.0",
+        "@aws-sdk/client-s3": "^3.1139.0",
+        "@aws-sdk/client-ssm": "^3.1139.0",
+        "@aws-sdk/client-sts": "^3.1139.0",
+        "@hono/zod-validator": "^0.9.1",
+        "hono": "^4.13.9",
+        "zod": "^4.6.5"
     }
 }
