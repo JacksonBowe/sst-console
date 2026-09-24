@@ -52,7 +52,7 @@ export class Console extends $util.ComponentResource {
 				permissions: [
 					{
 						actions: ["sts:AssumeRole"],
-						resources: ["arn:aws:iam::*:role/SSTConsoleReadRole"]
+						resources: ["arn:aws:iam::*:role/SSTConsoleRole"]
 					}
 				]
 			},
@@ -82,10 +82,10 @@ export class Console extends $util.ComponentResource {
 						}
 					},
 					Resources: {
-						SSTConsoleReadRole: {
+						SSTConsoleRole: {
 							Type: "AWS::IAM::Role",
 							Properties: {
-								RoleName: "SSTConsoleReadRole",
+								RoleName: "SSTConsoleRole",
 								AssumeRolePolicyDocument: {
 									Version: "2012-10-17",
 									Statement: [
@@ -107,22 +107,8 @@ export class Console extends $util.ComponentResource {
 										}
 									]
 								},
-								Policies: [
-									{
-										PolicyName: "SSTConsoleConnectionProbe",
-										PolicyDocument: {
-											Version: "2012-10-17",
-											Statement: [
-												{
-													Effect: "Allow",
-													Action: [
-														"sts:GetCallerIdentity"
-													],
-													Resource: "*"
-												}
-											]
-										}
-									}
+								ManagedPolicyArns: [
+									"arn:aws:iam::aws:policy/AdministratorAccess"
 								]
 							}
 						}
@@ -132,7 +118,7 @@ export class Console extends $util.ComponentResource {
 							Description:
 								"Role assumed by SST Console to read this account.",
 							Value: {
-								"Fn::GetAtt": ["SSTConsoleReadRole", "Arn"]
+								"Fn::GetAtt": ["SSTConsoleRole", "Arn"]
 							}
 						},
 						AccountId: {
