@@ -6,7 +6,7 @@
     ],
     "type": "module",
     "scripts": {
-        "auth": "aws sso login --profile sigil-sandbox",
+        "auth": "aws sso login --profile sandbox",
         "dev": "sst dev",
         "remove:local": "sst remove",
         "deploy": "sst deploy --stage prod",
