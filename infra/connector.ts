@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 
 const region = aws.getRegionOutput().name;
 const registrationHandler = readFileSync(
-	new URL("./connector-callback.js", import.meta.url),
+	"./infra/assets/connector-callback.js",
 	"utf8"
 );
 const connectorTemplates = new sst.aws.Bucket("ConnectorTemplates", {

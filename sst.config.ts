@@ -21,8 +21,10 @@ export default $config({
 		const { readdirSync } = await import("node:fs");
 		const outputs = {};
 
-		for (const file of readdirSync("./infra")) {
-			const module = await import(`./infra/${file}`);
+		for (const entry of readdirSync("./infra", { withFileTypes: true })) {
+			if (!entry.isFile()) continue;
+
+			const module = await import(`./infra/${entry.name}`);
 			if (module.outputs) Object.assign(outputs, module.outputs);
 		}
 
