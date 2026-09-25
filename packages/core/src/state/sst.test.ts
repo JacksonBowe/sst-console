@@ -13,7 +13,7 @@ import {
 describe("SST state", () => {
 	it("parses an SST v4 Pulumi checkpoint", () => {
 		const parsed = parseSstState(JSON.stringify(fixture));
-		expect(parsed.checkpoint.latest.resources).toHaveLength(3);
+		expect(parsed.checkpoint.latest.resources).toHaveLength(7);
 	});
 
 	it("rejects unsupported checkpoints", () => {
@@ -26,7 +26,7 @@ describe("SST state", () => {
 		const bytes = new Uint8Array(gzipSync(JSON.stringify(fixture)));
 		const decoded = decodeSstStateBytes(bytes, "gzip");
 		expect(parseSstState(decoded).checkpoint.latest.resources).toHaveLength(
-			3
+			7
 		);
 	});
 
@@ -36,7 +36,7 @@ describe("SST state", () => {
 		expect(redacted).toContain("[REDACTED]");
 	});
 
-	it("normalizes one bucket component, not its child", () => {
+	it("normalizes supported components, not their Pulumi children", () => {
 		const normalized = normalizeSstState(
 			parseSstState(JSON.stringify(fixture))
 		);
@@ -47,6 +47,29 @@ describe("SST state", () => {
 				urn: "urn:pulumi:prod::console::sst:aws:Bucket::Uploads",
 				normalizedArn: "arn:aws:s3:::console-prod-uploads-abc123",
 				summary: { bucketName: "console-prod-uploads-abc123" }
+			}),
+			expect.objectContaining({
+				resourceType: "sst.aws.Function",
+				name: "Api",
+				normalizedArn:
+					"arn:aws:lambda:ap-southeast-2:123456789012:function:console-prod-api",
+				summary: {
+					functionName: "console-prod-api",
+					runtime: "nodejs22.x",
+					memorySize: 512,
+					timeout: 30
+				}
+			}),
+			expect.objectContaining({
+				resourceType: "sst.aws.Dynamo",
+				name: "Users",
+				normalizedArn:
+					"arn:aws:dynamodb:ap-southeast-2:123456789012:table/console-prod-users",
+				summary: {
+					tableName: "console-prod-users",
+					billingMode: "PAY_PER_REQUEST",
+					streamEnabled: false
+				}
 			})
 		]);
 		expect(normalized.resources[0]?.resourceId).toMatch(/^[a-f0-9]{64}$/);

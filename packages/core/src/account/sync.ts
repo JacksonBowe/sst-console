@@ -120,23 +120,33 @@ export const sync = fn(
 			credentials: connection.credentials,
 			region
 		});
+		// 1. Discover every current SST state object. Pagination matters because
+		// one state bucket may contain more than 1,000 deployed stages.
 		const stateObjects = await listStateObjects(s3, bootstrap.data.state);
+		// 2. Fetch, decompress, parse, redact, and normalize every object before
+		// any DynamoDB write. A failed read therefore cannot delete projections.
 		const projections = await mapWithConcurrency(stateObjects, 8, state =>
 			loadProjection(s3, bootstrap.data.state, state)
 		);
 
 		const now = new Date().toISOString();
 		const syncRunId = crypto.randomUUID();
+		// 3. Build desired projections, then find persisted resources, stages, and
+		// apps missing from complete discovery output.
 		const writes = await buildWrites({
 			accountId,
 			stateBucket: bootstrap.data.state,
 			projections,
 			now
 		});
+		// 4. Desired upserts precede stale deletes. Chunks stay under DynamoDB
+		// transaction limits; later syncs repair a partially completed run.
 		for (const chunk of chunkWrites(writes)) {
 			await writeChunk(accountId, chunk);
 		}
 
+		// 5. Account freshness and successful run marker update only after all
+		// projection chunks have committed.
 		const reverseTimestamp = reverseTimestampFor(now);
 		const transaction = await db.transaction
 			.write(({ account, syncRun }) => [
@@ -265,6 +275,8 @@ async function buildWrites(input: {
 			)
 		)
 	);
+	// These primary-key queries replace a DynamoDB scan. They provide complete
+	// account projections needed to determine which records became stale.
 	const [apps, stages, resources] = await Promise.all([
 		db.entities.app.query
 			.app({ accountId: input.accountId })

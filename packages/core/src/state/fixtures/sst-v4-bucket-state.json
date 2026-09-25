@@ -23,13 +23,50 @@
 					"outputs": {}
 				},
 				{
-					"urn": "urn:pulumi:prod::console::sst:aws:Bucket$aws:s3:Bucket::UploadsBucket",
-					"type": "aws:s3:Bucket",
+					"urn": "urn:pulumi:prod::console::sst:aws:Bucket$aws:s3/bucket:Bucket::UploadsBucket",
+					"type": "aws:s3/bucket:Bucket",
 					"parent": "urn:pulumi:prod::console::sst:aws:Bucket::Uploads",
 					"inputs": {},
 					"outputs": {
 						"arn": "arn:aws:s3:::console-prod-uploads-abc123",
 						"bucket": "console-prod-uploads-abc123"
+					}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:Function::Api",
+					"type": "sst:aws:Function",
+					"inputs": {},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:Function$aws:lambda/function:Function::ApiFunction",
+					"type": "aws:lambda/function:Function",
+					"parent": "urn:pulumi:prod::console::sst:aws:Function::Api",
+					"inputs": {},
+					"outputs": {
+						"arn": "arn:aws:lambda:ap-southeast-2:123456789012:function:console-prod-api",
+						"name": "console-prod-api",
+						"runtime": "nodejs22.x",
+						"memorySize": 512,
+						"timeout": 30
+					}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:Dynamo::Users",
+					"type": "sst:aws:Dynamo",
+					"inputs": {},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:Dynamo$aws:dynamodb/table:Table::UsersTable",
+					"type": "aws:dynamodb/table:Table",
+					"parent": "urn:pulumi:prod::console::sst:aws:Dynamo::Users",
+					"inputs": {},
+					"outputs": {
+						"arn": "arn:aws:dynamodb:ap-southeast-2:123456789012:table/console-prod-users",
+						"name": "console-prod-users",
+						"billingMode": "PAY_PER_REQUEST",
+						"streamEnabled": false
 					}
 				}
 			]

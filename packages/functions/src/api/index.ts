@@ -31,6 +31,17 @@ if (!isProd) {
 	debugRoutes.get("/accounts/:accountId", async c =>
 		c.json(await Account.inspect({ accountId: c.req.param("accountId") }))
 	);
+	debugRoutes.get(
+		"/accounts/:accountId/state/:appName/:stageName/resources",
+		async c =>
+			c.json(
+				await Account.inspectState({
+					accountId: c.req.param("accountId"),
+					appName: c.req.param("appName"),
+					stageName: c.req.param("stageName")
+				})
+			)
+	);
 	debugRoutes.post("/accounts/:accountId/sync", async c =>
 		c.json(await Account.sync({ accountId: c.req.param("accountId") }))
 	);

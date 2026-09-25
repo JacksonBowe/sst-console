@@ -117,9 +117,9 @@ Only Console-safe projections are stored in DynamoDB:
 - `StateSnapshot` records source bucket, key, and S3 version locator. It never
   stores state JSON.
 - `App` and `Stage` describe current `app/{app}/{stage}.json` objects.
-- `Resource` records supported SST component summaries. First supported type is
-  `sst:aws:Bucket`; its owned S3 resource only enriches bucket ARN/name and is
-  not a separate Console resource.
+- `Resource` records supported SST component summaries. Supported types are
+  `sst:aws:Bucket`, `sst:aws:Function`, and `sst:aws:Dynamo`; owned AWS
+  children only enrich physical fields and are not separate Console resources.
 
 Secrets are redacted before normalization. Persisted summaries are allowlisted;
 raw Pulumi inputs and outputs are never written to `ConsoleData`.

@@ -29,17 +29,31 @@ export type SstState = z.output<typeof checkpointSchema>;
 
 export type NormalizedResource = {
 	resourceId: string;
-	resourceType: "sst.aws.Bucket";
+	resourceType: "sst.aws.Bucket" | "sst.aws.Function" | "sst.aws.Dynamo";
 	urn: string;
 	normalizedArn: string;
 	name: string;
-	summary: { bucketName: string };
+	summary:
+		| { bucketName: string }
+		| {
+				functionName: string;
+				runtime?: string;
+				memorySize?: number;
+				timeout?: number;
+		  }
+		| {
+				tableName: string;
+				billingMode?: string;
+				streamEnabled?: boolean;
+		  };
 };
 
 export type NormalizedState = {
 	resources: NormalizedResource[];
 };
 
+// SST now stores state objects compressed by default. S3 tells us when to
+// decompress through Content-Encoding; callers then pass plain JSON to parser.
 export function decodeSstStateBytes(
 	input: Uint8Array,
 	contentEncoding?: string
@@ -69,6 +83,8 @@ export function parseSstState(input: string | Uint8Array): SstState {
 	return parsed.data;
 }
 
+// State must never reach ConsoleData unfiltered. Pulumi's secret envelope and
+// conventional sensitive property names both become an irreversible marker.
 export function redactSstState(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(redactSstState);
 	if (!isRecord(value)) return value;
@@ -85,38 +101,105 @@ export function redactSstState(value: unknown): unknown {
 export function normalizeSstState(state: SstState): NormalizedState {
 	const redacted = redactSstState(state) as SstState;
 	const resources = redacted.checkpoint.latest.resources;
-	const buckets = resources.filter(
-		resource => resource.type === "sst:aws:Bucket"
-	);
 
 	return {
-		resources: buckets.flatMap(component => {
-			const child = resources.find(
-				resource =>
-					resource.parent === component.urn &&
-					resource.type === "aws:s3:Bucket"
-			);
-			const arn = firstString(component.outputs.arn, child?.outputs.arn);
-			const bucketName = firstString(
-				component.outputs.name,
-				component.outputs.bucket,
-				child?.outputs.bucket
-			);
-			if (!arn || !bucketName || !arn.startsWith("arn:")) return [];
+		resources: resources.flatMap(component =>
+			normalizeResource(component, resources)
+		)
+	};
+}
 
-			return [
-				{
-					resourceId: createHash("sha256")
-						.update(component.urn)
-						.digest("hex"),
-					resourceType: "sst.aws.Bucket",
-					urn: component.urn,
-					normalizedArn: arn.trim(),
-					name: nameFromUrn(component.urn),
-					summary: { bucketName }
-				}
-			];
-		})
+// A component is Console's resource identity. Its owned Pulumi child only
+// supplies physical AWS fields needed for the safe, queryable projection.
+function normalizeResource(
+	component: SstState["checkpoint"]["latest"]["resources"][number],
+	resources: SstState["checkpoint"]["latest"]["resources"]
+): NormalizedResource[] {
+	if (component.type === "sst:aws:Bucket") {
+		const child = findChild(
+			component.urn,
+			"aws:s3/bucket:Bucket",
+			resources
+		);
+		const arn = firstString(component.outputs.arn, child?.outputs.arn);
+		const bucketName = firstString(
+			component.outputs.name,
+			component.outputs.bucket,
+			child?.outputs.bucket
+		);
+		if (!arn || !bucketName || !arn.startsWith("arn:")) return [];
+		return [baseResource(component, "sst.aws.Bucket", arn, { bucketName })];
+	}
+
+	if (component.type === "sst:aws:Function") {
+		const child = findChild(
+			component.urn,
+			"aws:lambda/function:Function",
+			resources
+		);
+		const arn = firstString(component.outputs.arn, child?.outputs.arn);
+		const functionName = firstString(
+			component.outputs.name,
+			child?.outputs.name
+		);
+		if (!arn || !functionName || !arn.startsWith("arn:")) return [];
+		return [
+			baseResource(component, "sst.aws.Function", arn, {
+				functionName,
+				runtime: optionalString(child?.outputs.runtime),
+				memorySize: optionalNumber(child?.outputs.memorySize),
+				timeout: optionalNumber(child?.outputs.timeout)
+			})
+		];
+	}
+
+	if (component.type === "sst:aws:Dynamo") {
+		const child = findChild(
+			component.urn,
+			"aws:dynamodb/table:Table",
+			resources
+		);
+		const arn = firstString(component.outputs.arn, child?.outputs.arn);
+		const tableName = firstString(
+			component.outputs.name,
+			child?.outputs.name
+		);
+		if (!arn || !tableName || !arn.startsWith("arn:")) return [];
+		return [
+			baseResource(component, "sst.aws.Dynamo", arn, {
+				tableName,
+				billingMode: optionalString(child?.outputs.billingMode),
+				streamEnabled: optionalBoolean(child?.outputs.streamEnabled)
+			})
+		];
+	}
+
+	return [];
+}
+
+function findChild(
+	parent: string,
+	type: string,
+	resources: SstState["checkpoint"]["latest"]["resources"]
+) {
+	return resources.find(
+		resource => resource.parent === parent && resource.type === type
+	);
+}
+
+function baseResource(
+	component: SstState["checkpoint"]["latest"]["resources"][number],
+	resourceType: NormalizedResource["resourceType"],
+	arn: string,
+	summary: NormalizedResource["summary"]
+): NormalizedResource {
+	return {
+		resourceId: createHash("sha256").update(component.urn).digest("hex"),
+		resourceType,
+		urn: component.urn,
+		normalizedArn: arn.trim(),
+		name: nameFromUrn(component.urn),
+		summary
 	};
 }
 
@@ -124,6 +207,18 @@ function firstString(...values: unknown[]): string | undefined {
 	return values.find(
 		value => typeof value === "string" && value.length > 0
 	) as string | undefined;
+}
+
+function optionalString(value: unknown): string | undefined {
+	return typeof value === "string" ? value : undefined;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+	return typeof value === "number" ? value : undefined;
+}
+
+function optionalBoolean(value: unknown): boolean | undefined {
+	return typeof value === "boolean" ? value : undefined;
 }
 
 function isPulumiSecret(value: Record<string, unknown>): boolean {
