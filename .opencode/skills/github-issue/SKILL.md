@@ -16,8 +16,7 @@ Use for requests to create, file, draft, or refine a GitHub issue for this repos
 4. Determine appropriate existing labels with `gh label list`. Do not invent labels.
 5. If requirements or scope are ambiguous, present the draft and ask before creating the issue.
 6. Create with `gh issue create`.
-7. Add every created issue to the Sigil Platform GitHub Project under the sigil-software Github Organisation (project number = 1). If the nubmer supplied doesn't work, discover the project.
-8. Report the issue URL and assigned labels/project.
-9. When starting work on a new issue ensure it is moved to In Progress if it is part of a GH Project.
+7. Report the issue URL and assigned labels/project.
+8. When starting work on a new issue ensure it is moved to In Progress if it is part of a GH Project.
 
 Never create an issue until the relevant repository area is inspected and scope is clear.
