@@ -12,3 +12,9 @@ variables:
   - secret: true
     name: ApiBase
     description: ""
+  - secret: true
+    name: SSTApp
+    description: ""
+  - secret: true
+    name: SSTAppStage
+    description: ""

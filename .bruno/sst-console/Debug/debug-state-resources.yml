@@ -11,10 +11,10 @@ http:
       value: "{{AwsAccountId}}"
       type: path
     - name: appName
-      value: mafia
+      value: "{{SSTApp}}"
       type: path
     - name: stageName
-      value: jackson
+      value: "{{SSTAppStage}}"
       type: path
   auth: inherit
 
