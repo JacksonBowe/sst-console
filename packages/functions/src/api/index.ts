@@ -1,11 +1,15 @@
-import { PublicError } from '@console/core/error';
-import * as Account from '@console/core/account';
-import type { Handler } from 'aws-lambda';
-import { Hono } from 'hono';
-import type { LambdaContext, LambdaEvent } from 'hono/aws-lambda';
-import { handle } from 'hono/aws-lambda';
-import { HTTPException } from 'hono/http-exception';
-import { Resource } from 'sst';
+import { PublicError } from "@console/core/error";
+import * as Account from "@console/core/account";
+import type { Handler } from "aws-lambda";
+import { Hono } from "hono";
+import type { Context } from "hono";
+import type { LambdaContext, LambdaEvent } from "hono/aws-lambda";
+import { handle } from "hono/aws-lambda";
+import { HTTPException } from "hono/http-exception";
+import { Resource } from "sst";
+
+import { authorizeDebug } from "./authorizer";
+import { authRoutes } from "./auth";
 
 type Bindings = {
 	event: LambdaEvent;
@@ -13,12 +17,25 @@ type Bindings = {
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
+const isProd = Resource.App.stage === "prod";
 
 // Base route
-app.get('/', (c) => c.text('Welcome to the API!'));
-app.get('/debug/accounts', async c => c.json(await Account.list()));
+app.get("/", c => c.text("Welcome to the API!"));
 
 app.route("/noauth", authRoutes);
+
+if (!isProd) {
+	const debugRoutes = new Hono<{ Bindings: Bindings }>();
+	debugRoutes.use("*", authorizeDebug);
+	debugRoutes.get("/accounts", async c => c.json(await Account.list()));
+	debugRoutes.get("/accounts/:accountId", async c =>
+		c.json(await Account.inspect({ accountId: c.req.param("accountId") }))
+	);
+	debugRoutes.post("/accounts/:accountId/sync", async c =>
+		c.json(await Account.sync({ accountId: c.req.param("accountId") }))
+	);
+	app.route("/debug", debugRoutes);
+}
 
 // const protectedRoutes = app.basePath('/').use('*', authorize);
 
@@ -28,15 +45,10 @@ app.route("/noauth", authRoutes);
 // protectedRoutes.route('/game', gameRoutes);
 // protectedRoutes.route('/admin', adminRoutes);
 
-const isProd = Resource.App.stage === 'prod';
-
 function toError(e: unknown): Error {
 	if (e instanceof Error) return e;
-	return new Error(typeof e === 'string' ? e : JSON.stringify(e));
+	return new Error(typeof e === "string" ? e : JSON.stringify(e));
 }
-
-import { authRoutes } from './auth';
-import type { Context } from 'hono';
 
 function requestMeta(c: Context) {
 	return {
@@ -44,7 +56,9 @@ function requestMeta(c: Context) {
 		path: c.req.path,
 		// if you have a request id middleware, prefer that:
 		requestId:
-			(c.get('requestId') as string | undefined) ?? c.req.header('x-request-id') ?? undefined,
+			(c.get("requestId") as string | undefined) ??
+			c.req.header("x-request-id") ??
+			undefined
 	};
 }
 
@@ -55,9 +69,9 @@ app.onError((err, c) => {
 				status: err.status,
 				code: err.code,
 				message: err.message,
-				...(err.details ? { details: err.details } : {}),
+				...(err.details ? { details: err.details } : {})
 			},
-			err.status,
+			err.status
 		);
 	}
 
@@ -65,10 +79,10 @@ app.onError((err, c) => {
 		return c.json(
 			{
 				status: err.status,
-				code: 'http_exception',
-				message: err.message,
+				code: "http_exception",
+				message: err.message
 			},
-			err.status,
+			err.status
 		);
 	}
 
@@ -77,25 +91,25 @@ app.onError((err, c) => {
 	const meta = requestMeta(c);
 
 	// Log the *actual* error object so you keep stack + cause
-	console.error('Unhandled Error', { ...meta }, e);
+	console.error("Unhandled Error", { ...meta }, e);
 
 	return c.json(
 		{
 			status: 500,
-			code: 'internal_error',
-			message: 'Something went wrong',
+			code: "internal_error",
+			message: "Something went wrong",
 			...(isProd
 				? {}
 				: {
-					// helpful during dev; avoid in prod
-					debug: {
-						message: e.message,
-						stack: e.stack,
-						name: e.name,
-					},
-				}),
+						// helpful during dev; avoid in prod
+						debug: {
+							message: e.message,
+							stack: e.stack,
+							name: e.name
+						}
+					})
 		},
-		500,
+		500
 	);
 });
 

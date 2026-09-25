@@ -99,11 +99,40 @@ separate attributes; neither is inferred from key encoding.
 | Account → apps navigation | account partition query | primary-key query | Planned; add named ElectroDB accessor before UI use |
 | App → stages navigation | account partition + app sort prefix | primary-key query | Planned; add named ElectroDB accessor before UI use |
 | Stage → resources | account partition + stage/resource sort prefix | primary-key query | Planned; add named ElectroDB accessor before UI use |
+| Reconcile account state projections | worker: account ID; bounded by resources in account | entity primary-key queries for App, Stage, Resource | Implemented |
 | Latest state snapshot | app-stage partition, descending, limit 1 | primary-key query | Planned |
 | Account sync history | account partition, descending sync prefix | primary-key query | Planned |
 
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.
+
+## SST state projection sync
+
+`Account.sync()` lists every current `app/` object in the SST state bucket,
+downloads each object, and parses SST v4's Pulumi versioned checkpoint. State
+objects with `Content-Encoding: gzip` are decompressed before parsing.
+
+Only Console-safe projections are stored in DynamoDB:
+
+- `StateSnapshot` records source bucket, key, and S3 version locator. It never
+  stores state JSON.
+- `App` and `Stage` describe current `app/{app}/{stage}.json` objects.
+- `Resource` records supported SST component summaries. First supported type is
+  `sst:aws:Bucket`; its owned S3 resource only enriches bucket ARN/name and is
+  not a separate Console resource.
+
+Secrets are redacted before normalization. Persisted summaries are allowlisted;
+raw Pulumi inputs and outputs are never written to `ConsoleData`.
+
+Reconciliation begins only after every listed object was fetched and parsed.
+It upserts desired projections, then deletes resource, stage, and app
+projections absent from complete discovery output. Snapshots are retained. This
+order means incomplete discovery cannot delete existing data.
+
+Projection writes are ordered and split into transactions of at most 90 actions
+and 3 MiB of estimated payload, below DynamoDB's 100-action/4-MB limits. A
+partial write is repaired by next successful sync; `Account.lastSyncedAt` and
+successful `SyncRun` are written only after all projection chunks succeed.
 
 ## ElectroDB usage
 

@@ -1,0 +1,10 @@
+info:
+  name: Debug
+  type: folder
+  seq: 1
+
+request:
+  auth:
+    type: basic
+    username: "{{DebugUsername}}"
+    password: "{{DebugPassword}}"

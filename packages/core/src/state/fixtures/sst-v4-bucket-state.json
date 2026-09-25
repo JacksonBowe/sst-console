@@ -1,0 +1,38 @@
+{
+	"version": 3,
+	"checkpoint": {
+		"latest": {
+			"manifest": {
+				"time": "2026-09-25T12:00:00.000Z"
+			},
+			"resources": [
+				{
+					"urn": "urn:pulumi:prod::console::pulumi:pulumi:Stack::console-prod",
+					"type": "pulumi:pulumi:Stack",
+					"inputs": {},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:Bucket::Uploads",
+					"type": "sst:aws:Bucket",
+					"inputs": {
+						"accessToken": {
+							"4dabf18193072939515e22adb298388d": "plaintext-must-not-persist"
+						}
+					},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:Bucket$aws:s3:Bucket::UploadsBucket",
+					"type": "aws:s3:Bucket",
+					"parent": "urn:pulumi:prod::console::sst:aws:Bucket::Uploads",
+					"inputs": {},
+					"outputs": {
+						"arn": "arn:aws:s3:::console-prod-uploads-abc123",
+						"bucket": "console-prod-uploads-abc123"
+					}
+				}
+			]
+		}
+	}
+}

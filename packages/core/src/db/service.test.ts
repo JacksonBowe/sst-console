@@ -46,6 +46,23 @@ describe("db service", () => {
 		expect(byArn.IndexName).toBe("resourcesByArn");
 	});
 
+	it("builds state snapshot keys", () => {
+		const snapshot = db.entities.stateSnapshot
+			.get({
+				accountId: "123456789012",
+				appName: "console",
+				stageName: "prod",
+				reverseTimestamp: "9999999999999",
+				snapshotId: "state-version"
+			})
+			.params();
+
+		expect(snapshot.Key).toEqual({
+			pk: "ACCOUNT#123456789012#APP#console#STAGE#prod",
+			sk: "SNAPSHOT#9999999999999#state-version"
+		});
+	});
+
 	it("builds atomic account sync persistence", () => {
 		const accountId = "123456789012";
 		const now = "2026-09-25T00:00:00.000Z";

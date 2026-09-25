@@ -1,0 +1,20 @@
+info:
+  name: debug sync account
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{ApiBase}}/debug/accounts/:accountId/sync"
+  params:
+    - name: accountId
+      value: "383468062737"
+      type: path
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

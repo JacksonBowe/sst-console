@@ -1,5 +1,9 @@
 export default {
 	profile: "sandbox",
 	region: "ap-southeast-2",
-	domain: undefined
+	domain: undefined,
+	debug: {
+		username: "debug",
+		password: "replace-before-deploy"
+	}
 };
