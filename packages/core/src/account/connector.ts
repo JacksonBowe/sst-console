@@ -1,20 +1,14 @@
 import {
-	DynamoDBClient,
-	ScanCommand,
-	UpdateItemCommand
-} from "@aws-sdk/client-dynamodb";
-import {
 	AssumeRoleCommand,
 	GetCallerIdentityCommand,
 	STSClient
 } from "@aws-sdk/client-sts";
-import { Resource } from "sst";
 import { z } from "zod";
 
+import { db } from "../db";
 import { InputError, ServerError } from "../error";
 import { fn } from "../util/fn";
 
-const dynamo = new DynamoDBClient({});
 const sts = new STSClient({});
 const roleArn =
 	/^arn:(?:aws|aws-cn|aws-us-gov):iam::(?<accountId>\d{12}):role\/SSTConsoleRole$/;
@@ -129,30 +123,16 @@ export const register = fn(CallbackSchema, async input => {
 	}
 
 	const now = new Date().toISOString();
-
-	await dynamo.send(
-		new UpdateItemCommand({
-			TableName: Resource.Accounts.name,
-			Key: {
-				accountId: { S: input.accountId }
-			},
-			UpdateExpression:
-				"SET #roleArn = :roleArn, #region = :region, #status = :status, #createdAt = if_not_exists(#createdAt, :now), #updatedAt = :now",
-			ExpressionAttributeNames: {
-				"#roleArn": "roleArn",
-				"#region": "region",
-				"#status": "status",
-				"#createdAt": "createdAt",
-				"#updatedAt": "updatedAt"
-			},
-			ExpressionAttributeValues: {
-				":roleArn": { S: input.roleArn },
-				":region": { S: input.region },
-				":status": { S: status },
-				":now": { S: now }
-			}
+	await db.entities.account
+		.upsert({
+			accountId: input.accountId,
+			region: input.region,
+			roleArn: input.roleArn,
+			status,
+			updatedAt: now
 		})
-	);
+		.ifNotExists({ createdAt: now })
+		.go({ response: "none" });
 
 	return {
 		accountId: input.accountId,
@@ -161,31 +141,18 @@ export const register = fn(CallbackSchema, async input => {
 });
 
 export async function list(): Promise<ConnectedAccount[]> {
-	const accounts: ConnectedAccount[] = [];
-	let exclusiveStartKey: Record<string, { S: string }> | undefined;
+	const results = await Promise.all(
+		(["connected", "disconnected"] as const).map(status =>
+			db.entities.account.query.byStatus({ status }).go({ pages: "all" })
+		)
+	);
 
-	do {
-		const result = await dynamo.send(
-			new ScanCommand({
-				TableName: Resource.Accounts.name,
-				ExclusiveStartKey: exclusiveStartKey
-			})
-		);
-		accounts.push(
-			...(result.Items ?? []).flatMap(item => {
-				const accountId = item.accountId?.S;
-				const region = item.region?.S;
-				const roleArn = item.roleArn?.S;
-				const status = item.status?.S;
-				if (!accountId || !region || !roleArn || !status) return [];
-
-				return [{ accountId, region, roleArn, status }];
-			})
-		);
-		exclusiveStartKey = result.LastEvaluatedKey as
-			| Record<string, { S: string }>
-			| undefined;
-	} while (exclusiveStartKey);
-
-	return accounts;
+	return results.flatMap(result =>
+		result.data.map(account => ({
+			accountId: account.accountId,
+			region: account.region,
+			roleArn: account.roleArn,
+			status: account.status
+		}))
+	);
 }

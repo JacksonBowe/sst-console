@@ -6,10 +6,6 @@
 
 declare module "sst" {
   export interface Resource {
-    "Accounts": {
-      "name": string
-      "type": "sst.aws.Dynamo"
-    }
     "Api": {
       "name": string
       "type": "sst.aws.Function"
@@ -23,6 +19,10 @@ declare module "sst" {
     "ConnectorTemplates": {
       "name": string
       "type": "sst.aws.Bucket"
+    }
+    "ConsoleData": {
+      "name": string
+      "type": "sst.aws.Dynamo"
     }
   }
 }

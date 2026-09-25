@@ -24,7 +24,9 @@
         "@aws-sdk/client-s3": "^3.1139.0",
         "@aws-sdk/client-ssm": "^3.1139.0",
         "@aws-sdk/client-sts": "^3.1139.0",
+        "@aws-sdk/lib-dynamodb": "^3.1140.0",
         "@hono/zod-validator": "^0.9.1",
+        "electrodb": "^3.9.3",
         "hono": "^4.13.9",
         "zod": "^4.6.5",
       },
@@ -86,6 +88,8 @@
 
     "@aws-sdk/endpoint-cache": ["@aws-sdk/endpoint-cache@3.972.11", "", { "dependencies": { "mnemonist": "0.38.3", "tslib": "^2.6.2" } }, "sha512-8q1ICxcDjHId3bBryuu/j+1L9y5/3uQnwzLDt5j2ElcjZSoWmFtymdJy7OjLrluSMe0Z4mq5bcH4fxBXvlEHfw=="],
 
+    "@aws-sdk/lib-dynamodb": ["@aws-sdk/lib-dynamodb@3.1140.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.1", "@aws-sdk/util-dynamodb": "^3.996.9", "@smithy/core": "^3.35.0", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" }, "peerDependencies": { "@aws-sdk/client-dynamodb": "^3.1140.0" } }, "sha512-7/LROa2A57c0hztmR5enme6x2p168vP/FLl3Y9sKyrFgZnwbjgwdFCnpqKovWZoCwRCgj/AtiT4oxWy1crkccA=="],
+
     "@aws-sdk/middleware-endpoint-discovery": ["@aws-sdk/middleware-endpoint-discovery@3.972.31", "", { "dependencies": { "@aws-sdk/endpoint-cache": "^3.972.11", "@aws-sdk/types": "^3.974.6", "@smithy/core": "^3.35.0", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-JqOIXupzP6cpAmCCmuEaacbXo/bVCcg1NkglCJC6q4wDAvJO09qIs7POf50JNzmhOhWPtfXvzgWxb5nMQl8QiA=="],
 
     "@aws-sdk/middleware-sdk-s3": ["@aws-sdk/middleware-sdk-s3@3.972.77", "", { "dependencies": { "@aws-sdk/core": "^3.978.1", "@aws-sdk/signature-v4-multi-region": "^3.996.47", "@aws-sdk/types": "^3.974.6", "@smithy/core": "^3.35.0", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-E7W2UOeUoc+lg3uIfR/dM7ZwusHwhBQrKMnlkRv4EXRR+C0YtV1pg25xC7GdZIhXH+NAMgZPCbE7o5to2cjFiw=="],
@@ -97,6 +101,8 @@
     "@aws-sdk/token-providers": ["@aws-sdk/token-providers@3.1138.0", "", { "dependencies": { "@aws-sdk/core": "^3.978.1", "@aws-sdk/nested-clients": "^3.997.46", "@aws-sdk/types": "^3.974.6", "@smithy/core": "^3.35.0", "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-GpyAr0DD63YOEmYFM6Df+gJuIgC92MMTiBK4FTKfxii5MJ9ge20epR7LyroulscYlG89J+ZB2ivFDPjvfQhzdw=="],
 
     "@aws-sdk/types": ["@aws-sdk/types@3.974.6", "", { "dependencies": { "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-v/clNZzZnDxGyvpHMOGpJKVXFAExJzUNAAjaWGdcx8QAcXLGwTaOkw33p5SHAi0YAioK32xB3hWwOekRVfmfKg=="],
+
+    "@aws-sdk/util-dynamodb": ["@aws-sdk/util-dynamodb@3.996.9", "", { "dependencies": { "tslib": "^2.6.2" }, "peerDependencies": { "@aws-sdk/client-dynamodb": "^3.1111.0" } }, "sha512-16x2tRvl7OYpZ0W/DdFJieFriD13+RvuRBDbe5sj/tCEfK86HSGd7I2s5j0ivz8p6KWGkS+5wKRO9OliJkjUOQ=="],
 
     "@aws-sdk/xml-builder": ["@aws-sdk/xml-builder@3.972.41", "", { "dependencies": { "@smithy/types": "^4.19.0", "tslib": "^2.6.2" } }, "sha512-ctjVSyCMegrWfXlx6VqzSBFI6UqmQ5ZlnfMhdLIiWmhoH8UAQxSCP5N3OpG7X3k4LnS7ou74C4mt20+bfTW2aQ=="],
 
@@ -290,6 +296,8 @@
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 
+    "electrodb": ["electrodb@3.9.3", "", { "dependencies": { "@aws-sdk/lib-dynamodb": "^3.654.0", "@aws-sdk/util-dynamodb": "^3.654.0", "jsonschema": "1.5.0" } }, "sha512-7RGiQt1mXunlhswzLW3wEwXdlIv2x32FzifOoJfyHFiyIrvRoUmfe69xIpoiOysHN4N/RKdxFQ53FlFA2nPQDA=="],
+
     "es-module-lexer": ["es-module-lexer@2.3.2", "", {}, "sha512-poHGpORABojJJucnV9KbOavETW8lBVnphkW77ER5/BQ5Fz7oXSoCNek7IH3vR5nRjdsEz926ibFYX8KtLQmdyw=="],
 
     "estree-walker": ["estree-walker@3.0.3", "", { "dependencies": { "@types/estree": "^1.0.0" } }, "sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g=="],
@@ -303,6 +311,8 @@
     "hono": ["hono@4.13.9", "", {}, "sha512-7dMkQmZoC4E6F7AtaQSPhlWAdnBti+j7rreMZl8QB4jFiEhP9TWbGWUMi8WYzBCgmgulxuvLQupKqo+Co6Omyg=="],
 
     "jose": ["jose@5.2.3", "", {}, "sha512-KUXdbctm1uHVL8BYhnyHkgp3zDX5KW8ZhAKVFEfUbU2P8Alpzjb+48hHvjOdQIyPshoblhzsuqOwEEAbtHVirA=="],
+
+    "jsonschema": ["jsonschema@1.5.0", "", {}, "sha512-K+A9hhqbn0f3pJX17Q/7H6yQfD/5OXgdrR5UE12gMXCiN9D5Xq2o5mddV2QEcX/bjla99ASsAAQUyMCCRWAEhw=="],
 
     "lightningcss": ["lightningcss@1.33.0", "", { "dependencies": { "detect-libc": "^2.0.3" }, "optionalDependencies": { "lightningcss-android-arm64": "1.33.0", "lightningcss-darwin-arm64": "1.33.0", "lightningcss-darwin-x64": "1.33.0", "lightningcss-freebsd-x64": "1.33.0", "lightningcss-linux-arm-gnueabihf": "1.33.0", "lightningcss-linux-arm64-gnu": "1.33.0", "lightningcss-linux-arm64-musl": "1.33.0", "lightningcss-linux-x64-gnu": "1.33.0", "lightningcss-linux-x64-musl": "1.33.0", "lightningcss-win32-arm64-msvc": "1.33.0", "lightningcss-win32-x64-msvc": "1.33.0" } }, "sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA=="],
 

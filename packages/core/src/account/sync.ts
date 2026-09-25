@@ -1,34 +1,22 @@
-import {
-	DynamoDBClient,
-	GetItemCommand,
-	UpdateItemCommand
-} from "@aws-sdk/client-dynamodb";
 import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
-import { Resource } from "sst";
 import { z } from "zod";
 
+import { db } from "../db";
 import { InputError, ServerError } from "../error";
 import { fn } from "../util/fn";
 import * as Connector from "./connector";
-
-const dynamo = new DynamoDBClient({});
 
 export const sync = fn(
 	z.object({
 		accountId: z.string().regex(/^\d{12}$/)
 	}),
 	async ({ accountId }) => {
-		const result = await dynamo.send(
-			new GetItemCommand({
-				TableName: Resource.Accounts.name,
-				Key: {
-					accountId: { S: accountId }
-				}
-			})
-		);
-		const roleArn = result.Item?.roleArn?.S;
-		const region = result.Item?.region?.S;
+		const account = await db.entities.account
+			.get({ accountId })
+			.go({ consistent: true });
+		const roleArn = account.data?.roleArn;
+		const region = account.data?.region;
 		if (!roleArn || !region) {
 			throw new InputError(
 				"account_not_found",
@@ -95,27 +83,40 @@ export const sync = fn(
 		});
 
 		const now = new Date().toISOString();
-		await dynamo.send(
-			new UpdateItemCommand({
-				TableName: Resource.Accounts.name,
-				Key: {
-					accountId: { S: accountId }
-				},
-				UpdateExpression:
-					"SET #status = :status, #stateBucket = :stateBucket, #lastSyncedAt = :now, #updatedAt = :now",
-				ExpressionAttributeNames: {
-					"#status": "status",
-					"#stateBucket": "stateBucket",
-					"#lastSyncedAt": "lastSyncedAt",
-					"#updatedAt": "updatedAt"
-				},
-				ExpressionAttributeValues: {
-					":status": { S: "connected" },
-					":stateBucket": { S: bootstrap.data.state },
-					":now": { S: now }
-				}
-			})
-		);
+		const syncRunId = crypto.randomUUID();
+		const reverseTimestamp = String(
+			9_999_999_999_999 - Date.now()
+		).padStart(13, "0");
+		const transaction = await db.transaction
+			.write(({ account, syncRun }) => [
+				account
+					.patch({ accountId })
+					.set({
+						status: "connected",
+						stateBucket: bootstrap.data.state,
+						lastSyncedAt: now,
+						updatedAt: now
+					})
+					.commit(),
+				syncRun
+					.create({
+						accountId,
+						syncRunId,
+						reverseTimestamp,
+						status: "succeeded",
+						startedAt: now,
+						completedAt: now,
+						stateCount: states.length
+					})
+					.commit()
+			])
+			.go();
+		if (transaction.canceled) {
+			throw new ServerError(
+				"sync_persistence_failed",
+				"Unable to persist account sync result"
+			);
+		}
 
 		return {
 			accountId,
