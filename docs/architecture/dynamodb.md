@@ -3,8 +3,9 @@
 ## Purpose
 
 `ConsoleData` is one DynamoDB table for SST Console operational data. It is an
-index of Console-safe SST state, not a replica of full SST state. Raw or
-oversized SST state remains in S3.
+index of Console-safe SST state, not a replica of full SST state. Raw SST state
+remains in S3. Console navigation is App-first: one global SST app groups its
+Stages across connected AWS accounts.
 
 This document is required reading before changing DynamoDB infrastructure,
 ElectroDB models, persistence use cases, access patterns, or data migrations.
@@ -47,8 +48,9 @@ packages/core/src/
 ```
 
 `App`, `Stage`, and `Resource` are one product domain. A resource is always
-meaningful in an account/app/stage hierarchy, so do not make a top-level
-`resource/` or `stage/` persistence domain without an accepted product reason.
+meaningful in an App/Stage hierarchy, with its Stage retaining account
+provenance, so do not make a top-level `resource/` or `stage/` persistence
+domain without an accepted product reason.
 
 ## Table definition
 
@@ -65,6 +67,14 @@ GSI: accountsByStatus
 GSI: resourcesByArn
   hash:  gsi2pk
   range: gsi2sk
+
+GSI: stagesByAccount
+  hash:  gsi3pk
+  range: gsi3sk
+
+GSI: appsByName
+  hash:  gsi4pk
+  range: gsi4sk
 ```
 
 SST links `ConsoleData` to functions. Core resolves table name through
@@ -75,33 +85,45 @@ SST links `ConsoleData` to functions. Core resolves table name through
 ElectroDB derives all keys. These layouts are contract, not values callers
 construct themselves.
 
-| Entity | PK | SK |
-| --- | --- | --- |
-| Account | `ACCOUNT#{accountId}` | `account` |
-| App | `ACCOUNT#{accountId}` | `APP#{appName}` |
-| Stage | `ACCOUNT#{accountId}` | `APP#{appName}#STAGE#{stageName}` |
-| Resource | `ACCOUNT#{accountId}` | `APP#{appName}#STAGE#{stageName}#RESOURCE#{resourceId}` |
-| StateSnapshot | `ACCOUNT#{accountId}#APP#{appName}#STAGE#{stageName}` | `SNAPSHOT#{reverseTimestamp}#{snapshotId}` |
-| SyncRun | `ACCOUNT#{accountId}` | `SYNC#{reverseTimestamp}#{syncRunId}` |
+| Entity        | PK                                      | SK                                         |
+| ------------- | --------------------------------------- | ------------------------------------------ |
+| Account       | `ACCOUNT#{accountId}`                   | `account`                                  |
+| App           | `APP#{appName}`                         | `APP`                                      |
+| Stage         | `APP#{appName}`                         | `STAGE#{stageName}`                        |
+| Resource      | `APP#{appName}#STAGE#{stageName}`       | `RESOURCE#{resourceId}`                    |
+| StateSnapshot | `APP#{appName}#STAGE#{stageName}`       | `SNAPSHOT#{reverseTimestamp}#{snapshotId}` |
+| SyncRun       | `ACCOUNT#{accountId}`                   | `SYNC#{reverseTimestamp}#{syncRunId}`      |
 
-`resourceId` is stable Console identity. SST URN and normalized AWS ARN are
-separate attributes; neither is inferred from key encoding.
+`appName` is a workspace-global Console App identity. SST provides no stronger
+cross-account identity, so unrelated apps must not share an SST app name. A
+Stage is globally identified by `appName + stageName` and has one owning
+`accountId`; a sync that finds it in another account fails with
+`stage_account_conflict`. `region` on Stage identifies connector/bootstrap
+access only, not deployment placement. Resources may span regions within one
+Stage.
+
+`resourceId` is stable Console identity. `parentResourceId` models SST component
+nesting. SST URN and normalized AWS ARN are separate attributes; neither is
+inferred from key encoding. Component group rows have no ARN; only physical
+resources populate `normalizedArn` and `resourcesByArn`. `arnIndex` is an
+internal `*.dynamo.ts` field used to omit component groups from that GSI.
 
 ## Current indexes and access patterns
 
-| Access pattern | Entity/API | Dynamo operation | Status |
-| --- | --- | --- | --- |
-| Get one account | `db.entities.account.get({ accountId })` | primary-key get | Implemented |
-| List accounts by status | `db.entities.account.query.byStatus({ status })` | `accountsByStatus` query | Implemented |
-| Register/update connector | `db.entities.account.upsert(...)` | primary-key update | Implemented |
-| Persist successful sync | Account patch + SyncRun create | `TransactWriteItems` | Implemented |
-| Find resource from AWS event ARN | `db.entities.resource.query.byArn({ normalizedArn })` | `resourcesByArn` query | Model ready; no event ingestion yet |
-| Account → apps navigation | account partition query | primary-key query | Planned; add named ElectroDB accessor before UI use |
-| App → stages navigation | account partition + app sort prefix | primary-key query | Planned; add named ElectroDB accessor before UI use |
-| Stage → resources | account partition + stage/resource sort prefix | primary-key query | Planned; add named ElectroDB accessor before UI use |
-| Reconcile account state projections | worker: account ID; bounded by resources in account | entity primary-key queries for App, Stage, Resource | Implemented |
-| Latest state snapshot | app-stage partition, descending, limit 1 | primary-key query | Planned |
-| Account sync history | account partition, descending sync prefix | primary-key query | Planned |
+| Access pattern                      | Entity/API                                            | Dynamo operation                                    | Status                                              |
+| ----------------------------------- | ----------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------- |
+| Get one account                     | `db.entities.account.get({ accountId })`              | primary-key get                                     | Implemented                                         |
+| List accounts by status             | `db.entities.account.query.byStatus({ status })`      | `accountsByStatus` query                            | Implemented                                         |
+| Register/update connector           | `db.entities.account.upsert(...)`                     | primary-key update                                  | Implemented                                         |
+| Persist successful sync             | Account patch + SyncRun create                        | `TransactWriteItems`                                | Implemented                                         |
+| Find resource from AWS event ARN    | `db.entities.resource.query.byArn({ normalizedArn })` | `resourcesByArn` query                              | Model ready; no event ingestion yet                 |
+| Home → App list                     | name ascending                                        | `appsByName` query                                  | Implemented                                          |
+| App detail                          | app name                                              | App primary-key get                                 | Model ready                                          |
+| App → stages                        | app name, stage order                                 | Stage primary-key query                             | Implemented                                          |
+| Stage → resources                   | app and stage                                         | Resource primary-key query                          | Implemented                                          |
+| Reconcile account state projections | worker: account ID                                    | `stagesByAccount`, then per-Stage resource queries  | Implemented                                          |
+| Latest state snapshot               | app and stage, descending, limit 1                    | StateSnapshot primary-key query                     | Implemented                                          |
+| Account sync history                | account partition, descending sync prefix             | primary-key query                                   | Planned                                             |
 
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.
@@ -125,14 +147,22 @@ Secrets are redacted before normalization. Persisted summaries are allowlisted;
 raw Pulumi inputs and outputs are never written to `ConsoleData`.
 
 Reconciliation begins only after every listed object was fetched and parsed.
-It upserts desired projections, then deletes resource, stage, and app
-projections absent from complete discovery output. Snapshots are retained. This
-order means incomplete discovery cannot delete existing data.
+It upserts desired projections, then deletes resource and Stage projections
+absent from complete discovery output for that account. After all Stage deletes
+commit, it deletes an App only when no Stages remain in any account. Snapshots
+are retained. This order means incomplete discovery cannot delete existing data.
 
 Projection writes are ordered and split into transactions of at most 90 actions
 and 3 MiB of estimated payload, below DynamoDB's 100-action/4-MB limits. A
 partial write is repaired by next successful sync; `Account.lastSyncedAt` and
 successful `SyncRun` are written only after all projection chunks succeed.
+
+### App-first projection cutover
+
+This is an incompatible key-layout change from account-first projections. Deploy
+the `stagesByAccount` and `appsByName` indexes, then sync every connected account
+to populate App-first records. Old account-first projection records are not read
+or maintained.
 
 ## ElectroDB usage
 
@@ -199,10 +229,10 @@ transactional joins or arbitrary read-then-write transactions.
 
 Three contracts exist:
 
-| Contract | Owner | Rule |
-| --- | --- | --- |
-| Zod schema | domain API | Validate public inputs and outputs |
-| ElectroDB `model.version` | ElectroDB entity identity | Keep at `"1"` for normal evolution |
+| Contract                  | Owner                        | Rule                                               |
+| ------------------------- | ---------------------------- | -------------------------------------------------- |
+| Zod schema                | domain API                   | Validate public inputs and outputs                 |
+| ElectroDB `model.version` | ElectroDB entity identity    | Keep at `"1"` for normal evolution                 |
 | `schemaVersion` attribute | Console persisted-item shape | Change only for incompatible item-shape migrations |
 
 ElectroDB writes `__edb_e__` and `__edb_v__` for entity ownership filtering.

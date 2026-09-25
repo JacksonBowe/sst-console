@@ -8,6 +8,7 @@
 - When changing a directory, update its `.agent_context.md` when the map becomes inaccurate or omits important entries.
 - Create a new `.agent_context.md` only where it materially improves discoverability.
 - Context files may describe relevant subdirectories and should link to their context files where useful.
+- Keep test files and test-only fixtures in each workspace's `tests/` directory. Never put them in `src/`.
 - The user will perform all DB actions themselves.
 - Do not implement any backwards compatibility safeguards. NEVER export old names as wrappers or attempt to use aliases
 - If ever code is being deprecated but not deleted it must be marked with `DEPR: <reason>` where `reason` can be in the vein of 'Superseeded by newFunc()'

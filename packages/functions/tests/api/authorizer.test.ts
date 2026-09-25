@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import { PublicError } from "@console/core/error";
 
-import { authorizeDebug } from "./authorizer";
+import { authorizeDebug } from "../../src/api/authorizer";
 
 const originalUsername = process.env.SST_CONSOLE_DEBUG_USERNAME;
 const originalPassword = process.env.SST_CONSOLE_DEBUG_PASSWORD;

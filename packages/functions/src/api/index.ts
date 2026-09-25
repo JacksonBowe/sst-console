@@ -1,5 +1,6 @@
 import { PublicError } from "@console/core/error";
 import * as Account from "@console/core/account";
+import * as App from "@console/core/app";
 import type { Handler } from "aws-lambda";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -28,6 +29,18 @@ if (!isProd) {
 	const debugRoutes = new Hono<{ Bindings: Bindings }>();
 	debugRoutes.use("*", authorizeDebug);
 	debugRoutes.get("/accounts", async c => c.json(await Account.list()));
+	debugRoutes.get("/apps", async c => c.json(await App.list()));
+	debugRoutes.get("/apps/:appName/stages/:stageName", async c =>
+		c.json(
+			await App.inspectStage({
+				appName: c.req.param("appName"),
+				stageName: c.req.param("stageName")
+			})
+		)
+	);
+	debugRoutes.get("/apps/:appName", async c =>
+		c.json(await App.inspect({ appName: c.req.param("appName") }))
+	);
 	debugRoutes.get("/accounts/:accountId", async c =>
 		c.json(await Account.inspect({ accountId: c.req.param("accountId") }))
 	);

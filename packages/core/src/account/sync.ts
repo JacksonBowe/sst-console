@@ -64,8 +64,7 @@ type ProjectionWrite =
 			stageName: string;
 			resourceId: string;
 	  }
-	| { kind: "deleteStage"; appName: string; stageName: string }
-	| { kind: "deleteApp"; appName: string };
+	| { kind: "deleteStage"; appName: string; stageName: string };
 
 export const sync = fn(
 	z.object({
@@ -133,8 +132,9 @@ export const sync = fn(
 		const syncRunId = crypto.randomUUID();
 		// 3. Build desired projections, then find persisted resources, stages, and
 		// apps missing from complete discovery output.
-		const writes = await buildWrites({
+		const { writes, staleAppNames } = await buildWrites({
 			accountId,
+			region,
 			stateBucket: bootstrap.data.state,
 			projections,
 			now
@@ -142,8 +142,9 @@ export const sync = fn(
 		// 4. Desired upserts precede stale deletes. Chunks stay under DynamoDB
 		// transaction limits; later syncs repair a partially completed run.
 		for (const chunk of chunkWrites(writes)) {
-			await writeChunk(accountId, chunk);
+			await writeChunk(accountId, region, chunk);
 		}
+		await removeEmptyApps(staleAppNames);
 
 		// 5. Account freshness and successful run marker update only after all
 		// projection chunks have committed.
@@ -260,10 +261,11 @@ async function loadProjection(
 
 async function buildWrites(input: {
 	accountId: string;
+	region: string;
 	stateBucket: string;
 	projections: StateProjection[];
 	now: string;
-}): Promise<ProjectionWrite[]> {
+}): Promise<{ writes: ProjectionWrite[]; staleAppNames: string[] }> {
 	const desiredApps = new Set(input.projections.map(state => state.appName));
 	const desiredStages = new Set(
 		input.projections.map(state => stageKey(state.appName, state.stageName))
@@ -275,19 +277,56 @@ async function buildWrites(input: {
 			)
 		)
 	);
-	// These primary-key queries replace a DynamoDB scan. They provide complete
-	// account projections needed to determine which records became stale.
-	const [apps, stages, resources] = await Promise.all([
-		db.entities.app.query
-			.app({ accountId: input.accountId })
-			.go({ pages: "all" }),
+	const [existingStages, stageLookups] = await Promise.all([
 		db.entities.stage.query
-			.stage({ accountId: input.accountId })
+			.byAccount({ accountId: input.accountId })
 			.go({ pages: "all" }),
-		db.entities.resource.query
-			.resource({ accountId: input.accountId })
-			.go({ pages: "all" })
+		Promise.all(
+			input.projections.map(
+				async projection =>
+					[
+						projection,
+						await db.entities.stage
+							.get({
+								appName: projection.appName,
+								stageName: projection.stageName
+							})
+							.go({ consistent: true })
+					] as const
+			)
+		)
 	]);
+	for (const [projection, stage] of stageLookups) {
+		if (stage.data && stage.data.accountId !== input.accountId) {
+			throw new InputError(
+				"stage_account_conflict",
+				`SST stage ${projection.appName}/${projection.stageName} belongs to account ${stage.data.accountId}`
+			);
+		}
+	}
+
+	const stagesToRead = new Map<
+		string,
+		{ appName: string; stageName: string }
+	>();
+	for (const stage of existingStages.data)
+		stagesToRead.set(stageKey(stage.appName, stage.stageName), stage);
+	for (const projection of input.projections)
+		stagesToRead.set(
+			stageKey(projection.appName, projection.stageName),
+			projection
+		);
+	const resourceResults = await Promise.all(
+		[...stagesToRead.values()].map(stage =>
+			db.entities.resource.query
+				.resource({
+					appName: stage.appName,
+					stageName: stage.stageName
+				})
+				.go({ pages: "all" })
+		)
+	);
+	const resources = resourceResults.flatMap(result => result.data);
 
 	const writes: ProjectionWrite[] = [];
 	for (const appName of desiredApps)
@@ -321,7 +360,7 @@ async function buildWrites(input: {
 		});
 	}
 
-	for (const resource of resources.data) {
+	for (const resource of resources) {
 		if (
 			desiredResources.has(
 				resourceKey(
@@ -339,7 +378,7 @@ async function buildWrites(input: {
 			resourceId: resource.resourceId
 		});
 	}
-	for (const stage of stages.data) {
+	for (const stage of existingStages.data) {
 		if (desiredStages.has(stageKey(stage.appName, stage.stageName)))
 			continue;
 		writes.push({
@@ -348,11 +387,16 @@ async function buildWrites(input: {
 			stageName: stage.stageName
 		});
 	}
-	for (const app of apps.data) {
-		if (desiredApps.has(app.appName)) continue;
-		writes.push({ kind: "deleteApp", appName: app.appName });
-	}
-	return writes;
+	return {
+		writes,
+		staleAppNames: [
+			...new Set(
+				existingStages.data
+					.filter(stage => !desiredApps.has(stage.appName))
+					.map(stage => stage.appName)
+			)
+		]
+	};
 }
 
 function chunkWrites(writes: ProjectionWrite[]): ProjectionWrite[][] {
@@ -382,7 +426,11 @@ function chunkWrites(writes: ProjectionWrite[]): ProjectionWrite[][] {
 	return chunks;
 }
 
-async function writeChunk(accountId: string, writes: ProjectionWrite[]) {
+async function writeChunk(
+	accountId: string,
+	region: string,
+	writes: ProjectionWrite[]
+) {
 	const transaction = await db.transaction
 		.write(({ app, resource, stage, stateSnapshot }) =>
 			writes.map(write => {
@@ -390,7 +438,6 @@ async function writeChunk(accountId: string, writes: ProjectionWrite[]) {
 					case "app":
 						return app
 							.upsert({
-								accountId,
 								appName: write.appName,
 								updatedAt: write.now
 							})
@@ -400,11 +447,16 @@ async function writeChunk(accountId: string, writes: ProjectionWrite[]) {
 						return stage
 							.upsert({
 								accountId,
+								region,
 								appName: write.appName,
 								stageName: write.stageName,
 								updatedAt: write.now
 							})
 							.ifNotExists({ createdAt: write.now })
+							.where(
+								(attributes, operations) =>
+									`${operations.notExists(attributes.accountId)} OR ${operations.eq(attributes.accountId, accountId)}`
+							)
 							.commit();
 					case "resource":
 						return resource
@@ -413,9 +465,13 @@ async function writeChunk(accountId: string, writes: ProjectionWrite[]) {
 								appName: write.appName,
 								stageName: write.stageName,
 								resourceId: write.resource.resourceId,
+								parentResourceId:
+									write.resource.parentResourceId,
+								resourceKind: write.resource.resourceKind,
 								resourceType: write.resource.resourceType,
 								urn: write.resource.urn,
 								normalizedArn: write.resource.normalizedArn,
+								arnIndex: write.resource.arnIndex,
 								name: write.resource.name,
 								summary: write.resource.summary,
 								updatedAt: write.now
@@ -439,7 +495,6 @@ async function writeChunk(accountId: string, writes: ProjectionWrite[]) {
 					case "deleteResource":
 						return resource
 							.delete({
-								accountId,
 								appName: write.appName,
 								stageName: write.stageName,
 								resourceId: write.resourceId
@@ -448,14 +503,9 @@ async function writeChunk(accountId: string, writes: ProjectionWrite[]) {
 					case "deleteStage":
 						return stage
 							.delete({
-								accountId,
 								appName: write.appName,
 								stageName: write.stageName
 							})
-							.commit();
-					case "deleteApp":
-						return app
-							.delete({ accountId, appName: write.appName })
 							.commit();
 				}
 			})
@@ -466,6 +516,16 @@ async function writeChunk(accountId: string, writes: ProjectionWrite[]) {
 			"sync_persistence_failed",
 			"Unable to persist SST state projections"
 		);
+	}
+}
+
+async function removeEmptyApps(appNames: string[]) {
+	for (const appName of appNames) {
+		const stages = await db.entities.stage.query
+			.stage({ appName })
+			.go({ limit: 1 });
+		if (stages.data.length > 0) continue;
+		await db.entities.app.delete({ appName }).go({ response: "none" });
 	}
 }
 

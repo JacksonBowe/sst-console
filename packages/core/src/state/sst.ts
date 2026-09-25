@@ -29,9 +29,12 @@ export type SstState = z.output<typeof checkpointSchema>;
 
 export type NormalizedResource = {
 	resourceId: string;
-	resourceType: "sst.aws.Bucket" | "sst.aws.Function" | "sst.aws.Dynamo";
+	arnIndex: string;
+	parentResourceId?: string;
+	resourceKind: "component" | "physical";
+	resourceType: string;
 	urn: string;
-	normalizedArn: string;
+	normalizedArn?: string;
 	name: string;
 	summary:
 		| { bucketName: string }
@@ -45,7 +48,8 @@ export type NormalizedResource = {
 				tableName: string;
 				billingMode?: string;
 				streamEnabled?: boolean;
-		  };
+		  }
+		| undefined;
 };
 
 export type NormalizedState = {
@@ -109,12 +113,13 @@ export function normalizeSstState(state: SstState): NormalizedState {
 	};
 }
 
-// A component is Console's resource identity. Its owned Pulumi child only
-// supplies physical AWS fields needed for the safe, queryable projection.
+// An SST component is Console's identity. Physical components use their owned
+// Pulumi child for AWS fields; other SST components become tree group rows.
 function normalizeResource(
 	component: SstState["checkpoint"]["latest"]["resources"][number],
 	resources: SstState["checkpoint"]["latest"]["resources"]
 ): NormalizedResource[] {
+	const parentResourceId = parentIdFor(component.parent, resources);
 	if (component.type === "sst:aws:Bucket") {
 		const child = findChild(
 			component.urn,
@@ -128,7 +133,15 @@ function normalizeResource(
 			child?.outputs.bucket
 		);
 		if (!arn || !bucketName || !arn.startsWith("arn:")) return [];
-		return [baseResource(component, "sst.aws.Bucket", arn, { bucketName })];
+		return [
+			baseResource(
+				component,
+				"sst.aws.Bucket",
+				arn,
+				{ bucketName },
+				parentResourceId
+			)
+		];
 	}
 
 	if (component.type === "sst:aws:Function") {
@@ -144,12 +157,18 @@ function normalizeResource(
 		);
 		if (!arn || !functionName || !arn.startsWith("arn:")) return [];
 		return [
-			baseResource(component, "sst.aws.Function", arn, {
-				functionName,
-				runtime: optionalString(child?.outputs.runtime),
-				memorySize: optionalNumber(child?.outputs.memorySize),
-				timeout: optionalNumber(child?.outputs.timeout)
-			})
+			baseResource(
+				component,
+				"sst.aws.Function",
+				arn,
+				{
+					functionName,
+					runtime: optionalString(child?.outputs.runtime),
+					memorySize: optionalNumber(child?.outputs.memorySize),
+					timeout: optionalNumber(child?.outputs.timeout)
+				},
+				parentResourceId
+			)
 		];
 	}
 
@@ -166,15 +185,33 @@ function normalizeResource(
 		);
 		if (!arn || !tableName || !arn.startsWith("arn:")) return [];
 		return [
-			baseResource(component, "sst.aws.Dynamo", arn, {
-				tableName,
-				billingMode: optionalString(child?.outputs.billingMode),
-				streamEnabled: optionalBoolean(child?.outputs.streamEnabled)
-			})
+			baseResource(
+				component,
+				"sst.aws.Dynamo",
+				arn,
+				{
+					tableName,
+					billingMode: optionalString(child?.outputs.billingMode),
+					streamEnabled: optionalBoolean(child?.outputs.streamEnabled)
+				},
+				parentResourceId
+			)
 		];
 	}
 
-	return [];
+	if (!component.type.startsWith("sst:aws:")) return [];
+	return [
+		{
+			resourceId: resourceIdFor(component.urn),
+			parentResourceId,
+			resourceKind: "component",
+			resourceType: component.type.replaceAll(":", "."),
+			urn: component.urn,
+			arnIndex: `component#${resourceIdFor(component.urn)}`,
+			name: nameFromUrn(component.urn),
+			summary: undefined
+		}
+	];
 }
 
 function findChild(
@@ -191,16 +228,34 @@ function baseResource(
 	component: SstState["checkpoint"]["latest"]["resources"][number],
 	resourceType: NormalizedResource["resourceType"],
 	arn: string,
-	summary: NormalizedResource["summary"]
+	summary: NormalizedResource["summary"],
+	parentResourceId?: string
 ): NormalizedResource {
 	return {
-		resourceId: createHash("sha256").update(component.urn).digest("hex"),
+		resourceId: resourceIdFor(component.urn),
+		parentResourceId,
+		resourceKind: "physical",
 		resourceType,
 		urn: component.urn,
 		normalizedArn: arn.trim(),
+		arnIndex: arn.trim(),
 		name: nameFromUrn(component.urn),
 		summary
 	};
+}
+
+function parentIdFor(
+	parentUrn: string | undefined,
+	resources: SstState["checkpoint"]["latest"]["resources"]
+): string | undefined {
+	const parent = resources.find(resource => resource.urn === parentUrn);
+	return parent?.type.startsWith("sst:aws:")
+		? resourceIdFor(parent.urn)
+		: undefined;
+}
+
+function resourceIdFor(urn: string): string {
+	return createHash("sha256").update(urn).digest("hex");
 }
 
 function firstString(...values: unknown[]): string | undefined {

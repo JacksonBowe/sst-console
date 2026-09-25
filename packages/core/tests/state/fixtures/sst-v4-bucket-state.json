@@ -33,8 +33,15 @@
 					}
 				},
 				{
+					"urn": "urn:pulumi:prod::console::sst:aws:Realtime::Realtime",
+					"type": "sst:aws:Realtime",
+					"inputs": {},
+					"outputs": {}
+				},
+				{
 					"urn": "urn:pulumi:prod::console::sst:aws:Function::Api",
 					"type": "sst:aws:Function",
+					"parent": "urn:pulumi:prod::console::sst:aws:Realtime::Realtime",
 					"inputs": {},
 					"outputs": {}
 				},

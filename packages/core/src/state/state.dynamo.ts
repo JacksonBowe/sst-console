@@ -18,15 +18,14 @@ export const stateSnapshotEntity = new Entity({
 		sourceVersion: { type: "string" },
 		archiveKey: { type: "string" },
 		createdAt: { type: "string", required: true },
-		schemaVersion: { type: "string", default: "1" }
+		schemaVersion: { type: "string", default: "2" }
 	},
 	indexes: {
 		snapshot: {
 			pk: {
 				field: "pk",
-				composite: ["accountId", "appName", "stageName"],
-				template:
-					"ACCOUNT#${accountId}#APP#${appName}#STAGE#${stageName}",
+				composite: ["appName", "stageName"],
+				template: "APP#${appName}#STAGE#${stageName}",
 				casing: "none"
 			},
 			sk: {

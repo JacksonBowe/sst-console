@@ -3,8 +3,9 @@
     "module": "index.ts",
     "type": "module",
     "private": true,
-    "exports": {
-        "./account": "./src/account/index.ts",
+	"exports": {
+		"./account": "./src/account/index.ts",
+		"./app": "./src/app/index.ts",
         "./*": "./src/*.ts",
         "./user*": "./src/user/index.ts"
     },
