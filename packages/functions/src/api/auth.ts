@@ -3,7 +3,7 @@ import * as User from "@console/core/user";
 import { Hono } from "hono";
 
 import {
-	UserAuthJsonSchema,
+	UserAuthJsonSchema
 	// UserRecoverConfirmJsonSchema,
 	// UserRecoverJsonSchema,
 	// UserRefreshJsonSchema,

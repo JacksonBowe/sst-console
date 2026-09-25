@@ -3,6 +3,6 @@ import { fn } from "../util/fn";
 
 export const get = fn(z.object({}), async () => {
 	return {
-		user: null,
+		user: null
 	};
-})
+});

@@ -1,18 +1,18 @@
 {
-    "name": "@console/functions",
-    "module": "index.ts",
-    "type": "module",
-    "private": true,
-    "devDependencies": {
-        "@types/aws-lambda": "^8.10.163",
-        "@types/bun": "latest"
-    },
-    "peerDependencies": {
-        "typescript": "^5"
-    },
-    "dependencies": {
-        "hono": "^4.13.9",
-        "zod": "^4.6.5",
-        "@console/core": "workspace:*"
-    }
+	"name": "@console/functions",
+	"private": true,
+	"type": "module",
+	"module": "index.ts",
+	"dependencies": {
+		"@console/core": "workspace:*",
+		"hono": "^4.13.9",
+		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"@types/aws-lambda": "^8.10.163",
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
 }

@@ -85,14 +85,14 @@ SST links `ConsoleData` to functions. Core resolves table name through
 ElectroDB derives all keys. These layouts are contract, not values callers
 construct themselves.
 
-| Entity        | PK                                      | SK                                         |
-| ------------- | --------------------------------------- | ------------------------------------------ |
-| Account       | `ACCOUNT#{accountId}`                   | `account`                                  |
-| App           | `APP#{appName}`                         | `APP`                                      |
-| Stage         | `APP#{appName}`                         | `STAGE#{stageName}`                        |
-| Resource      | `APP#{appName}#STAGE#{stageName}`       | `RESOURCE#{resourceId}`                    |
-| StateSnapshot | `APP#{appName}#STAGE#{stageName}`       | `SNAPSHOT#{reverseTimestamp}#{snapshotId}` |
-| SyncRun       | `ACCOUNT#{accountId}`                   | `SYNC#{reverseTimestamp}#{syncRunId}`      |
+| Entity        | PK                                | SK                                         |
+| ------------- | --------------------------------- | ------------------------------------------ |
+| Account       | `ACCOUNT#{accountId}`             | `account`                                  |
+| App           | `APP#{appName}`                   | `APP`                                      |
+| Stage         | `APP#{appName}`                   | `STAGE#{stageName}`                        |
+| Resource      | `APP#{appName}#STAGE#{stageName}` | `RESOURCE#{resourceId}`                    |
+| StateSnapshot | `APP#{appName}#STAGE#{stageName}` | `SNAPSHOT#{reverseTimestamp}#{snapshotId}` |
+| SyncRun       | `ACCOUNT#{accountId}`             | `SYNC#{reverseTimestamp}#{syncRunId}`      |
 
 `appName` is a workspace-global Console App identity. SST provides no stronger
 cross-account identity, so unrelated apps must not share an SST app name. A
@@ -110,20 +110,20 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 
 ## Current indexes and access patterns
 
-| Access pattern                      | Entity/API                                            | Dynamo operation                                    | Status                                              |
-| ----------------------------------- | ----------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------- |
-| Get one account                     | `db.entities.account.get({ accountId })`              | primary-key get                                     | Implemented                                         |
-| List accounts by status             | `db.entities.account.query.byStatus({ status })`      | `accountsByStatus` query                            | Implemented                                         |
-| Register/update connector           | `db.entities.account.upsert(...)`                     | primary-key update                                  | Implemented                                         |
-| Persist successful sync             | Account patch + SyncRun create                        | `TransactWriteItems`                                | Implemented                                         |
-| Find resource from AWS event ARN    | `db.entities.resource.query.byArn({ normalizedArn })` | `resourcesByArn` query                              | Model ready; no event ingestion yet                 |
-| Home → App list                     | name ascending                                        | `appsByName` query                                  | Implemented                                          |
-| App detail                          | app name                                              | App primary-key get                                 | Model ready                                          |
-| App → stages                        | app name, stage order                                 | Stage primary-key query                             | Implemented                                          |
-| Stage → resources                   | app and stage                                         | Resource primary-key query                          | Implemented                                          |
-| Reconcile account state projections | worker: account ID                                    | `stagesByAccount`, then per-Stage resource queries  | Implemented                                          |
-| Latest state snapshot               | app and stage, descending, limit 1                    | StateSnapshot primary-key query                     | Implemented                                          |
-| Account sync history                | account partition, descending sync prefix             | primary-key query                                   | Planned                                             |
+| Access pattern                      | Entity/API                                            | Dynamo operation                                   | Status                              |
+| ----------------------------------- | ----------------------------------------------------- | -------------------------------------------------- | ----------------------------------- |
+| Get one account                     | `db.entities.account.get({ accountId })`              | primary-key get                                    | Implemented                         |
+| List accounts by status             | `db.entities.account.query.byStatus({ status })`      | `accountsByStatus` query                           | Implemented                         |
+| Register/update connector           | `db.entities.account.upsert(...)`                     | primary-key update                                 | Implemented                         |
+| Persist successful sync             | Account patch + SyncRun create                        | `TransactWriteItems`                               | Implemented                         |
+| Find resource from AWS event ARN    | `db.entities.resource.query.byArn({ normalizedArn })` | `resourcesByArn` query                             | Model ready; no event ingestion yet |
+| Home → App list                     | name ascending                                        | `appsByName` query                                 | Implemented                         |
+| App detail                          | app name                                              | App primary-key get                                | Model ready                         |
+| App → stages                        | app name, stage order                                 | Stage primary-key query                            | Implemented                         |
+| Stage → resources                   | app and stage                                         | Resource primary-key query                         | Implemented                         |
+| Reconcile account state projections | worker: account ID                                    | `stagesByAccount`, then per-Stage resource queries | Implemented                         |
+| Latest state snapshot               | app and stage, descending, limit 1                    | StateSnapshot primary-key query                    | Implemented                         |
+| Account sync history                | account partition, descending sync prefix             | primary-key query                                  | Planned                             |
 
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.

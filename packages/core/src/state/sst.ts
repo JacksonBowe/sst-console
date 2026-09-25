@@ -37,19 +37,19 @@ export type NormalizedResource = {
 	normalizedArn?: string;
 	name: string;
 	summary:
-	| { bucketName: string }
-	| {
-		functionName: string;
-		runtime?: string;
-		memorySize?: number;
-		timeout?: number;
-	}
-	| {
-		tableName: string;
-		billingMode?: string;
-		streamEnabled?: boolean;
-	}
-	| undefined;
+		| { bucketName: string }
+		| {
+				functionName: string;
+				runtime?: string;
+				memorySize?: number;
+				timeout?: number;
+		  }
+		| {
+				tableName: string;
+				billingMode?: string;
+				streamEnabled?: boolean;
+		  }
+		| undefined;
 };
 
 export type NormalizedState = {
@@ -299,11 +299,11 @@ function semanticParentIdFor(
 
 function subscriptionOwner(type: string):
 	| {
-		input: "eventBusName" | "bucket";
-		type: string;
-		childType: string;
-		subscriptionType: string;
-	}
+			input: "eventBusName" | "bucket";
+			type: string;
+			childType: string;
+			subscriptionType: string;
+	  }
 	| undefined {
 	if (
 		type === "sst:aws:BusLambdaSubscriber" ||

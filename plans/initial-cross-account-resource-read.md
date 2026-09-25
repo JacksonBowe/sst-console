@@ -55,11 +55,11 @@ once the cross-account path is proven.
 
 1. Pin and test against a current SST v4 release.
 2. Deploy the minimal Console SST app in the control account:
-   - Cognito User Pool;
-   - static web application;
-   - API Lambda;
-   - DynamoDB tables;
-   - S3 archive bucket for oversized state payloads.
+    - Cognito User Pool;
+    - static web application;
+    - API Lambda;
+    - DynamoDB tables;
+    - S3 archive bucket for oversized state payloads.
 3. Disable public Cognito self-registration.
 4. Print direct deployment outputs for the Console URL and Cognito User Pool.
 5. Start without a custom domain or SES configuration.
@@ -85,12 +85,12 @@ account scanning is deferred.
 2. Assume the workload `SSTConsoleReadRole` from the control-account API.
 3. Fetch and parse SST v4 state for the configured app/stage.
 4. Persist a compact Console index in DynamoDB:
-   - workload account;
-   - app and stage;
-   - resource identity and type;
-   - safe summary fields;
-   - SST state version/timestamp;
-   - source S3 pointer.
+    - workload account;
+    - app and stage;
+    - resource identity and type;
+    - safe summary fields;
+    - SST state version/timestamp;
+    - source S3 pointer.
 5. Put oversized raw resource payloads in the Console S3 archive bucket.
 6. Redact secrets by default and do not attempt to decrypt SST secrets.
 
@@ -135,10 +135,10 @@ account while preserving a single Console dashboard.
 
 Use two real sandbox accounts from the start:
 
-| Account | Purpose |
-| --- | --- |
-| Control | Console SST deployment, Cognito, API, DynamoDB |
-| Workload | Fixture SST v4 app and connector stack |
+| Account  | Purpose                                        |
+| -------- | ---------------------------------------------- |
+| Control  | Console SST deployment, Cognito, API, DynamoDB |
+| Workload | Fixture SST v4 app and connector stack         |
 
 Use separate AWS profiles or IAM Identity Center profiles. Never put AWS keys in
 repository configuration or `.env` files. Run the control plane with `sst dev`

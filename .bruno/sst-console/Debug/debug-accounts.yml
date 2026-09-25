@@ -1,16 +1,16 @@
 info:
-  name: debug accounts
-  type: http
-  seq: 2
+    name: debug accounts
+    type: http
+    seq: 2
 
 http:
-  method: GET
-  url: "{{ApiBase}}/debug/accounts"
-  auth: inherit
+    method: GET
+    url: "{{ApiBase}}/debug/accounts"
+    auth: inherit
 
 settings:
-  encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: true
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
+    forwardAuthorizationHeader: true

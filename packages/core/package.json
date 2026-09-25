@@ -1,29 +1,29 @@
 {
-    "name": "@console/core",
-    "module": "index.ts",
-    "type": "module",
-    "private": true,
+	"name": "@console/core",
+	"private": true,
+	"type": "module",
+	"module": "index.ts",
 	"exports": {
 		"./account": "./src/account/index.ts",
 		"./app": "./src/app/index.ts",
-        "./*": "./src/*.ts",
-        "./user*": "./src/user/index.ts"
-    },
-    "devDependencies": {
-        "@types/bun": "latest"
-    },
-    "peerDependencies": {
-        "typescript": "^5"
-    },
-    "dependencies": {
-        "@aws-sdk/client-dynamodb": "^3.1139.0",
-        "@aws-sdk/client-s3": "^3.1139.0",
-        "@aws-sdk/client-ssm": "^3.1139.0",
-        "@aws-sdk/client-sts": "^3.1139.0",
-        "@aws-sdk/lib-dynamodb": "^3.1140.0",
-        "@hono/zod-validator": "^0.9.1",
-        "electrodb": "^3.9.3",
-        "hono": "^4.13.9",
-        "zod": "^4.6.5"
-    }
+		"./*": "./src/*.ts",
+		"./user*": "./src/user/index.ts"
+	},
+	"dependencies": {
+		"@aws-sdk/client-dynamodb": "^3.1139.0",
+		"@aws-sdk/client-s3": "^3.1139.0",
+		"@aws-sdk/client-ssm": "^3.1139.0",
+		"@aws-sdk/client-sts": "^3.1139.0",
+		"@aws-sdk/lib-dynamodb": "^3.1140.0",
+		"@hono/zod-validator": "^0.9.1",
+		"electrodb": "^3.9.3",
+		"hono": "^4.13.9",
+		"zod": "^4.6.5"
+	},
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
 }
