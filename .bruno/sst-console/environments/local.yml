@@ -1,0 +1,4 @@
+name: local
+variables:
+  - name: ApiBase
+    value: https://ufdkgl7vj3tzxootfhiat6f7om0ufpnh.lambda-url.ap-southeast-2.on.aws
