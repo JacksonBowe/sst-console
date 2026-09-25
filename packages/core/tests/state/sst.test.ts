@@ -13,7 +13,7 @@ import {
 describe("SST state", () => {
 	it("parses an SST v4 Pulumi checkpoint", () => {
 		const parsed = parseSstState(JSON.stringify(fixture));
-		expect(parsed.checkpoint.latest.resources).toHaveLength(8);
+		expect(parsed.checkpoint.latest.resources).toHaveLength(17);
 	});
 
 	it("rejects unsupported checkpoints", () => {
@@ -26,7 +26,7 @@ describe("SST state", () => {
 		const bytes = new Uint8Array(gzipSync(JSON.stringify(fixture)));
 		const decoded = decodeSstStateBytes(bytes, "gzip");
 		expect(parseSstState(decoded).checkpoint.latest.resources).toHaveLength(
-			8
+			17
 		);
 	});
 
@@ -79,14 +79,36 @@ describe("SST state", () => {
 				})
 			])
 		);
-		expect(normalized.resources).toHaveLength(4);
+		expect(normalized.resources).toHaveLength(9);
 		const realtime = normalized.resources.find(
 			resource => resource.name === "Realtime"
 		);
 		const api = normalized.resources.find(
 			resource => resource.name === "Api"
 		);
+		const bus = normalized.resources.find(
+			resource => resource.name === "Events"
+		);
+		const realtimeSubscriber = normalized.resources.find(
+			resource => resource.name === "RealtimeSubscriber"
+		);
+		const busSubscriber = normalized.resources.find(
+			resource => resource.name === "EventsSubscriber"
+		);
+		const bucketNotification = normalized.resources.find(
+			resource => resource.name === "UploadsNotifications"
+		);
+		const externalSubscriber = normalized.resources.find(
+			resource => resource.name === "ExternalSubscriber"
+		);
+		const bucket = normalized.resources.find(
+			resource => resource.name === "Uploads"
+		);
 		expect(realtime?.resourceId).toMatch(/^[a-f0-9]{64}$/);
 		expect(api?.parentResourceId).toBe(realtime?.resourceId);
+		expect(realtimeSubscriber?.parentResourceId).toBe(realtime?.resourceId);
+		expect(busSubscriber?.parentResourceId).toBe(bus?.resourceId);
+		expect(bucketNotification?.parentResourceId).toBe(bucket?.resourceId);
+		expect(externalSubscriber?.parentResourceId).toBeUndefined();
 	});
 });

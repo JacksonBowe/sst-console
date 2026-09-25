@@ -75,6 +75,73 @@
 						"billingMode": "PAY_PER_REQUEST",
 						"streamEnabled": false
 					}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:Bus::Events",
+					"type": "sst:aws:Bus",
+					"inputs": {},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:Bus$aws:cloudwatch/eventBus:EventBus::EventsBus",
+					"type": "aws:cloudwatch/eventBus:EventBus",
+					"parent": "urn:pulumi:prod::console::sst:aws:Bus::Events",
+					"inputs": {},
+					"outputs": {
+						"name": "console-prod-events",
+						"arn": "arn:aws:events:ap-southeast-2:123456789012:event-bus/console-prod-events"
+					}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:RealtimeLambdaSubscriber::RealtimeSubscriber",
+					"type": "sst:aws:RealtimeLambdaSubscriber",
+					"inputs": {},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:BusLambdaSubscriber::EventsSubscriber",
+					"type": "sst:aws:BusLambdaSubscriber",
+					"inputs": {},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:BucketNotification::UploadsNotifications",
+					"type": "sst:aws:BucketNotification",
+					"inputs": {},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:BusLambdaSubscriber::ExternalSubscriber",
+					"type": "sst:aws:BusLambdaSubscriber",
+					"inputs": {},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:BusLambdaSubscriber$aws:cloudwatch/eventRule:EventRule::EventsSubscriberRule",
+					"type": "aws:cloudwatch/eventRule:EventRule",
+					"parent": "urn:pulumi:prod::console::sst:aws:BusLambdaSubscriber::EventsSubscriber",
+					"inputs": {
+						"eventBusName": "console-prod-events"
+					},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:BusLambdaSubscriber$aws:cloudwatch/eventRule:EventRule::ExternalSubscriberRule",
+					"type": "aws:cloudwatch/eventRule:EventRule",
+					"parent": "urn:pulumi:prod::console::sst:aws:BusLambdaSubscriber::ExternalSubscriber",
+					"inputs": {
+						"eventBusName": "external-bus"
+					},
+					"outputs": {}
+				},
+				{
+					"urn": "urn:pulumi:prod::console::sst:aws:BucketNotification$aws:s3/bucketNotification:BucketNotification::UploadsNotificationsNotification",
+					"type": "aws:s3/bucketNotification:BucketNotification",
+					"parent": "urn:pulumi:prod::console::sst:aws:BucketNotification::UploadsNotifications",
+					"inputs": {
+						"bucket": "console-prod-uploads-abc123"
+					},
+					"outputs": {}
 				}
 			]
 		}

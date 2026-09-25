@@ -37,19 +37,19 @@ export type NormalizedResource = {
 	normalizedArn?: string;
 	name: string;
 	summary:
-		| { bucketName: string }
-		| {
-				functionName: string;
-				runtime?: string;
-				memorySize?: number;
-				timeout?: number;
-		  }
-		| {
-				tableName: string;
-				billingMode?: string;
-				streamEnabled?: boolean;
-		  }
-		| undefined;
+	| { bucketName: string }
+	| {
+		functionName: string;
+		runtime?: string;
+		memorySize?: number;
+		timeout?: number;
+	}
+	| {
+		tableName: string;
+		billingMode?: string;
+		streamEnabled?: boolean;
+	}
+	| undefined;
 };
 
 export type NormalizedState = {
@@ -119,7 +119,9 @@ function normalizeResource(
 	component: SstState["checkpoint"]["latest"]["resources"][number],
 	resources: SstState["checkpoint"]["latest"]["resources"]
 ): NormalizedResource[] {
-	const parentResourceId = parentIdFor(component.parent, resources);
+	const parentResourceId =
+		parentIdFor(component.parent, resources) ??
+		semanticParentIdFor(component, resources);
 	if (component.type === "sst:aws:Bucket") {
 		const child = findChild(
 			component.urn,
@@ -252,6 +254,81 @@ function parentIdFor(
 	return parent?.type.startsWith("sst:aws:")
 		? resourceIdFor(parent.urn)
 		: undefined;
+}
+
+// SST creates subscription components beside their owners, rather than as
+// Pulumi children. Their owned AWS resources identify the managed resource.
+function semanticParentIdFor(
+	component: SstState["checkpoint"]["latest"]["resources"][number],
+	resources: SstState["checkpoint"]["latest"]["resources"]
+): string | undefined {
+	if (component.type === "sst:aws:RealtimeLambdaSubscriber") {
+		const subscriberName = nameFromUrn(component.urn);
+		const owners = resources.filter(
+			resource =>
+				resource.type === "sst:aws:Realtime" &&
+				subscriberName.startsWith(
+					`${nameFromUrn(resource.urn)}Subscriber`
+				)
+		);
+		const [owner] = owners;
+		return owner ? resourceIdFor(owner.urn) : undefined;
+	}
+
+	const owner = subscriptionOwner(component.type);
+	if (!owner) return undefined;
+
+	const subscription = findChild(
+		component.urn,
+		owner.subscriptionType,
+		resources
+	);
+	const ownerName = optionalString(subscription?.inputs[owner.input]);
+	if (!ownerName) return undefined;
+
+	const parent = resources.find(resource => {
+		if (resource.type !== owner.type) return false;
+		const child = findChild(resource.urn, owner.childType, resources);
+		return (
+			firstString(child?.outputs.name, child?.outputs.bucket) ===
+			ownerName
+		);
+	});
+	return parent ? resourceIdFor(parent.urn) : undefined;
+}
+
+function subscriptionOwner(type: string):
+	| {
+		input: "eventBusName" | "bucket";
+		type: string;
+		childType: string;
+		subscriptionType: string;
+	}
+	| undefined {
+	if (
+		type === "sst:aws:BusLambdaSubscriber" ||
+		type === "sst:aws:BusQueueSubscriber"
+	) {
+		return {
+			input: "eventBusName",
+			type: "sst:aws:Bus",
+			childType: "aws:cloudwatch/eventBus:EventBus",
+			subscriptionType: "aws:cloudwatch/eventRule:EventRule"
+		};
+	}
+	if (
+		type === "sst:aws:BucketLambdaSubscriber" ||
+		type === "sst:aws:BucketQueueSubscriber" ||
+		type === "sst:aws:BucketTopicSubscriber" ||
+		type === "sst:aws:BucketNotification"
+	) {
+		return {
+			input: "bucket",
+			type: "sst:aws:Bucket",
+			childType: "aws:s3/bucket:Bucket",
+			subscriptionType: "aws:s3/bucketNotification:BucketNotification"
+		};
+	}
 }
 
 function resourceIdFor(urn: string): string {
