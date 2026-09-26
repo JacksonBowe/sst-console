@@ -1,6 +1,4 @@
 import { PublicError } from "@console/core/error";
-import * as Account from "@console/core/account";
-import * as App from "@console/core/app";
 import type { Handler } from "aws-lambda";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -9,7 +7,9 @@ import { handle } from "hono/aws-lambda";
 import { HTTPException } from "hono/http-exception";
 import { Resource } from "sst";
 
-import { authorize, authorizeDebug } from "./authorizer";
+import { authorize } from "./authorizer";
+import { accountRoutes } from "./account";
+import { appRoutes } from "./app";
 import { authRoutes } from "./auth";
 import { userRoutes } from "./user";
 
@@ -28,50 +28,10 @@ app.route("/noauth", authRoutes);
 
 const protectedRoutes = new Hono<{ Bindings: Bindings }>();
 protectedRoutes.use("*", authorize);
+protectedRoutes.route("/accounts", accountRoutes);
+protectedRoutes.route("/apps", appRoutes);
 protectedRoutes.route("/users", userRoutes);
 app.route("/", protectedRoutes);
-
-if (!isProd) {
-	const debugRoutes = new Hono<{ Bindings: Bindings }>();
-	debugRoutes.use("*", authorizeDebug);
-	debugRoutes.get("/accounts", async c => c.json(await Account.list()));
-	debugRoutes.post("/accounts/backup-connections", async c =>
-		c.json(await Account.backupConnections({}))
-	);
-	debugRoutes.post("/accounts/recover", async c =>
-		c.json(await Account.recover({}))
-	);
-	debugRoutes.get("/apps", async c => c.json(await App.list()));
-	debugRoutes.get("/apps/:appName/stages/:stageName", async c =>
-		c.json(
-			await App.inspectStage({
-				appName: c.req.param("appName"),
-				stageName: c.req.param("stageName")
-			})
-		)
-	);
-	debugRoutes.get("/apps/:appName", async c =>
-		c.json(await App.inspect({ appName: c.req.param("appName") }))
-	);
-	debugRoutes.get("/accounts/:accountId", async c =>
-		c.json(await Account.inspect({ accountId: c.req.param("accountId") }))
-	);
-	debugRoutes.get(
-		"/accounts/:accountId/state/:appName/:stageName/resources",
-		async c =>
-			c.json(
-				await Account.inspectState({
-					accountId: c.req.param("accountId"),
-					appName: c.req.param("appName"),
-					stageName: c.req.param("stageName")
-				})
-			)
-	);
-	debugRoutes.post("/accounts/:accountId/sync", async c =>
-		c.json(await Account.sync({ accountId: c.req.param("accountId") }))
-	);
-	app.route("/debug", debugRoutes);
-}
 
 function toError(e: unknown): Error {
 	if (e instanceof Error) return e;

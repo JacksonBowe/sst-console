@@ -1,14 +1,17 @@
 info:
-  name: debug app
+  name: Get stage
   type: http
-  seq: 5
+  seq: 6
 
 http:
   method: GET
-  url: "{{ApiBase}}/debug/apps/:appName"
+  url: "{{ApiBase}}/apps/:appName/stages/:stageName"
   params:
     - name: appName
       value: "{{SSTApp}}"
+      type: path
+    - name: stageName
+      value: "{{SSTAppStage}}"
       type: path
   auth: inherit
 

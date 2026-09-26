@@ -146,7 +146,7 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 | Latest state snapshot                        | app and stage, descending, limit 1                    | StateSnapshot primary-key query                    | Implemented                         |
 | Account sync history                         | account partition, descending sync prefix             | primary-key query                                  | Planned                             |
 | Durable connection registry                  | `Connection.list()`                                   | `ConsoleConnections` primary-key query             | Implemented                         |
-| Recover ConsoleData accounts                 | explicit `POST /debug/accounts/recover`               | registry query, then account upserts               | Implemented                         |
+| Recover ConsoleData accounts                 | authenticated `POST /accounts/recover`                | registry query, then account upserts               | Implemented                         |
 | Resolve Cognito subject                      | `User.exchangeCognitoSub()`                           | UserIdentity primary-key get                       | Implemented                         |
 | Provision invited user                       | Cognito custom-message trigger: Cognito `sub`         | conditional User + UserIdentity transaction create | Implemented                         |
 | Confirm invited user                         | invite-confirm endpoint: native User `id`             | User primary-key patch                             | Implemented                         |
@@ -175,10 +175,10 @@ the registry and upsert each Account projection. Recovery does not sync; users
 invoke the existing per-account sync action after confirming restored accounts.
 Per-account failures are reported without stopping recovery of other accounts.
 Before first use after deploying this change, existing Account records must be
-copied into the new registry with `POST /debug/accounts/backup-connections` while
+copied into the new registry with authenticated
+`POST /accounts/backup-connections` while
 `ConsoleData` still exists. After wiping `ConsoleData`, call
-`POST /debug/accounts/recover` to restore it. Both endpoints are debug-authorized
-and unavailable in production in the current API routing setup.
+authenticated `POST /accounts/recover` to restore it.
 
 ## SST state projection sync
 

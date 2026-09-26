@@ -1,11 +1,11 @@
 info:
-    name: debug recover accounts
+    name: Backup connections
     type: http
-    seq: 5
+    seq: 4
 
 http:
     method: POST
-    url: "{{ApiBase}}/debug/accounts/recover"
+    url: "{{ApiBase}}/accounts/backup-connections"
     auth: inherit
 
 settings:

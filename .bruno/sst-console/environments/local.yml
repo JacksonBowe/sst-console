@@ -1,10 +1,6 @@
 name: local
 variables:
   - secret: true
-    name: DebugUsername
-  - secret: true
-    name: DebugPassword
-  - secret: true
     name: AwsAccountId
   - secret: true
     name: ApiBase

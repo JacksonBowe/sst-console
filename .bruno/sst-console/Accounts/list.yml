@@ -1,11 +1,11 @@
 info:
-    name: debug backup connections
+    name: List accounts
     type: http
-    seq: 4
+    seq: 2
 
 http:
-    method: POST
-    url: "{{ApiBase}}/debug/accounts/backup-connections"
+    method: GET
+    url: "{{ApiBase}}/accounts"
     auth: inherit
 
 settings:
@@ -13,3 +13,4 @@ settings:
     timeout: 0
     followRedirects: true
     maxRedirects: 5
+    forwardAuthorizationHeader: true

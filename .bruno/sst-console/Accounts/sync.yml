@@ -1,11 +1,11 @@
 info:
-  name: debug sync account
+  name: Sync account
   type: http
   seq: 3
 
 http:
   method: POST
-  url: "{{ApiBase}}/debug/accounts/:accountId/sync"
+  url: "{{ApiBase}}/accounts/:accountId/sync"
   params:
     - name: accountId
       value: "{{AwsAccountId}}"

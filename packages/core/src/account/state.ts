@@ -12,7 +12,7 @@ import {
 import { fn } from "../util/fn";
 import * as Connector from "./connector";
 
-// Debug-only safe state inventory. It exposes structure required to diagnose
+// Safe state inventory. It exposes structure required to diagnose
 // normalizers, but never raw inputs, outputs, or secret values.
 export const inspectState = fn(
 	z.object({

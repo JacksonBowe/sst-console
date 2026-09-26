@@ -1,11 +1,11 @@
 info:
-    name: debug accounts
+    name: List apps
     type: http
-    seq: 2
+    seq: 4
 
 http:
     method: GET
-    url: "{{ApiBase}}/debug/accounts"
+    url: "{{ApiBase}}/apps"
     auth: inherit
 
 settings:

@@ -12,10 +12,6 @@ export type ConsoleConfig = {
 	profile: string;
 	region: string;
 	domain?: string;
-	debug?: {
-		username: string;
-		password: string;
-	};
 	auth: {
 		passwordPolicy: CognitoPasswordPolicy;
 	};
