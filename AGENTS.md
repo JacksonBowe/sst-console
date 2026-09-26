@@ -29,7 +29,6 @@
 - Workspaces are `packages/*` and `packages/web/*`.
 - `packages/web/app` is the Quasar/Vue foundation app. Run focused commands with `bun run --cwd packages/web/app <script>`.
 - `packages/ui` is shared Quasar/Vue UI only. Do not put app-specific theme state or theme initialization there; each Quasar app owns its own theme in its app package.
-- `@sigil/ui` is consumed by the app through Quasar/Vite aliasing to `packages/ui/src` in `packages/web/app/quasar.config.ts`.
 
 ## Web App
 
@@ -41,7 +40,7 @@
 ## Infra
 
 - SST commands are root scripts: `bun run dev`, `bun run deploy`, `bun run remove:local`, `bun run remove:prod`.
-- AWS SSO helper is `bun run auth` for profile `sigil-sandbox`.
+- AWS SSO helper is `bun run auth` for profile `sandbox`.
 - `sst.config.ts` currently loads files from `./infra`, but `infra/` may be empty in a fresh baseline.
 
 ## Skills
