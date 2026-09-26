@@ -83,7 +83,9 @@ export const sync = fn(
 			);
 		}
 
-		const connection = await Connector.assume({ roleArn, region });
+		const connection = await withDisconnectOnAccessFailure(accountId, () =>
+			Connector.assume({ roleArn, region })
+		);
 		if (connection.accountId !== accountId) {
 			throw new ServerError(
 				"account_verification_failed",
@@ -95,8 +97,9 @@ export const sync = fn(
 			credentials: connection.credentials,
 			region
 		});
-		const bootstrapParameter = await ssm.send(
-			new GetParameterCommand({ Name: "/sst/bootstrap" })
+		const bootstrapParameter = await withDisconnectOnAccessFailure(
+			accountId,
+			() => ssm.send(new GetParameterCommand({ Name: "/sst/bootstrap" }))
 		);
 		if (!bootstrapParameter.Parameter?.Value) {
 			throw new ServerError(
@@ -121,11 +124,16 @@ export const sync = fn(
 		});
 		// 1. Discover every current SST state object. Pagination matters because
 		// one state bucket may contain more than 1,000 deployed stages.
-		const stateObjects = await listStateObjects(s3, bootstrap.data.state);
+		const stateObjects = await withDisconnectOnAccessFailure(
+			accountId,
+			() => listStateObjects(s3, bootstrap.data.state)
+		);
 		// 2. Fetch, decompress, parse, redact, and normalize every object before
 		// any DynamoDB write. A failed read therefore cannot delete projections.
-		const projections = await mapWithConcurrency(stateObjects, 8, state =>
-			loadProjection(s3, bootstrap.data.state, state)
+		const projections = await withDisconnectOnAccessFailure(accountId, () =>
+			mapWithConcurrency(stateObjects, 8, state =>
+				loadProjection(s3, bootstrap.data.state, state)
+			)
 		);
 
 		const now = new Date().toISOString();
@@ -199,6 +207,54 @@ export const sync = fn(
 		};
 	}
 );
+
+async function withDisconnectOnAccessFailure<T>(
+	accountId: string,
+	operation: () => Promise<T>
+): Promise<T> {
+	try {
+		return await operation();
+	} catch (error) {
+		if (isRemoteAccessFailure(error)) {
+			try {
+				await db.entities.account
+					.patch({ accountId })
+					.set({
+						status: "disconnected",
+						updatedAt: new Date().toISOString()
+					})
+					.go({ response: "none" });
+			} catch (persistenceError) {
+				console.error(
+					"Unable to mark account disconnected after access failure",
+					{ accountId },
+					persistenceError
+				);
+			}
+		}
+		throw error;
+	}
+}
+
+function isRemoteAccessFailure(error: unknown): boolean {
+	if (typeof error !== "object" || error === null) return false;
+	const awsError = error as {
+		name?: unknown;
+		$metadata?: { httpStatusCode?: unknown };
+	};
+	const code = typeof awsError.name === "string" ? awsError.name : "";
+	return (
+		[
+			"AccessDenied",
+			"AccessDeniedException",
+			"UnauthorizedOperation",
+			"NoSuchEntity",
+			"NoSuchEntityException",
+			"InvalidClientTokenId",
+			"UnrecognizedClientException"
+		].includes(code) || awsError.$metadata?.httpStatusCode === 403
+	);
+}
 
 async function listStateObjects(
 	s3: S3Client,

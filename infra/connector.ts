@@ -14,7 +14,7 @@ const connectorTemplates = new sst.aws.Bucket("ConnectorTemplates", {
 
 const connectorEvent = new sst.aws.Function("ConnectorEvent", {
 	handler: "packages/functions/src/events/connector.handler",
-	url: true,
+	url: { authorization: "iam" },
 	link: [consoleData],
 	environment: {
 		SST_CONSOLE_EXTERNAL_ID: externalId
@@ -25,6 +25,20 @@ const connectorEvent = new sst.aws.Function("ConnectorEvent", {
 			resources: ["arn:aws:iam::*:role/SSTConsoleRole"]
 		}
 	]
+});
+
+new aws.lambda.Permission("ConnectorEventUrlPermission", {
+	action: "lambda:InvokeFunctionUrl",
+	function: connectorEvent.arn,
+	functionUrlAuthType: "AWS_IAM",
+	principal: "*"
+});
+
+new aws.lambda.Permission("ConnectorEventInvokePermission", {
+	action: "lambda:InvokeFunction",
+	function: connectorEvent.arn,
+	invokedViaFunctionUrl: true,
+	principal: "*"
 });
 
 new aws.s3.BucketObjectv2("ConnectorTemplate", {
@@ -45,6 +59,11 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 				Type: "String",
 				Description:
 					"The SST Console connector registration role ARN from the control account."
+			},
+			CallbackFunctionArn: {
+				Type: "String",
+				Description:
+					"The SST Console callback Lambda ARN used for connector registration."
 			},
 			ExternalId: {
 				Type: "String",
@@ -97,6 +116,26 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 					},
 					ManagedPolicyArns: [
 						"arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+					],
+					Policies: [
+						{
+							PolicyName: "InvokeConsoleConnectorCallback",
+							PolicyDocument: {
+								Version: "2012-10-17",
+								Statement: [
+									{
+										Effect: "Allow",
+										Action: [
+											"lambda:InvokeFunctionUrl",
+											"lambda:InvokeFunction"
+										],
+										Resource: {
+											Ref: "CallbackFunctionArn"
+										}
+									}
+								]
+							}
+						}
 					]
 				}
 			},
@@ -123,6 +162,7 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 					},
 					AccountId: { Ref: "AWS::AccountId" },
 					CallbackUrl: connectorEvent.url,
+					CallbackFunctionArn: connectorEvent.arn,
 					Region: { Ref: "AWS::Region" },
 					RoleArn: {
 						"Fn::GetAtt": ["SSTConsoleRole", "Arn"]
@@ -154,6 +194,7 @@ const connectorQuickCreateUrl = $resolve({
 	templateUrl: connectorTemplateUrl,
 	collectorRoleArn: api.nodes.role.arn,
 	registrationRoleArn: connectorEvent.nodes.role.arn,
+	callbackFunctionArn: connectorEvent.arn,
 	externalId
 }).apply(
 	({
@@ -161,6 +202,7 @@ const connectorQuickCreateUrl = $resolve({
 		templateUrl,
 		collectorRoleArn,
 		registrationRoleArn,
+		callbackFunctionArn,
 		externalId
 	}) => {
 		const query = new URLSearchParams({
@@ -168,6 +210,7 @@ const connectorQuickCreateUrl = $resolve({
 			stackName: "SSTConsoleConnection",
 			param_CollectorRoleArn: collectorRoleArn,
 			param_RegistrationRoleArn: registrationRoleArn,
+			param_CallbackFunctionArn: callbackFunctionArn,
 			param_ExternalId: externalId
 		});
 

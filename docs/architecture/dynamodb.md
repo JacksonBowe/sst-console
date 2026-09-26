@@ -110,17 +110,18 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 
 ## Current indexes and access patterns
 
-| Access pattern                      | Entity/API                                            | Dynamo operation                                   | Status                              |
-| ----------------------------------- | ----------------------------------------------------- | -------------------------------------------------- | ----------------------------------- |
-| Get one account                     | `db.entities.account.get({ accountId })`              | primary-key get                                    | Implemented                         |
-| List accounts by status             | `db.entities.account.query.byStatus({ status })`      | `accountsByStatus` query                           | Implemented                         |
-| Register/update connector           | `db.entities.account.upsert(...)`                     | primary-key update                                 | Implemented                         |
-| Persist successful sync             | Account patch + SyncRun create                        | `TransactWriteItems`                               | Implemented                         |
-| Find resource from AWS event ARN    | `db.entities.resource.query.byArn({ normalizedArn })` | `resourcesByArn` query                             | Model ready; no event ingestion yet |
-| Home → App list                     | name ascending                                        | `appsByName` query                                 | Implemented                         |
-| App detail                          | app name                                              | App primary-key get                                | Model ready                         |
-| App → stages                        | app name, stage order                                 | Stage primary-key query                            | Implemented                         |
-| Stage → resources                   | app and stage                                         | Resource primary-key query                         | Implemented                         |
+| Access pattern                               | Entity/API                                            | Dynamo operation         | Status                              |
+| -------------------------------------------- | ----------------------------------------------------- | ------------------------ | ----------------------------------- |
+| Get one account                              | `db.entities.account.get({ accountId })`              | primary-key get          | Implemented                         |
+| List accounts by status                      | `db.entities.account.query.byStatus({ status })`      | `accountsByStatus` query | Implemented                         |
+| Register/update connector                    | `db.entities.account.upsert(...)`                     | primary-key update       | Implemented                         |
+| Persist successful sync                      | Account patch + SyncRun create                        | `TransactWriteItems`     | Implemented                         |
+| Mark disconnected after remote access denial | `db.entities.account.patch({ accountId })`            | primary-key update       | Implemented                         |
+| Find resource from AWS event ARN             | `db.entities.resource.query.byArn({ normalizedArn })` | `resourcesByArn` query   | Model ready; no event ingestion yet |
+| Home → App list                              | name ascending                                        | `appsByName` query       | Implemented                         |
+| App detail                                   | app name                                              | App primary-key get      | Model ready                         |
+| App → stages                                 | app name, stage order                                 | Stage primary-key query  | Implemented                         |
+| Stage → resources                            | app and stage                                         | Resource primary-key query | Implemented                      |
 | Reconcile account state projections | worker: account ID                                    | `stagesByAccount`, then per-Stage resource queries | Implemented                         |
 | Latest state snapshot               | app and stage, descending, limit 1                    | StateSnapshot primary-key query                    | Implemented                         |
 | Account sync history                | account partition, descending sync prefix             | primary-key query                                  | Planned                             |
@@ -156,6 +157,12 @@ Projection writes are ordered and split into transactions of at most 90 actions
 and 3 MiB of estimated payload, below DynamoDB's 100-action/4-MB limits. A
 partial write is repaired by next successful sync; `Account.lastSyncedAt` and
 successful `SyncRun` are written only after all projection chunks succeed.
+
+When a sync receives an AWS authorization failure while assuming the connector
+role or reading SSM/S3 state, it patches the existing Account to `disconnected`
+and rethrows the original error. Transient service and network failures do not
+change account status. Existing projections remain untouched until a complete
+state read succeeds.
 
 ### App-first projection cutover
 
