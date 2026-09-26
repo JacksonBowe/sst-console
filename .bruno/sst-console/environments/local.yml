@@ -2,19 +2,21 @@ name: local
 variables:
   - secret: true
     name: DebugUsername
-    description: ""
   - secret: true
     name: DebugPassword
-    description: ""
   - secret: true
     name: AwsAccountId
-    description: ""
   - secret: true
     name: ApiBase
-    description: ""
   - secret: true
     name: SSTApp
-    description: ""
   - secret: true
     name: SSTAppStage
-    description: ""
+  - secret: true
+    name: AuthEmail
+  - secret: true
+    name: AuthPassword
+  - secret: true
+    name: AuthNewPassword
+  - secret: true
+    name: AuthRecoveryCode

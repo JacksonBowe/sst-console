@@ -4,6 +4,7 @@ import { Resource } from "sst";
 import { accountEntity } from "../account/account.dynamo";
 import { appEntity, resourceEntity, stageEntity } from "../app/app.dynamo";
 import { stateSnapshotEntity, syncRunEntity } from "../state/state.dynamo";
+import { userEntity, userIdentityEntity } from "../user/user.dynamo";
 import { dynamo } from "./client";
 
 export const db = new Service(
@@ -13,7 +14,9 @@ export const db = new Service(
 		stage: stageEntity,
 		resource: resourceEntity,
 		stateSnapshot: stateSnapshotEntity,
-		syncRun: syncRunEntity
+		syncRun: syncRunEntity,
+		user: userEntity,
+		userIdentity: userIdentityEntity
 	},
 	{ client: dynamo, table: Resource.ConsoleData.name }
 );

@@ -103,6 +103,12 @@ construct themselves.
 | StateSnapshot | `APP#{appName}#STAGE#{stageName}` | `SNAPSHOT#{reverseTimestamp}#{snapshotId}` |
 | SyncRun       | `ACCOUNT#{accountId}`             | `SYNC#{reverseTimestamp}#{syncRunId}`      |
 | Connection    | `CONNECTIONS`                     | `ACCOUNT#{accountId}`                      |
+| User          | `USER#{id}`                       | `USER`                                     |
+| UserIdentity  | `COGNITO#{cognitoSub}`            | `USER`                                     |
+
+`id` is a native Console ULID. `cognitoSub` remains external identity data;
+the UserIdentity record maps it to the native user ID and enforces one Cognito
+subject per User through a transactional create.
 
 `appName` is a workspace-global Console App identity. SST provides no stronger
 cross-account identity, so unrelated apps must not share an SST app name. A
@@ -137,6 +143,9 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 | Account sync history                         | account partition, descending sync prefix             | primary-key query                                  | Planned                             |
 | Durable connection registry                  | `Connection.list()`                                   | `ConsoleConnections` primary-key query             | Implemented                         |
 | Recover ConsoleData accounts                 | explicit `POST /debug/accounts/recover`               | registry query, then account upserts               | Implemented                         |
+| Resolve Cognito subject                      | `User.exchangeCognitoSub()`                           | UserIdentity primary-key get                       | Implemented                         |
+| Provision invited user                       | Cognito custom-message trigger: Cognito `sub`         | conditional User + UserIdentity transaction create | Implemented                         |
+| Confirm invited user                         | invite-confirm endpoint: native User `id`             | User primary-key patch                             | Implemented                         |
 
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.
@@ -321,9 +330,9 @@ Model these only after their access patterns are accepted:
 
 - Issue: fingerprint lookup, open-by-resource/status, occurrence timeline,
   resolve/suppress state, notification deliveries.
-- User/integration: Cognito subject lookup, global role, integration settings,
-  notification preferences. Store secret references only; secret values live in
-  Secrets Manager.
+- User/integration: global role, integration settings, notification preferences.
+  User identity is persisted by Cognito subject. Store secret references only;
+  secret values live in Secrets Manager.
 - Audit: actor/target/time reads and retention/export policy.
 - Deployment: runner/source/cancellation/artifact/event requirements.
 - Logs: CloudWatch remains source. DynamoDB stores bookmarks or saved sessions,

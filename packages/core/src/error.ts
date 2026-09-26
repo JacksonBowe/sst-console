@@ -94,6 +94,18 @@ export class AuthError extends PublicError {
 	}
 }
 
+export class NotFoundError extends PublicError {
+	constructor(code: string, message: string, details?: unknown) {
+		super(404, code, message, details);
+	}
+}
+
+export class ConflictError extends PublicError {
+	constructor(code: string, message: string, details?: unknown) {
+		super(409, code, message, details);
+	}
+}
+
 export class ServerError extends PublicError {
 	constructor(code: string, message: string, details?: unknown) {
 		super(500, code, message, details);

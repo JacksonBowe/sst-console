@@ -1,0 +1,38 @@
+info:
+  name: AuthInviteConfirm
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{ApiBase}}/noauth/invite/confirm"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "email": "{{AuthEmail}}",
+        "session": "{{AuthSession}}",
+        "newPassword": "{{AuthNewPassword}}"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body.accessToken) {
+          bru.setVar("AuthAccessToken", res.body.accessToken);
+        }
+        if (res.status === 200 && res.body.refreshToken) {
+          bru.setVar("AuthRefreshToken", res.body.refreshToken);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

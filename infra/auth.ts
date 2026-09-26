@@ -1,4 +1,5 @@
 import type { ConsoleConfig } from "../console.config.types";
+import { consoleData } from "./storage";
 
 const { default: config } = (await import("../console.config")) as {
 	default: ConsoleConfig;
@@ -7,6 +8,13 @@ const { default: config } = (await import("../console.config")) as {
 export const cognitoUserPool = new sst.aws.CognitoUserPool(
 	"SSTConsoleCognitoUserPool",
 	{
+		triggers: {
+			customMessage: {
+				handler:
+					"packages/functions/src/cognito/custom-message.handler",
+				link: [consoleData]
+			}
+		},
 		transform: {
 			userPool: {
 				// emailConfiguration: {

@@ -1,0 +1,40 @@
+info:
+  name: Auth
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{ApiBase}}/noauth/auth"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "email": "{{AuthEmail}}",
+        "password": "{{AuthPassword}}"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body.accessToken) {
+          bru.setVar("AuthAccessToken", res.body.accessToken);
+        }
+        if (res.status === 200 && res.body.refreshToken) {
+          bru.setVar("AuthRefreshToken", res.body.refreshToken);
+        }
+        if (res.status === 200 && res.body.session) {
+          bru.setVar("AuthSession", res.body.session);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

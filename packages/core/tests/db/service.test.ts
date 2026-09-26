@@ -27,6 +27,22 @@ describe("db service", () => {
 		});
 	});
 
+	it("builds user and Cognito identity keys", () => {
+		const user = db.entities.user.get({ id: "user-id" }).params();
+		const identity = db.entities.userIdentity
+			.get({ cognitoSub: "cognito-sub" })
+			.params();
+
+		expect(user).toMatchObject({
+			TableName: "ConsoleData-test",
+			Key: { pk: "USER#user-id", sk: "user" }
+		});
+		expect(identity).toMatchObject({
+			TableName: "ConsoleData-test",
+			Key: { pk: "COGNITO#cognito-sub", sk: "user" }
+		});
+	});
+
 	it("builds global app hierarchy and resource ARN lookup keys", () => {
 		const app = db.entities.app.get({ appName: "console" }).params();
 		const appsByName = db.entities.app.query.byName({}).params();

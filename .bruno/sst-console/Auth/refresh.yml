@@ -1,0 +1,33 @@
+info:
+  name: AuthRefresh
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{ApiBase}}/noauth/refresh"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "refreshToken": "{{AuthRefreshToken}}"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200 && res.body.accessToken) {
+          bru.setVar("AuthAccessToken", res.body.accessToken);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true

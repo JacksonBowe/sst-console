@@ -3,11 +3,11 @@ import * as User from "@console/core/user";
 import { Hono } from "hono";
 
 import {
-	UserAuthJsonSchema
-	// UserRecoverConfirmJsonSchema,
-	// UserRecoverJsonSchema,
-	// UserRefreshJsonSchema,
-	// UserResendConfirmationJsonSchema,
+	UserAuthJsonSchema,
+	UserInviteConfirmJsonSchema,
+	UserRecoverConfirmJsonSchema,
+	UserRecoverJsonSchema,
+	UserRefreshJsonSchema
 } from "./schemas/auth.schemas";
 
 type Bindings = {};
@@ -21,37 +21,40 @@ authRoutes.post("/auth", zValidator("json", UserAuthJsonSchema), async c => {
 	return c.json(result);
 });
 
-/** Refreshes an authenticated user session. */
-// authRoutes.post(
-// 	"/refresh",
-// 	zValidator("json", UserRefreshJsonSchema),
-// 	async c => {
-// 		const input = c.req.valid("json");
-// 		const result = await User.Auth.refresh(input);
-// 		return c.json(result);
-// 	}
-// );
+authRoutes.post(
+	"/invite/confirm",
+	zValidator("json", UserInviteConfirmJsonSchema),
+	async c => {
+		const result = await User.Auth.inviteConfirm(c.req.valid("json"));
+		return c.json(result);
+	}
+);
 
-/** Starts account recovery for a user. */
-// authRoutes.post(
-// 	"/recover",
-// 	zValidator("json", UserRecoverJsonSchema),
-// 	async c => {
-// 		const input = c.req.valid("json");
-// 		await User.Auth.recover(input);
-// 		return c.body(null, 204);
-// 	}
-// );
+authRoutes.post(
+	"/refresh",
+	zValidator("json", UserRefreshJsonSchema),
+	async c => {
+		const result = await User.Auth.refresh(c.req.valid("json"));
+		return c.json(result);
+	}
+);
 
-/** Confirms account recovery with a verification code. */
-// authRoutes.post(
-// 	"/recover/confirm",
-// 	zValidator("json", UserRecoverConfirmJsonSchema),
-// 	async c => {
-// 		const input = c.req.valid("json");
-// 		await User.Auth.recoverConfirm(input);
-// 		return c.body(null, 204);
-// 	}
-// );
+authRoutes.post(
+	"/recover",
+	zValidator("json", UserRecoverJsonSchema),
+	async c => {
+		await User.Auth.recover(c.req.valid("json"));
+		return c.body(null, 204);
+	}
+);
+
+authRoutes.post(
+	"/recover/confirm",
+	zValidator("json", UserRecoverConfirmJsonSchema),
+	async c => {
+		await User.Auth.recoverConfirm(c.req.valid("json"));
+		return c.body(null, 204);
+	}
+);
 
 export { authRoutes };
