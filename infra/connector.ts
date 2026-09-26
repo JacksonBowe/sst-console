@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { externalId } from "./console";
-import { consoleData } from "./storage";
+import { consoleConnections, consoleData } from "./storage";
 import { readFileSync } from "node:fs";
 
 const region = aws.getRegionOutput().name;
@@ -15,7 +15,7 @@ const connectorTemplates = new sst.aws.Bucket("ConnectorTemplates", {
 const connectorEvent = new sst.aws.Function("ConnectorEvent", {
 	handler: "packages/functions/src/events/connector.handler",
 	url: { authorization: "iam" },
-	link: [consoleData],
+	link: [consoleData, consoleConnections],
 	environment: {
 		SST_CONSOLE_EXTERNAL_ID: externalId
 	},

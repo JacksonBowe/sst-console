@@ -29,6 +29,12 @@ if (!isProd) {
 	const debugRoutes = new Hono<{ Bindings: Bindings }>();
 	debugRoutes.use("*", authorizeDebug);
 	debugRoutes.get("/accounts", async c => c.json(await Account.list()));
+	debugRoutes.post("/accounts/backup-connections", async c =>
+		c.json(await Account.backupConnections({}))
+	);
+	debugRoutes.post("/accounts/recover", async c =>
+		c.json(await Account.recover({}))
+	);
 	debugRoutes.get("/apps", async c => c.json(await App.list()));
 	debugRoutes.get("/apps/:appName/stages/:stageName", async c =>
 		c.json(

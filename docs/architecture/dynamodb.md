@@ -75,10 +75,19 @@ GSI: stagesByAccount
 GSI: appsByName
   hash:  gsi4pk
   range: gsi4sk
+
+Table: ConsoleConnections
+Primary key: pk (string), sk (string)
+No secondary indexes
 ```
 
-SST links `ConsoleData` to functions. Core resolves table name through
-`Resource.ConsoleData.name`; never hardcode an AWS table name.
+`ConsoleData` stores disposable Console projections and operational state.
+`ConsoleConnections` stores durable workload account connection configuration,
+written by the `SSTConsoleConnection` stack callback. Recovery is its sole read
+pattern: query the fixed `CONNECTIONS` partition and restore the ConsoleData
+account records. It has no GSI. SST links each table only to functions that need
+it. Core resolves names through `Resource.ConsoleData.name` and
+`Resource.ConsoleConnections.name`; never hardcode table names.
 
 ## Entity keys
 
@@ -93,6 +102,7 @@ construct themselves.
 | Resource      | `APP#{appName}#STAGE#{stageName}` | `RESOURCE#{resourceId}`                    |
 | StateSnapshot | `APP#{appName}#STAGE#{stageName}` | `SNAPSHOT#{reverseTimestamp}#{snapshotId}` |
 | SyncRun       | `ACCOUNT#{accountId}`             | `SYNC#{reverseTimestamp}#{syncRunId}`      |
+| Connection    | `CONNECTIONS`                     | `ACCOUNT#{accountId}`                      |
 
 `appName` is a workspace-global Console App identity. SST provides no stronger
 cross-account identity, so unrelated apps must not share an SST app name. A
@@ -110,24 +120,41 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 
 ## Current indexes and access patterns
 
-| Access pattern                               | Entity/API                                            | Dynamo operation         | Status                              |
-| -------------------------------------------- | ----------------------------------------------------- | ------------------------ | ----------------------------------- |
-| Get one account                              | `db.entities.account.get({ accountId })`              | primary-key get          | Implemented                         |
-| List accounts by status                      | `db.entities.account.query.byStatus({ status })`      | `accountsByStatus` query | Implemented                         |
-| Register/update connector                    | `db.entities.account.upsert(...)`                     | primary-key update       | Implemented                         |
-| Persist successful sync                      | Account patch + SyncRun create                        | `TransactWriteItems`     | Implemented                         |
-| Mark disconnected after remote access denial | `db.entities.account.patch({ accountId })`            | primary-key update       | Implemented                         |
-| Find resource from AWS event ARN             | `db.entities.resource.query.byArn({ normalizedArn })` | `resourcesByArn` query   | Model ready; no event ingestion yet |
-| Home → App list                              | name ascending                                        | `appsByName` query       | Implemented                         |
-| App detail                                   | app name                                              | App primary-key get      | Model ready                         |
-| App → stages                                 | app name, stage order                                 | Stage primary-key query  | Implemented                         |
-| Stage → resources                            | app and stage                                         | Resource primary-key query | Implemented                      |
-| Reconcile account state projections | worker: account ID                                    | `stagesByAccount`, then per-Stage resource queries | Implemented                         |
-| Latest state snapshot               | app and stage, descending, limit 1                    | StateSnapshot primary-key query                    | Implemented                         |
-| Account sync history                | account partition, descending sync prefix             | primary-key query                                  | Planned                             |
+| Access pattern                               | Entity/API                                            | Dynamo operation                                   | Status                              |
+| -------------------------------------------- | ----------------------------------------------------- | -------------------------------------------------- | ----------------------------------- |
+| Get one account                              | `db.entities.account.get({ accountId })`              | primary-key get                                    | Implemented                         |
+| List accounts by status                      | `db.entities.account.query.byStatus({ status })`      | `accountsByStatus` query                           | Implemented                         |
+| Register/update connector                    | `db.entities.account.upsert(...)`                     | primary-key update                                 | Implemented                         |
+| Persist successful sync                      | Account patch + SyncRun create                        | `TransactWriteItems`                               | Implemented                         |
+| Mark disconnected after remote access denial | `db.entities.account.patch({ accountId })`            | primary-key update                                 | Implemented                         |
+| Find resource from AWS event ARN             | `db.entities.resource.query.byArn({ normalizedArn })` | `resourcesByArn` query                             | Model ready; no event ingestion yet |
+| Home → App list                              | name ascending                                        | `appsByName` query                                 | Implemented                         |
+| App detail                                   | app name                                              | App primary-key get                                | Model ready                         |
+| App → stages                                 | app name, stage order                                 | Stage primary-key query                            | Implemented                         |
+| Stage → resources                            | app and stage                                         | Resource primary-key query                         | Implemented                         |
+| Reconcile account state projections          | worker: account ID                                    | `stagesByAccount`, then per-Stage resource queries | Implemented                         |
+| Latest state snapshot                        | app and stage, descending, limit 1                    | StateSnapshot primary-key query                    | Implemented                         |
+| Account sync history                         | account partition, descending sync prefix             | primary-key query                                  | Planned                             |
+| Durable connection registry                  | `Connection.list()`                                   | `ConsoleConnections` primary-key query             | Implemented                         |
+| Recover ConsoleData accounts                 | explicit `POST /debug/accounts/recover`               | registry query, then account upserts               | Implemented                         |
 
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.
+
+### Connection recovery
+
+Connector Create/Update callback upserts account ID, region, and role ARN into
+`ConsoleConnections`, then writes the Console-facing Account projection to
+`ConsoleData`. Workload-stack Delete does not remove the durable connection
+record. Recovery is an explicit API action, never automatic on startup: query
+the registry and upsert each Account projection. Recovery does not sync; users
+invoke the existing per-account sync action after confirming restored accounts.
+Per-account failures are reported without stopping recovery of other accounts.
+Before first use after deploying this change, existing Account records must be
+copied into the new registry with `POST /debug/accounts/backup-connections` while
+`ConsoleData` still exists. After wiping `ConsoleData`, call
+`POST /debug/accounts/recover` to restore it. Both endpoints are debug-authorized
+and unavailable in production in the current API routing setup.
 
 ## SST state projection sync
 

@@ -20,6 +20,10 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bucket"
     }
+    "ConsoleConnections": {
+      "name": string
+      "type": "sst.aws.Dynamo"
+    }
     "ConsoleData": {
       "name": string
       "type": "sst.aws.Dynamo"

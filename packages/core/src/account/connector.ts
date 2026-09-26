@@ -5,6 +5,7 @@ import {
 } from "@aws-sdk/client-sts";
 import { z } from "zod";
 
+import * as Connection from "../connection";
 import { db } from "../db";
 import { InputError, ServerError } from "../error";
 import { fn } from "../util/fn";
@@ -123,6 +124,15 @@ export const register = fn(CallbackSchema, async input => {
 	}
 
 	const now = new Date().toISOString();
+	if (input.requestType !== "Delete") {
+		await Connection.upsert({
+			accountId: input.accountId,
+			region: input.region,
+			roleArn: input.roleArn,
+			createdAt: now,
+			updatedAt: now
+		});
+	}
 	await db.entities.account
 		.upsert({
 			accountId: input.accountId,

@@ -1,7 +1,7 @@
 import type { ConsoleConfig } from "../console.config.types";
 import { cognitoUserPool, cognitoUserPoolClient } from "./auth";
 import { externalId } from "./console";
-import { consoleData } from "./storage";
+import { consoleConnections, consoleData } from "./storage";
 
 const { default: config } = (await import("../console.config")) as {
 	default: ConsoleConfig;
@@ -10,7 +10,12 @@ const { default: config } = (await import("../console.config")) as {
 export const api = new sst.aws.Function("Api", {
 	url: true,
 	handler: "packages/functions/src/api/index.handler",
-	link: [consoleData, cognitoUserPool, cognitoUserPoolClient],
+	link: [
+		consoleData,
+		consoleConnections,
+		cognitoUserPool,
+		cognitoUserPoolClient
+	],
 	environment: {
 		SST_CONSOLE_EXTERNAL_ID: externalId,
 		...(config.debug

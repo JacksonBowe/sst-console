@@ -34,3 +34,14 @@ export const consoleData = new sst.aws.Dynamo("ConsoleData", {
 		}
 	}
 });
+
+export const consoleConnections = new sst.aws.Dynamo("ConsoleConnections", {
+	fields: {
+		pk: "string",
+		sk: "string"
+	},
+	primaryIndex: {
+		hashKey: "pk",
+		rangeKey: "sk"
+	}
+});
