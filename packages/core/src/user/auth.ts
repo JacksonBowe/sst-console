@@ -6,8 +6,7 @@ export const auth = fn(
 		email: z.email(),
 		password: z.string()
 	}),
-	async input => {
-		console.log("auth input", input);
+	async () => {
 		return {
 			user: null
 		};
