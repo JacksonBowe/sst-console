@@ -12,7 +12,7 @@ export default defineConfig((/* ctx */) => {
 		// app boot file (/src/boot)
 		// --> boot files are part of "main.js"
 		// https://v2.quasar.dev/quasar-cli-vite/boot-files
-		boot: [],
+		boot: ["vue-query", "api-client", "auth-guard"],
 
 		// https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
 		css: ["app.scss"],
@@ -32,6 +32,10 @@ export default defineConfig((/* ctx */) => {
 
 		// https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#build
 		build: {
+			env: {
+				clientPrefix: "VITE_"
+			},
+
 			target: {
 				// browser: 'baseline-widely-available',
 				// node: 'node22'

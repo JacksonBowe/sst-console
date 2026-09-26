@@ -1,0 +1,13 @@
+{
+	"name": "@sst-console/sdk",
+	"private": true,
+	"type": "module",
+	"module": "src/index.ts",
+	"dependencies": {
+		"@console/functions": "workspace:*",
+		"axios": "^1.13.2"
+	},
+	"peerDependencies": {
+		"typescript": "^6"
+	}
+}
