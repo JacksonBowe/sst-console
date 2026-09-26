@@ -76,6 +76,10 @@ GSI: appsByName
   hash:  gsi4pk
   range: gsi4sk
 
+GSI: usersById
+  hash:  gsi5pk
+  range: gsi5sk
+
 Table: ConsoleConnections
 Primary key: pk (string), sk (string)
 No secondary indexes
@@ -146,9 +150,20 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 | Resolve Cognito subject                      | `User.exchangeCognitoSub()`                           | UserIdentity primary-key get                       | Implemented                         |
 | Provision invited user                       | Cognito custom-message trigger: Cognito `sub`         | conditional User + UserIdentity transaction create | Implemented                         |
 | Confirm invited user                         | invite-confirm endpoint: native User `id`             | User primary-key patch                             | Implemented                         |
+| List users                                   | authenticated API: ID descending, cursor-paginated    | `usersById` query                                  | Implemented                         |
 
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.
+
+### User administration list
+
+Authenticated `GET /users` lists Console users by descending ULID. It accepts a
+page limit of 1–100, an opaque cursor, and optional `email`, `cognitoStatus`,
+and `cognitoEnabled` filters. `User.list()` queries `usersById` using fixed
+partition `USERS` and returns DynamoDB's eventual-consistency result with
+next-page cursor. User creation writes this projection automatically through
+`userEntity.byId`; a user delete removes it with its User item. `User` owns this
+access pattern.
 
 ### Connection recovery
 

@@ -1,5 +1,4 @@
 import {
-	AdminCreateUserCommand,
 	AdminGetUserCommand,
 	AdminRespondToAuthChallengeCommand,
 	CodeMismatchException,
@@ -13,8 +12,7 @@ import {
 	LimitExceededException,
 	NotAuthorizedException,
 	UserNotConfirmedException,
-	UserNotFoundException,
-	UsernameExistsException
+	UserNotFoundException
 } from "@aws-sdk/client-cognito-identity-provider";
 import { Resource } from "sst";
 import z from "zod";
@@ -111,40 +109,6 @@ export const auth = fn(
 		};
 	}
 );
-
-/** Invites user through Cognito; custom-message trigger provisions Console user. */
-export const invite = fn(z.object({ email: z.email() }), async ({ email }) => {
-	try {
-		const response = await cognito.send(
-			new AdminCreateUserCommand({
-				UserPoolId: Resource.SSTConsoleCognitoUserPool.id,
-				Username: email,
-				UserAttributes: [
-					{ Name: "email", Value: email },
-					{ Name: "email_verified", Value: "true" }
-				],
-				DesiredDeliveryMediums: ["EMAIL"]
-			})
-		);
-		const cognitoUserSub = cognitoSub(response.User?.Attributes);
-		const id = await User.exchangeCognitoSub({
-			cognitoSub: cognitoUserSub
-		});
-		if (!id) {
-			throw new UnhandledServerError("Cognito user was not provisioned");
-		}
-		return { id };
-	} catch (error) {
-		if (error instanceof UsernameExistsException) throw userErrors.exists();
-		if (error instanceof InvalidPasswordException)
-			throw userErrors.invalidPassword();
-		if (error instanceof InvalidParameterException)
-			throw userErrors.invalidState(error.message);
-		if (error instanceof LimitExceededException)
-			throw userErrors.attemptLimitExceeded();
-		throw new UnhandledServerError("Failed to invite user", error);
-	}
-});
 
 /** Completes invite password challenge and activates Console user. */
 export const inviteConfirm = fn(

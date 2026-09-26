@@ -15,12 +15,6 @@ export type Session = {
 	tokenType: string;
 };
 
-export const UserInviteJsonSchema = z.object({
-	email: z.email()
-});
-
-export type UserInviteJson = z.infer<typeof UserInviteJsonSchema>;
-
 export const UserInviteConfirmJsonSchema = z.object({
 	email: z.email(),
 	session: z.string(),

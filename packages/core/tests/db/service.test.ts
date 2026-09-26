@@ -32,6 +32,7 @@ describe("db service", () => {
 		const identity = db.entities.userIdentity
 			.get({ cognitoSub: "cognito-sub" })
 			.params();
+		const usersById = db.entities.user.query.byId({}).params();
 
 		expect(user).toMatchObject({
 			TableName: "ConsoleData-test",
@@ -41,6 +42,7 @@ describe("db service", () => {
 			TableName: "ConsoleData-test",
 			Key: { pk: "COGNITO#cognito-sub", sk: "user" }
 		});
+		expect(usersById.IndexName).toBe("usersById");
 	});
 
 	it("builds global app hierarchy and resource ARN lookup keys", () => {

@@ -1,0 +1,20 @@
+info:
+    name: Get user
+    type: http
+    seq: 3
+
+http:
+    method: GET
+    url: "{{ApiBase}}/users/:id"
+    params:
+        - name: id
+          value: "{{UserId}}"
+          type: path
+    auth: inherit
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
+    forwardAuthorizationHeader: true

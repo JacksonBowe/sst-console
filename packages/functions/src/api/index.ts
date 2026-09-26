@@ -9,8 +9,9 @@ import { handle } from "hono/aws-lambda";
 import { HTTPException } from "hono/http-exception";
 import { Resource } from "sst";
 
-import { authorizeDebug } from "./authorizer";
+import { authorize, authorizeDebug } from "./authorizer";
 import { authRoutes } from "./auth";
+import { userRoutes } from "./user";
 
 type Bindings = {
 	event: LambdaEvent;
@@ -24,6 +25,11 @@ const isProd = Resource.App.stage === "prod";
 app.get("/", c => c.text("Welcome to the API!"));
 
 app.route("/noauth", authRoutes);
+
+const protectedRoutes = new Hono<{ Bindings: Bindings }>();
+protectedRoutes.use("*", authorize);
+protectedRoutes.route("/users", userRoutes);
+app.route("/", protectedRoutes);
 
 if (!isProd) {
 	const debugRoutes = new Hono<{ Bindings: Bindings }>();
@@ -66,14 +72,6 @@ if (!isProd) {
 	);
 	app.route("/debug", debugRoutes);
 }
-
-// const protectedRoutes = app.basePath('/').use('*', authorize);
-
-// protectedRoutes.route('/', metaRoutes);
-// protectedRoutes.route('/chat', chatRoutes);
-// protectedRoutes.route('/lobby', lobbyRoutes);
-// protectedRoutes.route('/game', gameRoutes);
-// protectedRoutes.route('/admin', adminRoutes);
 
 function toError(e: unknown): Error {
 	if (e instanceof Error) return e;

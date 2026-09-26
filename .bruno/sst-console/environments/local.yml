@@ -20,3 +20,5 @@ variables:
     name: AuthNewPassword
   - secret: true
     name: AuthRecoveryCode
+  - secret: true
+    name: UserId

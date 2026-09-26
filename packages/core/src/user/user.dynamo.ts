@@ -31,6 +31,21 @@ export const userEntity = new Entity({
 				casing: "none"
 			},
 			sk: { field: "sk", composite: [], template: "USER" }
+		},
+		byId: {
+			index: "usersById",
+			pk: {
+				field: "gsi5pk",
+				composite: [],
+				template: "USERS",
+				casing: "none"
+			},
+			sk: {
+				field: "gsi5sk",
+				composite: ["id"],
+				template: "USER#${id}",
+				casing: "none"
+			}
 		}
 	}
 });

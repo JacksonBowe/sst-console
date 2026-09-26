@@ -1,0 +1,33 @@
+info:
+    name: Invite user
+    type: http
+    seq: 1
+
+http:
+    method: POST
+    url: "{{ApiBase}}/users"
+    headers:
+        - name: Content-Type
+          value: application/json
+    body:
+        type: json
+        data: |-
+            {
+              "email": "{{AuthEmail}}"
+            }
+    auth: inherit
+
+runtime:
+    scripts:
+        - type: after-response
+          code: |-
+              if (res.status === 200 && res.body.id) {
+                bru.setVar("UserId", res.body.id);
+              }
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
+    forwardAuthorizationHeader: true
