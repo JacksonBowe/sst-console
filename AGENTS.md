@@ -26,16 +26,14 @@
 
 ## Workspaces
 
-- Workspaces are `packages/*` and `packages/web/*`.
-- `packages/web/app` is the Quasar/Vue foundation app. Run focused commands with `bun run --cwd packages/web/app <script>`.
-- `packages/ui` is shared Quasar/Vue UI only. Do not put app-specific theme state or theme initialization there; each Quasar app owns its own theme in its app package.
+- Workspaces are `packages/*`.
+- `packages/web` is the Quasar/Vue foundation app. Run focused commands with `bun run --cwd packages/web <script>`.
 
 ## Web App
 
-- Main web app routes live in `packages/web/app/src/router/routes.ts`; current baseline is home plus 404.
-- App-local theme setup is `packages/web/app/src/lib/theme.ts`, initialized by `src/App.vue`; dark-mode persistence is in `src/stores/ui.ts` and `src/lib/storage/ui-settings.ts`.
-- Quasar generated files live under `packages/web/app/.quasar/` and are ignored by formatter/linter.
-- Keep `packages/web/app/postcss.config.js` unless Quasar/PostCSS support for TS config is verified.
+- Main web app routes live in `packages/web/src/router/routes.ts`; current baseline is home, second page, and 404.
+- Quasar generated files live under `packages/web/.quasar/` and are ignored by formatter/linter.
+- Keep `packages/web/postcss.config.js` unless Quasar/PostCSS support for TS config is verified.
 
 ## Infra
 
