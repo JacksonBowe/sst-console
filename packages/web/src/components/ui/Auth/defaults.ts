@@ -40,6 +40,10 @@ export const defaultCognitoAuthTexts: CognitoAuthTexts = {
 	genericError: "Something went wrong.",
 	requiredMessage: "Required",
 	invalidEmailMessage: "Enter a valid email",
-	minPasswordMessage: "Password must be at least 8 characters",
+	minPasswordMessage: "Password must be at least {minimumLength} characters",
+	passwordLowercaseMessage: "Password must include a lowercase letter",
+	passwordNumberMessage: "Password must include a number",
+	passwordSymbolMessage: "Password must include a symbol",
+	passwordUppercaseMessage: "Password must include an uppercase letter",
 	passwordMismatchMessage: "Passwords must match"
 };

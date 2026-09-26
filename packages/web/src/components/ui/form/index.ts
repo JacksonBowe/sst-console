@@ -21,6 +21,49 @@ export const rules = {
 			`Minimum ${min} characters required`
 	],
 
+	passwordPolicy: (
+		policy: {
+			minimumLength: number;
+			requireLowercase: boolean;
+			requireNumbers: boolean;
+			requireSymbols: boolean;
+			requireUppercase: boolean;
+		},
+		messages: {
+			required: string;
+			minimumLength: string;
+			lowercase: string;
+			number: string;
+			symbol: string;
+			uppercase: string;
+		}
+	) => {
+		const minLengthMessage = messages.minimumLength.replace(
+			"{minimumLength}",
+			String(policy.minimumLength)
+		);
+
+		return [
+			...rules.required(messages.required),
+			...rules.minLength(policy.minimumLength, minLengthMessage),
+			...(policy.requireLowercase
+				? [(value: string) => /[a-z]/.test(value) || messages.lowercase]
+				: []),
+			...(policy.requireNumbers
+				? [(value: string) => /[0-9]/.test(value) || messages.number]
+				: []),
+			...(policy.requireSymbols
+				? [
+						(value: string) =>
+							/[^A-Za-z0-9]/.test(value) || messages.symbol
+					]
+				: []),
+			...(policy.requireUppercase
+				? [(value: string) => /[A-Z]/.test(value) || messages.uppercase]
+				: [])
+		];
+	},
+
 	maxLength: (max: number, msg?: string) => [
 		(val: string | null | undefined) =>
 			(!!val && val.length <= max) ||

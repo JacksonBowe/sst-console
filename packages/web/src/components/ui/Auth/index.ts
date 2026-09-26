@@ -4,6 +4,7 @@ export type {
 	CognitoAuthActionResult,
 	CognitoAuthAssets,
 	CognitoAuthHandlers,
+	CognitoPasswordPolicy,
 	CognitoAuthStatus,
 	CognitoAuthStatusTone,
 	CognitoAuthStep,

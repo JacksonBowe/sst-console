@@ -78,6 +78,7 @@ import { SInput, SPasswordInput } from "../Input";
 import CognitoStatusBanner from "./CognitoStatusBanner.vue";
 import type {
 	CognitoAuthStatus,
+	CognitoPasswordPolicy,
 	CognitoAuthStep,
 	CognitoAuthTexts
 } from "./types";
@@ -88,6 +89,7 @@ const props = defineProps<{
 	status: CognitoAuthStatus | null;
 	texts: CognitoAuthTexts;
 	initialEmail?: string;
+	passwordPolicy: CognitoPasswordPolicy;
 }>();
 
 const emit = defineEmits<{
@@ -105,10 +107,14 @@ const emailRules = [
 	...rules.required(props.texts.requiredMessage),
 	...rules.isEmail(props.texts.invalidEmailMessage)
 ];
-const passwordRuleSet = [
-	...rules.required(props.texts.requiredMessage),
-	...rules.minLength(8, props.texts.minPasswordMessage)
-];
+const passwordRuleSet = rules.passwordPolicy(props.passwordPolicy, {
+	required: props.texts.requiredMessage,
+	minimumLength: props.texts.minPasswordMessage,
+	lowercase: props.texts.passwordLowercaseMessage,
+	number: props.texts.passwordNumberMessage,
+	symbol: props.texts.passwordSymbolMessage,
+	uppercase: props.texts.passwordUppercaseMessage
+});
 const confirmPasswordRules = computed(() => [
 	...rules.required(props.texts.requiredMessage),
 	...rules.isEqualTo(newPassword.value, props.texts.passwordMismatchMessage)

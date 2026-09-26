@@ -1,11 +1,19 @@
 <template>
-	<CognitoAuth class="full-width" :handlers="handlers" />
+	<CognitoAuth
+		class="full-width"
+		:handlers="handlers"
+		:password-policy="passwordPolicy"
+	/>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 
-import { CognitoAuth, type CognitoAuthHandlers } from "@/components/ui/Auth";
+import {
+	CognitoAuth,
+	type CognitoAuthHandlers,
+	type CognitoPasswordPolicy
+} from "@/components/ui/Auth";
 import {
 	useInviteConfirm,
 	useLogin,
@@ -18,6 +26,9 @@ const login = useLogin();
 const inviteConfirm = useInviteConfirm();
 const recover = useRecover();
 const recoverConfirm = useRecoverConfirm();
+const passwordPolicy = JSON.parse(
+	import.meta.env.VITE_AUTH_PASSWORD_POLICY
+) as CognitoPasswordPolicy;
 
 const handlers: CognitoAuthHandlers = {
 	onSignIn: async payload => {

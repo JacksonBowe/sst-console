@@ -5,6 +5,8 @@ const { default: config } = (await import("../console.config")) as {
 	default: ConsoleConfig;
 };
 
+export const passwordPolicy = config.auth.passwordPolicy;
+
 export const cognitoUserPool = new sst.aws.CognitoUserPool(
 	"SSTConsoleCognitoUserPool",
 	{
@@ -39,7 +41,7 @@ export const cognitoUserPool = new sst.aws.CognitoUserPool(
 				},
 				deletionProtection:
 					$app.stage === "prod" ? "ACTIVE" : "INACTIVE",
-				passwordPolicy: config.auth.passwordPolicy
+				passwordPolicy
 			}
 		}
 	}

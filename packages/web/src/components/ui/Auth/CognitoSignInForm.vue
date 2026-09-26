@@ -19,7 +19,7 @@
 				:label="texts.passwordLabel"
 				autocomplete="current-password"
 				:allow-visibility-toggle="false"
-				:rules="requiredRules"
+				:rules="passwordRules"
 				:disable="loading"
 			>
 				<template #labelActions>
@@ -71,6 +71,7 @@ import { SInput, SPasswordInput } from "../Input";
 import CognitoStatusBanner from "./CognitoStatusBanner.vue";
 import type {
 	CognitoAuthStatus,
+	CognitoPasswordPolicy,
 	CognitoAuthStep,
 	CognitoAuthTexts
 } from "./types";
@@ -82,6 +83,7 @@ const props = defineProps<{
 	texts: CognitoAuthTexts;
 	initialEmail?: string;
 	allowSignUp: boolean;
+	passwordPolicy: CognitoPasswordPolicy;
 }>();
 
 const emit = defineEmits<{
@@ -91,7 +93,14 @@ const emit = defineEmits<{
 
 const email = useInitialEmail(() => props.initialEmail);
 const password = ref("");
-const requiredRules = rules.required(props.texts.requiredMessage);
+const passwordRules = rules.passwordPolicy(props.passwordPolicy, {
+	required: props.texts.requiredMessage,
+	minimumLength: props.texts.minPasswordMessage,
+	lowercase: props.texts.passwordLowercaseMessage,
+	number: props.texts.passwordNumberMessage,
+	symbol: props.texts.passwordSymbolMessage,
+	uppercase: props.texts.passwordUppercaseMessage
+});
 const emailRules = [
 	...rules.required(props.texts.requiredMessage),
 	...rules.isEmail(props.texts.invalidEmailMessage)

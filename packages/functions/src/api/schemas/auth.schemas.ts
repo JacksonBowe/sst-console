@@ -1,8 +1,28 @@
 import { z } from "zod";
 
+import { passwordPolicy } from "./password-policy";
+
+let PasswordSchema = z.string().min(passwordPolicy.minimumLength);
+
+if (passwordPolicy.requireLowercase) {
+	PasswordSchema = PasswordSchema.regex(/[a-z]/);
+}
+
+if (passwordPolicy.requireNumbers) {
+	PasswordSchema = PasswordSchema.regex(/[0-9]/);
+}
+
+if (passwordPolicy.requireSymbols) {
+	PasswordSchema = PasswordSchema.regex(/[^A-Za-z0-9]/);
+}
+
+if (passwordPolicy.requireUppercase) {
+	PasswordSchema = PasswordSchema.regex(/[A-Z]/);
+}
+
 export const UserAuthJsonSchema = z.object({
 	email: z.email(),
-	password: z.string().min(8)
+	password: PasswordSchema
 });
 
 export type UserAuthJson = z.infer<typeof UserAuthJsonSchema>;
@@ -18,7 +38,7 @@ export type Session = {
 export const UserInviteConfirmJsonSchema = z.object({
 	email: z.email(),
 	session: z.string(),
-	newPassword: z.string().min(8)
+	newPassword: PasswordSchema
 });
 
 export type UserInviteConfirmJson = z.infer<typeof UserInviteConfirmJsonSchema>;
@@ -38,7 +58,7 @@ export type UserRecoverJson = z.infer<typeof UserRecoverJsonSchema>;
 export const UserRecoverConfirmJsonSchema = z.object({
 	email: z.email(),
 	code: z.string().length(6),
-	newPassword: z.string().min(8)
+	newPassword: PasswordSchema
 });
 
 export type UserRecoverConfirmJson = z.infer<

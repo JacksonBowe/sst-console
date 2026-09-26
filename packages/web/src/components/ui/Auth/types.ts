@@ -18,6 +18,16 @@ export interface CognitoAuthAssets {
 	logoAlt?: string;
 }
 
+export interface CognitoPasswordPolicy {
+	minimumLength: number;
+	passwordHistorySize: number;
+	requireLowercase: boolean;
+	requireNumbers: boolean;
+	requireSymbols: boolean;
+	requireUppercase: boolean;
+	temporaryPasswordValidityDays: number;
+}
+
 export interface CognitoAuthTexts {
 	signInTitle: string;
 	signInSubtitle: string;
@@ -58,6 +68,10 @@ export interface CognitoAuthTexts {
 	requiredMessage: string;
 	invalidEmailMessage: string;
 	minPasswordMessage: string;
+	passwordLowercaseMessage: string;
+	passwordNumberMessage: string;
+	passwordSymbolMessage: string;
+	passwordUppercaseMessage: string;
 	passwordMismatchMessage: string;
 }
 

@@ -28,6 +28,7 @@
 				:texts="resolvedTexts"
 				:initial-email="lastEmail"
 				:allow-sign-up="allowSignUp"
+				:password-policy="passwordPolicy"
 				@submit="handleSignIn"
 				@request-step="setStep"
 			/>
@@ -37,6 +38,7 @@
 				:status="currentStatus"
 				:texts="resolvedTexts"
 				:initial-email="lastEmail"
+				:password-policy="passwordPolicy"
 				@submit="handleSignUp"
 				@request-step="setStep"
 			/>
@@ -65,6 +67,7 @@
 				:status="currentStatus"
 				:texts="resolvedTexts"
 				:initial-email="lastEmail"
+				:password-policy="passwordPolicy"
 				@submit="handleConfirmForgotPassword"
 				@resend="handleResendForgotPasswordCode"
 				@request-step="setStep"
@@ -76,6 +79,7 @@
 				:texts="resolvedTexts"
 				:initial-email="lastEmail"
 				:session="challengeSession"
+				:password-policy="passwordPolicy"
 				@submit="handleNewPasswordRequired"
 				@request-step="setStep"
 			/>
@@ -104,6 +108,7 @@ import type {
 	CognitoAuthActionResult,
 	CognitoAuthAssets,
 	CognitoAuthHandlers,
+	CognitoPasswordPolicy,
 	CognitoAuthStatus,
 	CognitoAuthStep,
 	CognitoAuthTextOverrides,
@@ -129,6 +134,7 @@ const props = withDefaults(
 		texts?: CognitoAuthTextOverrides;
 		assets?: CognitoAuthAssets;
 		handlers?: CognitoAuthHandlers;
+		passwordPolicy: CognitoPasswordPolicy;
 	}>(),
 	{
 		initialStep: "sign-in",
