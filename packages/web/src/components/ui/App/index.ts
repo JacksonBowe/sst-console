@@ -1,3 +1,9 @@
-export { default as AppHeader } from "./AppHeader.vue";
-export { default as ConsoleSidebar } from "./ConsoleSidebar.vue";
-export { default as ConsoleUserMenu } from "./ConsoleUserMenu.vue";
+export { default as AppDetailEmptyStages } from "./Detail/AppDetailEmptyStages.vue";
+export { default as AppDetailErrorState } from "./Detail/AppDetailErrorState.vue";
+export { default as AppDetailLoadingState } from "./Detail/AppDetailLoadingState.vue";
+export { default as AppMetadata } from "./Detail/AppMetadata.vue";
+export { default as AppStagesTable } from "./Detail/AppStagesTable.vue";
+export { default as AppsList } from "./AppsList.vue";
+export { default as AppStagePreviews } from "./AppStagePreviews.vue";
+export { default as AppSummaryMetrics } from "./AppSummaryMetrics.vue";
+export { default as AppSummaryCard } from "./AppSummaryCard.vue";

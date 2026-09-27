@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/vue-query";
+import { toValue, type MaybeRefOrGetter } from "vue";
 
 import { api } from "@/boot/api-client";
 
@@ -16,11 +17,11 @@ export function useApps() {
 	});
 }
 
-export function useApp(appName: string) {
+export function useApp(appName: MaybeRefOrGetter<string>) {
 	return useQuery({
-		queryKey: appQueryKeys.detail(appName),
-		queryFn: () => api.getApp(appName),
-		enabled: Boolean(appName)
+		queryKey: () => appQueryKeys.detail(toValue(appName)),
+		queryFn: () => api.getApp(toValue(appName)),
+		enabled: () => Boolean(toValue(appName))
 	});
 }
 

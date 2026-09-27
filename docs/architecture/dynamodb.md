@@ -155,6 +155,16 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.
 
+### Stage ownership conflicts
+
+When an SST state bucket contains an `appName + stageName` already owned by a
+different Workload account, sync skips that state projection. It never overwrites
+or deletes owning Workload's Stage, Resources, or snapshots. Other projections
+from Workload continue syncing.
+
+`Account.lastSyncConflicts` and matching SyncRun `conflicts` record skipped app,
+stage, and owning account ID. SyncRun status is `completed_with_conflicts`.
+
 ### User administration list
 
 Authenticated `GET /users` lists Console users by descending ULID. It accepts a

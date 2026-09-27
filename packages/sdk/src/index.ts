@@ -26,6 +26,7 @@ export type {
 	ResourceTree,
 	Stage,
 	StateSnapshot,
+	StageAccountConflict,
 	SyncAccountResult,
 	User,
 	UsersFilters,

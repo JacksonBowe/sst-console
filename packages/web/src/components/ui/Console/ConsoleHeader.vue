@@ -1,7 +1,7 @@
 <template>
 	<q-header
 		bordered
-		class="app-header"
+		class="console-header"
 		:class="$q.dark.isActive ? 'bg-dark' : 'bg-white'"
 	>
 		<q-toolbar>
@@ -11,7 +11,7 @@
 </template>
 
 <style lang="scss" scoped>
-.app-header {
+.console-header {
 	color: var(--q-text-primary);
 }
 </style>

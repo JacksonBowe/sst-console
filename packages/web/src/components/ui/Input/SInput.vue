@@ -94,7 +94,7 @@ defineExpose({
 	&__label {
 		font-size: 0.875rem;
 		font-weight: 500;
-		color: $grey-7;
+		color: var(--q-text-secondary);
 		line-height: 1.25;
 		user-select: none;
 	}

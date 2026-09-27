@@ -18,6 +18,10 @@ import {
 } from "../state/sst";
 import { fn } from "../util/fn";
 import * as Connector from "./connector";
+import {
+	partitionStageOwnership,
+	type StageAccountConflict
+} from "./ownership";
 
 const maxTransactionActions = 90;
 const maxTransactionBytes = 3 * 1024 * 1024;
@@ -140,7 +144,12 @@ export const sync = fn(
 		const syncRunId = crypto.randomUUID();
 		// 3. Build desired projections, then find persisted resources, stages, and
 		// apps missing from complete discovery output.
-		const { writes, staleAppNames } = await buildWrites({
+		const {
+			writes,
+			staleAppNames,
+			conflicts,
+			projections: acceptedProjections
+		} = await buildWrites({
 			accountId,
 			region,
 			stateBucket: bootstrap.data.state,
@@ -165,6 +174,7 @@ export const sync = fn(
 						status: "connected",
 						stateBucket: bootstrap.data.state,
 						lastSyncedAt: now,
+						lastSyncConflicts: conflicts,
 						updatedAt: now
 					})
 					.commit(),
@@ -173,10 +183,14 @@ export const sync = fn(
 						accountId,
 						syncRunId,
 						reverseTimestamp,
-						status: "succeeded",
+						status:
+							conflicts.length === 0
+								? "succeeded"
+								: "completed_with_conflicts",
 						startedAt: now,
 						completedAt: now,
-						stateCount: projections.length
+						stateCount: acceptedProjections.length,
+						conflicts
 					})
 					.commit()
 			])
@@ -203,7 +217,8 @@ export const sync = fn(
 					size
 				})
 			),
-			statesTruncated: false
+			statesTruncated: false,
+			skippedStages: conflicts
 		};
 	}
 );
@@ -321,18 +336,12 @@ async function buildWrites(input: {
 	stateBucket: string;
 	projections: StateProjection[];
 	now: string;
-}): Promise<{ writes: ProjectionWrite[]; staleAppNames: string[] }> {
-	const desiredApps = new Set(input.projections.map(state => state.appName));
-	const desiredStages = new Set(
-		input.projections.map(state => stageKey(state.appName, state.stageName))
-	);
-	const desiredResources = new Set(
-		input.projections.flatMap(state =>
-			state.resources.map(resource =>
-				resourceKey(state.appName, state.stageName, resource.resourceId)
-			)
-		)
-	);
+}): Promise<{
+	writes: ProjectionWrite[];
+	staleAppNames: string[];
+	conflicts: StageAccountConflict[];
+	projections: StateProjection[];
+}> {
 	const [existingStages, stageLookups] = await Promise.all([
 		db.entities.stage.query
 			.byAccount({ accountId: input.accountId })
@@ -352,14 +361,23 @@ async function buildWrites(input: {
 			)
 		)
 	]);
-	for (const [projection, stage] of stageLookups) {
-		if (stage.data && stage.data.accountId !== input.accountId) {
-			throw new InputError(
-				"stage_account_conflict",
-				`SST stage ${projection.appName}/${projection.stageName} belongs to account ${stage.data.accountId}`
-			);
-		}
-	}
+	const { conflicts, projections } = partitionStageOwnership(
+		input.accountId,
+		stageLookups.map(
+			([projection, stage]) => [projection, stage.data] as const
+		)
+	);
+	const desiredApps = new Set(projections.map(state => state.appName));
+	const desiredStages = new Set(
+		projections.map(state => stageKey(state.appName, state.stageName))
+	);
+	const desiredResources = new Set(
+		projections.flatMap(state =>
+			state.resources.map(resource =>
+				resourceKey(state.appName, state.stageName, resource.resourceId)
+			)
+		)
+	);
 
 	const stagesToRead = new Map<
 		string,
@@ -367,7 +385,7 @@ async function buildWrites(input: {
 	>();
 	for (const stage of existingStages.data)
 		stagesToRead.set(stageKey(stage.appName, stage.stageName), stage);
-	for (const projection of input.projections)
+	for (const projection of projections)
 		stagesToRead.set(
 			stageKey(projection.appName, projection.stageName),
 			projection
@@ -387,7 +405,7 @@ async function buildWrites(input: {
 	const writes: ProjectionWrite[] = [];
 	for (const appName of desiredApps)
 		writes.push({ kind: "app", appName, now: input.now });
-	for (const state of input.projections) {
+	for (const state of projections) {
 		writes.push({
 			kind: "stage",
 			appName: state.appName,
@@ -445,6 +463,8 @@ async function buildWrites(input: {
 	}
 	return {
 		writes,
+		conflicts,
+		projections,
 		staleAppNames: [
 			...new Set(
 				existingStages.data

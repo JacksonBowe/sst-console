@@ -2,6 +2,12 @@ import type { RequestFn } from "./request";
 
 export type AccountStatus = "connected" | "disconnected";
 
+export type StageAccountConflict = {
+	appName: string;
+	stageName: string;
+	ownerAccountId: string;
+};
+
 export type Account = {
 	accountId: string;
 	region: string;
@@ -88,6 +94,7 @@ export type AccountDetail = {
 	account: Account & {
 		stateBucket?: string;
 		lastSyncedAt?: string;
+		lastSyncConflicts?: StageAccountConflict[];
 		createdAt?: string;
 		updatedAt: string;
 	};
@@ -108,6 +115,7 @@ export type SyncAccountResult = {
 		size?: number;
 	}>;
 	statesTruncated: boolean;
+	skippedStages: StageAccountConflict[];
 };
 
 export type RecoverAccountsResult = {

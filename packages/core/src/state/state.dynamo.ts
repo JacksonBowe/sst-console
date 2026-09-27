@@ -44,11 +44,15 @@ export const syncRunEntity = new Entity({
 		accountId: { type: "string", required: true },
 		syncRunId: { type: "string", required: true },
 		reverseTimestamp: { type: "string", required: true },
-		status: { type: ["succeeded", "failed"] as const, required: true },
+		status: {
+			type: ["succeeded", "completed_with_conflicts", "failed"] as const,
+			required: true
+		},
 		startedAt: { type: "string", required: true },
 		completedAt: { type: "string" },
 		stateCount: { type: "number" },
 		message: { type: "string" },
+		conflicts: { type: "any" },
 		schemaVersion: { type: "string", default: "1" }
 	},
 	indexes: {

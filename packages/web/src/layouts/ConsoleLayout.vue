@@ -1,6 +1,6 @@
 <template>
 	<q-layout view="lHh Lpr lFf">
-		<AppHeader v-if="$q.screen.lt.md">
+		<ConsoleHeader v-if="$q.screen.lt.md">
 			<q-btn
 				flat
 				round
@@ -11,7 +11,7 @@
 			<q-toolbar-title class="text-body1 text-weight-medium">
 				SST Console
 			</q-toolbar-title>
-		</AppHeader>
+		</ConsoleHeader>
 
 		<ConsoleSidebar v-model="drawerOpen" />
 
@@ -25,7 +25,7 @@
 import { useQuasar } from "quasar";
 import { ref } from "vue";
 
-import { AppHeader, ConsoleSidebar } from "@/components/ui/App";
+import { ConsoleHeader, ConsoleSidebar } from "@/components/ui/Console";
 
 const drawerOpen = ref(false);
 const $q = useQuasar();
