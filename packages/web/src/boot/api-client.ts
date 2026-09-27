@@ -1,6 +1,6 @@
 import { defineBoot } from "#q-app";
 import { type ApiClient, ApiError, createClient } from "@sst-console/sdk";
-import { Notify } from "quasar";
+import { Loading, Notify } from "quasar";
 
 import { queryClient } from "./vue-query";
 import { useAuthStore } from "@/stores/auth";
@@ -57,6 +57,7 @@ export default defineBoot(async ({ router }) => {
 		return;
 	}
 
+	Loading.show({ message: "Restoring session…" });
 	try {
 		const session = await api.refresh({
 			refreshToken: auth.session.refreshToken
@@ -65,5 +66,7 @@ export default defineBoot(async ({ router }) => {
 	} catch {
 		auth.clearSession();
 		queryClient.clear();
+	} finally {
+		Loading.hide();
 	}
 });

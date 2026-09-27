@@ -3,13 +3,53 @@ import type { RouteRecordRaw } from "vue-router";
 const routes: RouteRecordRaw[] = [
 	{
 		path: "/",
-		component: () => import("@/layouts/MainLayout.vue"),
+		component: () => import("@/layouts/ConsoleLayout.vue"),
 		meta: { requiresAuth: true },
 		children: [
-			{ path: "", component: () => import("@/pages/IndexPage.vue") },
 			{
-				path: "second",
-				component: () => import("@/pages/SecondPage.vue")
+				path: "",
+				name: "apps",
+				component: () => import("@/pages/AppsPage.vue")
+			},
+			{
+				path: "apps/:appName",
+				name: "app-detail",
+				component: () => import("@/pages/AppDetailPage.vue")
+			},
+			{
+				path: "apps/:appName/stages/:stageName",
+				name: "stage-detail",
+				component: () => import("@/pages/StageDetailPage.vue")
+			},
+			{
+				path: "accounts",
+				name: "accounts",
+				component: () => import("@/pages/AccountsPage.vue")
+			},
+			{
+				path: "accounts/connect",
+				name: "connect-account",
+				component: () => import("@/pages/ConnectAccountPage.vue")
+			},
+			{
+				path: "accounts/:accountId",
+				name: "account-detail",
+				component: () => import("@/pages/AccountDetailPage.vue")
+			},
+			{
+				path: "users",
+				name: "users",
+				component: () => import("@/pages/UsersPage.vue")
+			},
+			{
+				path: "operations",
+				name: "operations",
+				component: () => import("@/pages/OperationsPage.vue")
+			},
+			{
+				path: ":catchAll(.*)*",
+				name: "not-found",
+				component: () => import("@/pages/ErrorNotFound.vue")
 			}
 		]
 	},
@@ -18,15 +58,12 @@ const routes: RouteRecordRaw[] = [
 		component: () => import("@/layouts/AuthLayout.vue"),
 		meta: { guestOnly: true },
 		children: [
-			{ path: "", component: () => import("@/pages/AuthPage.vue") }
+			{
+				path: "",
+				name: "login",
+				component: () => import("@/pages/AuthPage.vue")
+			}
 		]
-	},
-
-	// Always leave this as last one,
-	// but you can also remove it
-	{
-		path: "/:catchAll(.*)*",
-		component: () => import("@/pages/ErrorNotFound.vue")
 	}
 ];
 

@@ -1,1 +1,15 @@
-// app global css
+html,
+body,
+#q-app {
+	min-height: 100%;
+}
+
+body {
+	background: var(--q-page);
+	color: var(--q-text-primary);
+}
+
+:focus-visible {
+	outline: 2px solid var(--q-focus-ring);
+	outline-offset: 2px;
+}

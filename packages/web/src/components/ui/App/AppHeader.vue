@@ -1,5 +1,9 @@
 <template>
-	<q-header bordered class="app-header">
+	<q-header
+		bordered
+		class="app-header"
+		:class="$q.dark.isActive ? 'bg-dark' : 'bg-white'"
+	>
 		<q-toolbar>
 			<slot />
 		</q-toolbar>
@@ -8,11 +12,6 @@
 
 <style lang="scss" scoped>
 .app-header {
-	background: var(--q-page);
-	color: #1d1d1d;
-}
-
-:global(.body--dark) .app-header {
-	color: #f5f5f5;
+	color: var(--q-text-primary);
 }
 </style>

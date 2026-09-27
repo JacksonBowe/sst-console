@@ -1,23 +1,15 @@
 <template>
-	<div
-		class="fullscreen bg-blue text-white text-center q-pa-md flex flex-center"
-	>
-		<div>
-			<div style="font-size: 30vh"> 404 </div>
-
-			<div class="text-h2" style="opacity: 0.4">
-				Oops. Nothing here...
-			</div>
-
-			<q-btn
-				class="q-mt-xl"
-				color="white"
-				text-color="blue"
-				unelevated
-				to="/"
-				label="Go Home"
-				no-caps
-			/>
-		</div>
-	</div>
+	<q-page class="column flex-center q-pa-xl text-center">
+		<p class="text-h3 q-my-none">404</p>
+		<h1 class="text-h6 q-mt-md q-mb-sm">Page not found</h1>
+		<p class="text-body2 text-secondary q-mt-none">
+			This page does not exist.
+		</p>
+		<q-btn
+			color="primary"
+			:to="{ name: 'apps' }"
+			label="Return to Apps"
+			no-caps
+		/>
+	</q-page>
 </template>
