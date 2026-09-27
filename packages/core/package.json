@@ -21,6 +21,7 @@
 		"electrodb": "^3.9.3",
 		"hono": "^4.13.9",
 		"ulid": "^3.0.2",
+		"valibot": "^1.5.0",
 		"zod": "^4.6.5"
 	},
 	"devDependencies": {

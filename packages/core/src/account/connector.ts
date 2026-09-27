@@ -3,11 +3,14 @@ import {
 	GetCallerIdentityCommand,
 	STSClient
 } from "@aws-sdk/client-sts";
+import { Resource } from "sst";
+import { bus } from "sst/aws/bus";
 import { z } from "zod";
 
 import * as Connection from "../connection";
 import { db } from "../db";
 import { InputError, ServerError } from "../error";
+import { defineEvent } from "../event";
 import { fn } from "../util/fn";
 
 const sts = new STSClient({});
@@ -23,6 +26,13 @@ const CallbackSchema = ConnectionSchema.extend({
 	accountId: z.string().regex(/^\d{12}$/),
 	requestType: z.enum(["Create", "Update", "Delete"])
 });
+
+export const Events = {
+	Connected: defineEvent(
+		"account.connected",
+		z.object({ accountId: z.string().regex(/^\d{12}$/) })
+	)
+};
 
 export type RegisterInput = z.input<typeof CallbackSchema>;
 
@@ -143,6 +153,12 @@ export const register = fn(CallbackSchema, async input => {
 		})
 		.ifNotExists({ createdAt: now })
 		.go({ response: "none" });
+
+	if (input.requestType !== "Delete") {
+		await bus.publish(Resource.Bus, Events.Connected, {
+			accountId: input.accountId
+		});
+	}
 
 	return {
 		accountId: input.accountId,

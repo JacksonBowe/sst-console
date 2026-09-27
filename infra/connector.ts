@@ -1,5 +1,9 @@
-import { api } from "./api";
-import { externalId } from "./console";
+import { bus } from "./bus.ts";
+import {
+	assumeAccountRolePermission,
+	controlAccountId,
+	externalId
+} from "./console";
 import { consoleConnections, consoleData } from "./storage";
 import { readFileSync } from "node:fs";
 
@@ -15,16 +19,11 @@ const connectorTemplates = new sst.aws.Bucket("ConnectorTemplates", {
 const connectorEvent = new sst.aws.Function("ConnectorEvent", {
 	handler: "packages/functions/src/events/connector.handler",
 	url: { authorization: "iam" },
-	link: [consoleData, consoleConnections],
+	link: [bus, consoleData, consoleConnections],
 	environment: {
 		SST_CONSOLE_EXTERNAL_ID: externalId
 	},
-	permissions: [
-		{
-			actions: ["sts:AssumeRole"],
-			resources: ["arn:aws:iam::*:role/SSTConsoleRole"]
-		}
-	]
+	permissions: [assumeAccountRolePermission]
 });
 
 new aws.lambda.Permission("ConnectorEventUrlPermission", {
@@ -50,15 +49,10 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 		Description:
 			"Connect this AWS account to a self-hosted SST Console installation.",
 		Parameters: {
-			CollectorRoleArn: {
+			ControlAccountId: {
 				Type: "String",
 				Description:
-					"The SST Console API role ARN from the control account."
-			},
-			RegistrationRoleArn: {
-				Type: "String",
-				Description:
-					"The SST Console connector registration role ARN from the control account."
+					"AWS account ID hosting this SST Console installation."
 			},
 			CallbackFunctionArn: {
 				Type: "String",
@@ -82,10 +76,10 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 							{
 								Effect: "Allow",
 								Principal: {
-									AWS: [
-										{ Ref: "CollectorRoleArn" },
-										{ Ref: "RegistrationRoleArn" }
-									]
+									AWS: {
+										"Fn::Sub":
+											"arn:${AWS::Partition}:iam::${ControlAccountId}:root"
+									}
 								},
 								Action: "sts:AssumeRole",
 								Condition: {
@@ -192,24 +186,21 @@ const connectorTemplateUrl = $interpolate`https://${connectorTemplates.nodes.buc
 const connectorQuickCreateUrl = $resolve({
 	region,
 	templateUrl: connectorTemplateUrl,
-	collectorRoleArn: api.nodes.role.arn,
-	registrationRoleArn: connectorEvent.nodes.role.arn,
+	controlAccountId,
 	callbackFunctionArn: connectorEvent.arn,
 	externalId
 }).apply(
 	({
 		region,
 		templateUrl,
-		collectorRoleArn,
-		registrationRoleArn,
+		controlAccountId,
 		callbackFunctionArn,
 		externalId
 	}) => {
 		const query = new URLSearchParams({
 			templateURL: templateUrl,
 			stackName: "SSTConsoleConnection",
-			param_CollectorRoleArn: collectorRoleArn,
-			param_RegistrationRoleArn: registrationRoleArn,
+			param_ControlAccountId: controlAccountId,
 			param_CallbackFunctionArn: callbackFunctionArn,
 			param_ExternalId: externalId
 		});
@@ -220,8 +211,6 @@ const connectorQuickCreateUrl = $resolve({
 
 export const outputs = {
 	connectorEventUrl: connectorEvent.url,
-	collectorRoleArn: api.nodes.role.arn,
-	registrationRoleArn: connectorEvent.nodes.role.arn,
 	externalId,
 	connectorTemplateUrl,
 	connectorQuickCreateUrl

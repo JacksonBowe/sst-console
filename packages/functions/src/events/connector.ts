@@ -1,4 +1,5 @@
 import * as Account from "@console/core/account";
+import { withActor } from "@console/core/actor";
 import { PublicError } from "@console/core/error";
 import type {
 	Handler,
@@ -27,8 +28,12 @@ export const handler: Handler<
 			return response(403, { code: "caller_account_mismatch" });
 		}
 
-		const account = await Account.Connector.register(
-			input as Account.Connector.RegisterInput
+		const account = await withActor(
+			{ type: "system", properties: {} },
+			() =>
+				Account.Connector.register(
+					input as Account.Connector.RegisterInput
+				)
 		);
 
 		return response(200, account);

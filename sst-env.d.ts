@@ -11,6 +11,11 @@ declare module "sst" {
       "type": "sst.aws.Function"
       "url": string
     }
+    "Bus": {
+      "arn": string
+      "name": string
+      "type": "sst.aws.Bus"
+    }
     "ConnectorEvent": {
       "name": string
       "type": "sst.aws.Function"
