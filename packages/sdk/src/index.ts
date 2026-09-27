@@ -8,6 +8,29 @@ export type {
 } from "@console/functions/src/api/schemas/auth.schemas";
 
 export type { AuthChallenge, AuthMethods, AuthResult } from "./auth";
+export type {
+	Account,
+	AccountApp,
+	AccountDetail,
+	AccountStage,
+	AccountStatus,
+	App,
+	AppStage,
+	BackupConnectionsResult,
+	CognitoStatus,
+	ConsoleMethods,
+	InviteUserInput,
+	InviteUserResult,
+	RecoverAccountsResult,
+	Resource,
+	ResourceTree,
+	Stage,
+	StateSnapshot,
+	SyncAccountResult,
+	User,
+	UsersFilters,
+	UsersPage
+} from "./console";
 export {
 	createClient,
 	type AccessTokenProvider,

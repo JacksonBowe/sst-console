@@ -3,6 +3,7 @@ import axios, { type AxiosError, type AxiosInstance } from "axios";
 import type { Session } from "@console/functions/src/api/schemas/auth.schemas";
 
 import { type AuthMethods, authMethods } from "./auth";
+import { type ConsoleMethods, consoleMethods } from "./console";
 import { toApiError } from "./errors";
 import type { SdkInternalRequestConfig, SdkRequestConfig } from "./request";
 
@@ -23,7 +24,8 @@ export type ClientOptions = {
 export type ApiClient = {
 	axios: AxiosInstance;
 	request: <T>(config: SdkRequestConfig) => Promise<T>;
-} & AuthMethods;
+} & AuthMethods &
+	ConsoleMethods;
 
 export function createClient({
 	baseUrl,
@@ -75,5 +77,10 @@ export function createClient({
 		return response.data;
 	};
 
-	return { axios: instance, request, ...authMethods(request) };
+	return {
+		axios: instance,
+		request,
+		...authMethods(request),
+		...consoleMethods(request)
+	};
 }
