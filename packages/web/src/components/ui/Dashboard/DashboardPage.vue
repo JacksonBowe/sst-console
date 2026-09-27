@@ -1,5 +1,5 @@
 <template>
-	<q-page class="dashboard-page q-pa-md">
+	<q-page class="dashboard-page q-pa-lg">
 		<slot />
 	</q-page>
 </template>

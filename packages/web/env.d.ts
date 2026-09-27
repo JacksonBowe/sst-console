@@ -14,4 +14,5 @@
  */
 interface ImportMetaEnv {
 	readonly VITE_AUTH_PASSWORD_POLICY: string;
+	readonly VITE_CONNECTOR_QUICK_CREATE_URL: string;
 }
