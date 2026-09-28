@@ -23,9 +23,14 @@
 		</div>
 
 		<dl class="resource-details__fields">
-			<div>
-				<dt>Kind</dt>
-				<dd>{{ resource.resourceKind }}</dd>
+			<div v-if="resource.resourceKind === 'physical'">
+				<dt>Resource name</dt>
+				<dd>
+					<CopyValue
+						:value="resourceName(resource)"
+						label="resource name"
+					/>
+				</dd>
 			</div>
 			<div>
 				<dt>Resource ID</dt>
@@ -66,6 +71,25 @@ defineProps<{ resource?: ResourceTree | undefined }>();
 
 function awsConsoleUrl(arn: string) {
 	return `https://console.aws.amazon.com/go/view?arn=${encodeURIComponent(arn)}`;
+}
+
+function resourceName(resource: ResourceTree) {
+	const summary = resource.summary;
+	if (isRecord(summary)) {
+		const field = {
+			"sst.aws.Bucket": "bucketName",
+			"sst.aws.Dynamo": "tableName",
+			"sst.aws.Function": "functionName"
+		}[resource.resourceType];
+		const value = field ? summary[field] : undefined;
+		if (typeof value === "string" && value) return value;
+	}
+
+	return resource.name || resource.resourceId;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 </script>
 
