@@ -26,3 +26,21 @@ $warning: #ae7318;
 
 $generic-border-radius: 6px;
 $button-border-radius: 6px;
+
+:root {
+	--q-primary-2: color-mix(in srgb, var(--q-primary) 15%, transparent);
+	--q-secondary-2: color-mix(in srgb, var(--q-secondary) 15%, transparent);
+	--q-accent-2: color-mix(in srgb, var(--q-accent) 15%, transparent);
+	--q-positive-2: color-mix(in srgb, var(--q-positive) 15%, transparent);
+	--q-warning-2: color-mix(in srgb, var(--q-warning) 15%, transparent);
+	--q-negative-2: color-mix(in srgb, var(--q-negative) 15%, transparent);
+	--q-info-2: color-mix(in srgb, var(--q-info) 15%, transparent);
+
+	--q-primary-3: color-mix(in srgb, var(--q-primary) 10%, transparent);
+	--q-secondary-3: color-mix(in srgb, var(--q-secondary) 10%, transparent);
+	--q-accent-3: color-mix(in srgb, var(--q-accent) 10%, transparent);
+	--q-positive-3: color-mix(in srgb, var(--q-positive) 10%, transparent);
+	--q-warning-3: color-mix(in srgb, var(--q-warning) 10%, transparent);
+	--q-negative-3: color-mix(in srgb, var(--q-negative) 10%, transparent);
+	--q-info-3: color-mix(in srgb, var(--q-info) 10%, transparent);
+}

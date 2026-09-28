@@ -2,6 +2,15 @@
 	<DashboardPage>
 		<DashboardPageHeader title="Accounts" :subtitle="subtitle">
 			<template #actions>
+				<q-btn
+					outline
+					no-caps
+					color="primary"
+					icon="sym_r_sync"
+					label="Sync all"
+					:disable="connectedAccountCount === 0 || isSyncAllOpen"
+					@click="confirmSyncAll"
+				/>
 				<ConnectAccountTrigger>
 					<template #trigger="{ open }">
 						<q-btn
@@ -35,9 +44,13 @@
 <script setup lang="ts">
 import type { Account } from "@sst-console/sdk";
 import { Dialog } from "quasar";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
-import { AccountsListErrorState, AccountsTable } from "@/components/Accounts";
+import {
+	AccountsListErrorState,
+	AccountsTable,
+	SyncAllAccountsDialog
+} from "@/components/Accounts";
 import {
 	DashboardPage,
 	DashboardPageContent,
@@ -48,6 +61,7 @@ import { useAccounts, useSyncAccount } from "@/composables/accounts";
 
 const accountsQuery = useAccounts();
 const syncAccount = useSyncAccount();
+const isSyncAllOpen = ref(false);
 
 const accounts = computed(() => accountsQuery.data.value ?? []);
 const connectedAccountCount = computed(
@@ -73,6 +87,21 @@ function confirmSync(account: Account): void {
 			confirmLabel: "Sync account",
 			perform: () => syncAccount.mutateAsync(account.accountId)
 		}
+	});
+}
+
+function confirmSyncAll(): void {
+	const accountIds = accounts.value
+		.filter(account => account.status === "connected")
+		.map(account => account.accountId);
+	if (accountIds.length === 0) return;
+
+	isSyncAllOpen.value = true;
+	Dialog.create({
+		component: SyncAllAccountsDialog,
+		componentProps: { accountIds }
+	}).onDismiss(() => {
+		isSyncAllOpen.value = false;
 	});
 }
 </script>
