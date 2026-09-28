@@ -12,7 +12,7 @@
 			:aria-label="`Open ${stage.stageName} Stage`"
 			:to="{
 				name: 'stage-detail',
-				params: { appName, stageName: stage.stageName },
+				params: { appName, stageName: stage.stageName }
 			}"
 		/>
 	</div>

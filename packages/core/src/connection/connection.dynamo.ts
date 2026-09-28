@@ -10,6 +10,10 @@ export const connectionEntity = new Entity({
 		accountId: { type: "string", required: true },
 		region: { type: "string", required: true },
 		roleArn: { type: "string", required: true },
+		syncPolicy: {
+			type: "any",
+			default: { allowList: [], ignoreList: [] }
+		},
 		createdAt: { type: "string", required: true },
 		updatedAt: { type: "string", required: true }
 	},

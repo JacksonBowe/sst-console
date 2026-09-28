@@ -48,7 +48,7 @@ const emit = defineEmits<{ "update:modelValue": [value: boolean] }>();
 const $q = useQuasar();
 
 const navigation: DrawerNavItem[] = [
-	{ label: "Apps", icon: "sym_r_deployed_code", to: "/", exact: true },
+	{ label: "Apps", icon: "sym_r_deployed_code", to: "/apps" },
 	{ label: "Accounts", icon: "sym_r_account_balance", to: "/accounts" },
 	{ label: "Users", icon: "sym_r_group", to: "/users" },
 	{ label: "Operations", icon: "sym_r_build", to: "/operations" }

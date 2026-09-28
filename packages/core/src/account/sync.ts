@@ -18,6 +18,8 @@ import {
 } from "../state/sst";
 import { fn } from "../util/fn";
 import * as Connector from "./connector";
+import * as Connection from "../connection";
+import { includesStage } from "./policy";
 import {
 	partitionStageOwnership,
 	type StageAccountConflict
@@ -39,6 +41,15 @@ type StateProjection = StateObject & {
 	resources: NormalizedResource[];
 	sourceVersion?: string;
 	sourceUpdatedAt: string;
+};
+
+type AccountDiscovery = {
+	accountId: string;
+	arn: string;
+	region: string;
+	roleArn: string;
+	stateBucket: string;
+	states: StateObject[];
 };
 
 type ProjectionWrite =
@@ -75,68 +86,22 @@ export const sync = fn(
 		accountId: z.string().regex(/^\d{12}$/)
 	}),
 	async ({ accountId }) => {
-		const account = await db.entities.account
-			.get({ accountId })
-			.go({ consistent: true });
-		const roleArn = account.data?.roleArn;
-		const region = account.data?.region;
-		if (!roleArn || !region) {
-			throw new InputError(
-				"account_not_found",
-				"Connected account was not found"
-			);
-		}
-
-		const connection = await withDisconnectOnAccessFailure(accountId, () =>
-			Connector.assume({ roleArn, region })
+		const discovery = await discover(accountId);
+		const policy = await Connection.getSyncPolicy(accountId);
+		const stateObjects = discovery.states.filter(state =>
+			includesStage(policy, state)
 		);
-		if (connection.accountId !== accountId) {
-			throw new ServerError(
-				"account_verification_failed",
-				"Connector role does not belong to registered account"
-			);
-		}
-
-		const ssm = new SSMClient({
-			credentials: connection.credentials,
-			region
-		});
-		const bootstrapParameter = await withDisconnectOnAccessFailure(
-			accountId,
-			() => ssm.send(new GetParameterCommand({ Name: "/sst/bootstrap" }))
-		);
-		if (!bootstrapParameter.Parameter?.Value) {
-			throw new ServerError(
-				"missing_sst_bootstrap",
-				"SST bootstrap metadata is empty"
-			);
-		}
-
-		const bootstrap = z
-			.object({ state: z.string().min(1) })
-			.safeParse(JSON.parse(bootstrapParameter.Parameter.Value));
-		if (!bootstrap.success) {
-			throw new ServerError(
-				"invalid_sst_bootstrap",
-				"SST bootstrap metadata does not contain state bucket"
-			);
-		}
-
+		const connection = discovery;
+		const { region, roleArn } = discovery;
 		const s3 = new S3Client({
 			credentials: connection.credentials,
 			region
 		});
-		// 1. Discover every current SST state object. Pagination matters because
-		// one state bucket may contain more than 1,000 deployed stages.
-		const stateObjects = await withDisconnectOnAccessFailure(
-			accountId,
-			() => listStateObjects(s3, bootstrap.data.state)
-		);
 		// 2. Fetch, decompress, parse, redact, and normalize every object before
 		// any DynamoDB write. A failed read therefore cannot delete projections.
 		const projections = await withDisconnectOnAccessFailure(accountId, () =>
 			mapWithConcurrency(stateObjects, 8, state =>
-				loadProjection(s3, bootstrap.data.state, state)
+				loadProjection(s3, discovery.stateBucket, state)
 			)
 		);
 
@@ -152,7 +117,7 @@ export const sync = fn(
 		} = await buildWrites({
 			accountId,
 			region,
-			stateBucket: bootstrap.data.state,
+			stateBucket: discovery.stateBucket,
 			projections,
 			now
 		});
@@ -172,7 +137,7 @@ export const sync = fn(
 					.patch({ accountId })
 					.set({
 						status: "connected",
-						stateBucket: bootstrap.data.state,
+						stateBucket: discovery.stateBucket,
 						lastSyncedAt: now,
 						lastSyncConflicts: conflicts,
 						updatedAt: now
@@ -204,11 +169,11 @@ export const sync = fn(
 
 		return {
 			accountId,
-			arn: connection.arn,
+			arn: discovery.arn,
 			region,
 			roleArn,
-			stateBucket: bootstrap.data.state,
-			states: stateObjects.map(
+			stateBucket: discovery.stateBucket,
+			states: discovery.states.map(
 				({ appName, stageName, key, lastModified, size }) => ({
 					app: appName,
 					stage: stageName,
@@ -222,6 +187,78 @@ export const sync = fn(
 		};
 	}
 );
+
+export const refreshDiscovery = fn(
+	z.object({ accountId: z.string().regex(/^\d{12}$/) }),
+	async ({ accountId }) => {
+		const result = await discover(accountId);
+		return {
+			accountId,
+			stateBucket: result.stateBucket,
+			states: result.states.map(state => ({
+				app: state.appName,
+				stage: state.stageName,
+				key: state.key,
+				lastModified: state.lastModified,
+				size: state.size
+			}))
+		};
+	}
+);
+
+async function discover(accountId: string): Promise<
+	AccountDiscovery & {
+		credentials: Awaited<
+			ReturnType<typeof Connector.assume>
+		>["credentials"];
+	}
+> {
+	const account = await db.entities.account
+		.get({ accountId })
+		.go({ consistent: true });
+	const roleArn = account.data?.roleArn;
+	const region = account.data?.region;
+	if (!roleArn || !region)
+		throw new InputError(
+			"account_not_found",
+			"Connected account was not found"
+		);
+
+	const connection = await withDisconnectOnAccessFailure(accountId, () =>
+		Connector.assume({ roleArn, region })
+	);
+	if (connection.accountId !== accountId)
+		throw new ServerError(
+			"account_verification_failed",
+			"Connector role does not belong to registered account"
+		);
+
+	const ssm = new SSMClient({ credentials: connection.credentials, region });
+	const bootstrapParameter = await withDisconnectOnAccessFailure(
+		accountId,
+		() => ssm.send(new GetParameterCommand({ Name: "/sst/bootstrap" }))
+	);
+	if (!bootstrapParameter.Parameter?.Value)
+		throw new ServerError(
+			"missing_sst_bootstrap",
+			"SST bootstrap metadata is empty"
+		);
+	const bootstrap = z
+		.object({ state: z.string().min(1) })
+		.safeParse(JSON.parse(bootstrapParameter.Parameter.Value));
+	if (!bootstrap.success)
+		throw new ServerError(
+			"invalid_sst_bootstrap",
+			"SST bootstrap metadata does not contain state bucket"
+		);
+
+	const s3 = new S3Client({ credentials: connection.credentials, region });
+	const states = await withDisconnectOnAccessFailure(accountId, () =>
+		listStateObjects(s3, bootstrap.data.state)
+	);
+	await reconcileDiscovery(accountId, bootstrap.data.state, states);
+	return { ...connection, stateBucket: bootstrap.data.state, states };
+}
 
 async function withDisconnectOnAccessFailure<T>(
 	accountId: string,
@@ -301,6 +338,62 @@ async function listStateObjects(
 		continuationToken = page.NextContinuationToken;
 	} while (continuationToken);
 	return states;
+}
+
+async function reconcileDiscovery(
+	accountId: string,
+	stateBucket: string,
+	states: StateObject[]
+) {
+	const existing = await db.entities.discoveredStage.query
+		.discovery({ accountId })
+		.go({ pages: "all" });
+	const now = new Date().toISOString();
+	const desired = new Set(
+		states.map(state => stageKey(state.appName, state.stageName))
+	);
+	const writes = [
+		...states.map(state => ({ kind: "upsert" as const, state })),
+		...existing.data
+			.filter(
+				stage => !desired.has(stageKey(stage.appName, stage.stageName))
+			)
+			.map(stage => ({ kind: "delete" as const, stage }))
+	];
+	for (const chunk of chunkArray(writes, maxTransactionActions)) {
+		const transaction = await db.transaction
+			.write(({ discoveredStage }) =>
+				chunk.map(write =>
+					write.kind === "upsert"
+						? discoveredStage
+								.upsert({
+									accountId,
+									appName: write.state.appName,
+									stageName: write.state.stageName,
+									stateBucket,
+									stateKey: write.state.key,
+									lastModified: write.state.lastModified,
+									size: write.state.size,
+									etag: write.state.etag,
+									discoveredAt: now
+								})
+								.commit()
+						: discoveredStage
+								.delete({
+									accountId,
+									appName: write.stage.appName,
+									stageName: write.stage.stageName
+								})
+								.commit()
+				)
+			)
+			.go();
+		if (transaction.canceled)
+			throw new ServerError(
+				"discovery_persistence_failed",
+				"Unable to persist discovered SST state entries"
+			);
+	}
 }
 
 async function loadProjection(
@@ -652,4 +745,11 @@ function resourceKey(
 	resourceId: string
 ): string {
 	return `${stageKey(appName, stageName)}\u0000${resourceId}`;
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+	const chunks: T[][] = [];
+	for (let index = 0; index < items.length; index += size)
+		chunks.push(items.slice(index, index + size));
+	return chunks;
 }

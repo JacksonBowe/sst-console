@@ -1,0 +1,20 @@
+info:
+    name: Refresh account discovery
+    type: http
+    seq: 7
+
+http:
+    method: POST
+    url: "{{ApiBase}}/accounts/:accountId/discovery"
+    params:
+        - name: accountId
+          value: "{{AwsAccountId}}"
+          type: path
+    auth: inherit
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
+    forwardAuthorizationHeader: true

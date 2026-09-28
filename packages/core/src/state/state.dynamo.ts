@@ -72,3 +72,35 @@ export const syncRunEntity = new Entity({
 		}
 	}
 });
+
+export const discoveredStageEntity = new Entity({
+	model: { ...model, entity: "discoveredStage" },
+	attributes: {
+		accountId: { type: "string", required: true },
+		appName: { type: "string", required: true },
+		stageName: { type: "string", required: true },
+		stateBucket: { type: "string", required: true },
+		stateKey: { type: "string", required: true },
+		lastModified: { type: "string" },
+		size: { type: "number" },
+		etag: { type: "string" },
+		discoveredAt: { type: "string", required: true },
+		schemaVersion: { type: "string", default: "1" }
+	},
+	indexes: {
+		discovery: {
+			pk: {
+				field: "pk",
+				composite: ["accountId"],
+				template: "ACCOUNT#${accountId}",
+				casing: "none"
+			},
+			sk: {
+				field: "sk",
+				composite: ["appName", "stageName"],
+				template: "DISCOVERY#${appName}#STAGE#${stageName}",
+				casing: "none"
+			}
+		}
+	}
+});

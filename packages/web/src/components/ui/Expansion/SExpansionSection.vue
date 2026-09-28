@@ -56,7 +56,7 @@ withDefaults(
 		caption?: string;
 		icon?: string;
 		expandIcon?: string;
-		variant?: "default" | "warning" | "negative";
+		variant?: "default" | "muted" | "warning" | "negative";
 	}>(),
 	{
 		expandIcon: "sym_r_keyboard_arrow_down",
@@ -114,6 +114,15 @@ const isExpanded = ref(false);
 		}
 	}
 
+	&--muted {
+		border-color: var(--q-text-muted, #616161);
+
+		.expansion-item__icon,
+		.expansion-item__label {
+			color: var(--q-text-muted, #616161);
+		}
+	}
+
 	&--negative {
 		border-color: var(--q-negative, #c10015);
 
@@ -163,18 +172,18 @@ const isExpanded = ref(false);
 .expansion-item__label {
 	font-weight: 500;
 	font-size: 14px;
-	color: var(--q-dark, #1d1d1d);
+	color: var(--q-text-primary, #1d1d1d);
 	line-height: 1.4;
 }
 
 .expansion-item__caption {
 	font-size: 12px;
-	color: var(--q-color-grey-7, #616161);
+	color: var(--q-text-muted, #616161);
 	line-height: 1.3;
 }
 
 .expansion-item__expand-icon {
-	color: var(--q-color-grey-6, #757575);
+	color: var(--q-text-muted, #757575);
 	font-size: 20px;
 	transition: transform 0.2s ease;
 
@@ -186,5 +195,22 @@ const isExpanded = ref(false);
 .expansion-item__content {
 	padding: 8px 16px 16px;
 	border-top: 1px solid var(--q-color-grey-3, #e0e0e0);
+}
+
+.body--dark .expansion-item {
+	background: var(--q-dark, #171b23);
+}
+
+.body--dark
+	.expansion-item:not(
+		.expansion-item--expanded,
+		.expansion-item--muted,
+		.expansion-item--negative
+	) {
+	border-color: var(--q-border, #303946);
+}
+
+.body--dark .expansion-item__content {
+	border-top-color: var(--q-border, #303946);
 }
 </style>

@@ -1,47 +1,106 @@
 <template>
 	<DashboardPage>
-		<DashboardPageHeader :title="`Workload ${accountId}`" back="Accounts" />
-
-		<q-banner
-			v-if="conflicts.length"
-			class="bg-warning text-dark rounded-borders"
-			inline-actions
+		<DashboardPageBreadcrumbs :segments="breadcrumbs" class="q-mb-md" />
+		<DashboardPageHeader
+			:title="`Workload ${accountId}`"
+			:subtitle="accountSubtitle"
 		>
-			<template #avatar>
-				<q-icon name="sym_r_warning" />
+			<template #actions>
+				<AccountDetailActions
+					:refreshing="refreshDiscovery.isPending.value"
+					:applying="applyPolicy.isPending.value"
+					:can-apply="Boolean(policy)"
+					@refresh="refresh"
+					@apply="apply"
+				/>
 			</template>
-			<div class="text-weight-medium">Some SST stages were skipped</div>
-			<div>
-				These state entries belong to another Workload account. Remove
-				stale deployments from this Workload before syncing them here.
-			</div>
-			<ul class="q-mb-none q-mt-sm q-pl-md">
-				<li v-for="conflict in conflicts" :key="conflictKey(conflict)">
-					{{ conflict.appName }}/{{ conflict.stageName }} belongs to
-					Workload
-					{{ conflict.ownerAccountId }}
-				</li>
-			</ul>
-		</q-banner>
+		</DashboardPageHeader>
+
+		<AccountSyncConflictBanner :conflicts="conflicts" />
+		<AccountAppsManager
+			:stages="manageQuery.data.value?.stages ?? []"
+			:policy="policy"
+			:loading="manageQuery.isPending.value"
+			:error="manageQuery.isError.value"
+			@update:policy="policy = $event"
+		/>
 	</DashboardPage>
 </template>
 
 <script setup lang="ts">
-import type { StageAccountConflict } from "@sst-console/sdk";
-import { computed } from "vue";
+import type { AccountSyncPolicy, StageAccountConflict } from "@sst-console/sdk";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
-import { DashboardPage, DashboardPageHeader } from "@/components/ui/Dashboard";
-import { useAccount } from "@/composables/accounts";
+import {
+	AccountAppsManager,
+	AccountDetailActions,
+	AccountSyncConflictBanner
+} from "@/components/Accounts";
+import {
+	DashboardPage,
+	DashboardPageBreadcrumbs,
+	DashboardPageHeader
+} from "@/components/ui/Dashboard";
+import { errorNotify, successNotify } from "@/components/ui/toast";
+import {
+	useAccount,
+	useApplyAccountSyncPolicy,
+	useManageAccountApps,
+	useRefreshAccountDiscovery
+} from "@/composables/accounts";
 
 const route = useRoute();
 const accountId = computed(() => String(route.params.accountId ?? ""));
 const account = useAccount(accountId.value);
+const manageQuery = useManageAccountApps(accountId.value);
+const refreshDiscovery = useRefreshAccountDiscovery();
+const applyPolicy = useApplyAccountSyncPolicy();
+const policy = ref<AccountSyncPolicy | null>(null);
+
+watch(
+	() => manageQuery.data.value?.policy,
+	value => {
+		if (!value) return;
+		policy.value = {
+			allowList: value.allowList.map(selector => ({ ...selector })),
+			ignoreList: value.ignoreList.map(selector => ({ ...selector }))
+		};
+	},
+	{ immediate: true }
+);
+
 const conflicts = computed<StageAccountConflict[]>(
 	() => account.data.value?.account.lastSyncConflicts ?? []
 );
+const accountSubtitle = computed(() => {
+	const value = account.data.value?.account;
+	return value ? `${value.region} · ${value.status}` : "Loading Workload";
+});
+const breadcrumbs = computed(() => [
+	{ label: "Accounts", to: { name: "accounts" } },
+	{ label: `Workload ${accountId.value}` }
+]);
 
-function conflictKey(conflict: StageAccountConflict): string {
-	return `${conflict.appName}\u0000${conflict.stageName}`;
+async function refresh() {
+	try {
+		await refreshDiscovery.mutateAsync(accountId.value);
+		successNotify("SST app discovery refreshed");
+	} catch {
+		errorNotify("Unable to refresh SST app discovery");
+	}
+}
+
+async function apply() {
+	if (!policy.value) return;
+	try {
+		await applyPolicy.mutateAsync({
+			accountId: accountId.value,
+			policy: policy.value
+		});
+		successNotify("Sync policy applied and Workload synced");
+	} catch {
+		errorNotify("Unable to apply sync policy");
+	}
 }
 </script>

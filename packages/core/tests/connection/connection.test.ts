@@ -29,4 +29,21 @@ describe("connection entity", () => {
 			sk: "ACCOUNT#123456789012"
 		});
 	});
+
+	it("defaults new Workloads to sync every discovered stage", () => {
+		const create = connections.entities.connection
+			.create({
+				accountId: "123456789012",
+				region: "us-east-1",
+				roleArn: "arn:aws:iam::123456789012:role/SSTConsoleRole",
+				createdAt: "2026-01-01T00:00:00.000Z",
+				updatedAt: "2026-01-01T00:00:00.000Z"
+			})
+			.params();
+
+		expect(create.Item.syncPolicy).toEqual({
+			allowList: [],
+			ignoreList: []
+		});
+	});
 });

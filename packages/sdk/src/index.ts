@@ -10,6 +10,7 @@ export type {
 export type { AuthChallenge, AuthMethods, AuthResult } from "./auth";
 export type {
 	Account,
+	AccountSyncPolicy,
 	AccountApp,
 	AccountDetail,
 	AccountStage,
@@ -19,12 +20,14 @@ export type {
 	BackupConnectionsResult,
 	CognitoStatus,
 	ConsoleMethods,
+	DiscoveredStage,
 	InviteUserInput,
 	InviteUserResult,
 	RecoverAccountsResult,
 	Resource,
 	ResourceTree,
 	Stage,
+	StageSelector,
 	StateSnapshot,
 	StageAccountConflict,
 	SyncAccountResult,

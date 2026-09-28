@@ -3,6 +3,12 @@ import { Resource } from "sst";
 
 import { dynamo } from "../db/client";
 import { connectionEntity } from "./connection.dynamo";
+import {
+	AccountSyncPolicySchema,
+	defaultSyncPolicy,
+	parseSyncPolicy,
+	type AccountSyncPolicy
+} from "../account/policy";
 
 export const connections = new Service(
 	{ connection: connectionEntity },
@@ -27,3 +33,31 @@ export const list = async () => {
 		.go({ pages: "all" });
 	return result.data;
 };
+
+export const getSyncPolicy = async (
+	accountId: string
+): Promise<AccountSyncPolicy> => {
+	const result = await connections.entities.connection
+		.get({ accountId })
+		.go({ consistent: true });
+	return parseSyncPolicy(result.data?.syncPolicy);
+};
+
+export const updateSyncPolicy = async (input: {
+	accountId: string;
+	policy: AccountSyncPolicy;
+	updatedAt: string;
+}) => {
+	const policy = AccountSyncPolicySchema.parse(input.policy);
+	const result = await connections.entities.connection
+		.get({ accountId: input.accountId })
+		.go({ consistent: true });
+	if (!result.data) return null;
+	await connections.entities.connection
+		.patch({ accountId: input.accountId })
+		.set({ syncPolicy: policy, updatedAt: input.updatedAt })
+		.go({ response: "none" });
+	return policy;
+};
+
+export { defaultSyncPolicy };

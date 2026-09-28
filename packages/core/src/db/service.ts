@@ -3,7 +3,11 @@ import { Resource } from "sst";
 
 import { accountEntity } from "../account/account.dynamo";
 import { appEntity, resourceEntity, stageEntity } from "../app/app.dynamo";
-import { stateSnapshotEntity, syncRunEntity } from "../state/state.dynamo";
+import {
+	discoveredStageEntity,
+	stateSnapshotEntity,
+	syncRunEntity
+} from "../state/state.dynamo";
 import { userEntity, userIdentityEntity } from "../user/user.dynamo";
 import { dynamo } from "./client";
 
@@ -15,6 +19,7 @@ export const db = new Service(
 		resource: resourceEntity,
 		stateSnapshot: stateSnapshotEntity,
 		syncRun: syncRunEntity,
+		discoveredStage: discoveredStageEntity,
 		user: userEntity,
 		userIdentity: userIdentityEntity
 	},

@@ -2,6 +2,13 @@ import type { RequestFn } from "./request";
 
 export type AccountStatus = "connected" | "disconnected";
 
+export type StageSelector = { app: string; stage?: string };
+
+export type AccountSyncPolicy = {
+	allowList: StageSelector[];
+	ignoreList: StageSelector[];
+};
+
 export type StageAccountConflict = {
 	appName: string;
 	stageName: string;
@@ -118,6 +125,20 @@ export type SyncAccountResult = {
 	skippedStages: StageAccountConflict[];
 };
 
+export type DiscoveredStage = {
+	app: string;
+	stage: string;
+	key: string;
+	lastModified?: string;
+	size?: number;
+	discoveredAt: string;
+};
+
+export type ManageAccountApps = {
+	policy: AccountSyncPolicy;
+	stages: DiscoveredStage[];
+};
+
 export type RecoverAccountsResult = {
 	recovered: number;
 	results: Array<{
@@ -180,6 +201,38 @@ export const consoleMethods = (request: RequestFn) => ({
 		request({
 			method: "POST",
 			url: `accounts/${encodeURIComponent(accountId)}/sync`
+		}),
+	getManageAccountApps: (accountId: string): Promise<ManageAccountApps> =>
+		request({
+			method: "GET",
+			url: `accounts/${encodeURIComponent(accountId)}/manage-apps`
+		}),
+	refreshAccountDiscovery: (accountId: string) =>
+		request<{
+			accountId: string;
+			stateBucket: string;
+			states: Omit<DiscoveredStage, "discoveredAt">[];
+		}>({
+			method: "POST",
+			url: `accounts/${encodeURIComponent(accountId)}/discovery`
+		}),
+	updateAccountSyncPolicy: (
+		accountId: string,
+		policy: AccountSyncPolicy
+	): Promise<AccountSyncPolicy> =>
+		request({
+			method: "PUT",
+			url: `accounts/${encodeURIComponent(accountId)}/sync-policy`,
+			data: { policy }
+		}),
+	applyAccountSyncPolicy: (
+		accountId: string,
+		policy: AccountSyncPolicy
+	): Promise<SyncAccountResult> =>
+		request({
+			method: "POST",
+			url: `accounts/${encodeURIComponent(accountId)}/sync-policy/apply`,
+			data: { policy }
 		}),
 	recoverAccounts: (): Promise<RecoverAccountsResult> =>
 		request({ method: "POST", url: "accounts/recover" }),

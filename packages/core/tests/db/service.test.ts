@@ -95,6 +95,23 @@ describe("db service", () => {
 		});
 	});
 
+	it("builds account-scoped discovered stage keys", () => {
+		const discovery = db.entities.discoveredStage
+			.create({
+				accountId: "691249328599",
+				appName: "console",
+				stageName: "prod",
+				stateBucket: "sst-state",
+				stateKey: "app/console/prod.json",
+				discoveredAt: "2026-01-01T00:00:00.000Z"
+			})
+			.params();
+		expect(discovery.Item).toMatchObject({
+			pk: "ACCOUNT#691249328599",
+			sk: "DISCOVERY#console#STAGE#prod"
+		});
+	});
+
 	it("removes ARN index fields from component groups", () => {
 		const now = "2026-09-25T00:00:00.000Z";
 		const component = db.entities.resource
