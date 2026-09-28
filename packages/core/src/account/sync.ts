@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 
 import {
 	GetObjectCommand,
+	GetBucketNotificationConfigurationCommand,
 	ListObjectsV2Command,
+	PutBucketNotificationConfigurationCommand,
 	S3Client
 } from "@aws-sdk/client-s3";
 import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
@@ -87,6 +89,20 @@ export const sync = fn(
 	}),
 	async ({ accountId }) => {
 		const discovery = await discover(accountId);
+		await db.entities.account
+			.patch({ accountId })
+			.set({
+				stateBucket: discovery.stateBucket,
+				updatedAt: new Date().toISOString()
+			})
+			.go({ response: "none" });
+		await enableStateEvents(
+			new S3Client({
+				credentials: discovery.credentials,
+				region: discovery.region
+			}),
+			discovery.stateBucket
+		);
 		const policy = await Connection.getSyncPolicy(accountId);
 		const stateObjects = discovery.states.filter(state =>
 			includesStage(policy, state)
@@ -119,7 +135,8 @@ export const sync = fn(
 			region,
 			stateBucket: discovery.stateBucket,
 			projections,
-			now
+			now,
+			completeDiscovery: true
 		});
 		// 4. Desired upserts precede stale deletes. Chunks stay under DynamoDB
 		// transaction limits; later syncs repair a partially completed run.
@@ -202,6 +219,98 @@ export const refreshDiscovery = fn(
 				lastModified: state.lastModified,
 				size: state.size
 			}))
+		};
+	}
+);
+
+export const syncStateObject = fn(
+	z.object({
+		accountId: z.string().regex(/^\d{12}$/),
+		stateBucket: z.string().min(1),
+		stateKey: z.string().min(1)
+	}),
+	async ({ accountId, stateBucket, stateKey }) => {
+		const state = parseStateKey(stateKey);
+		if (!state) return { accountId, stateKey, status: "ignored" as const };
+
+		const account = await db.entities.account
+			.get({ accountId })
+			.go({ consistent: true });
+		const accountData = account.data;
+		if (
+			accountData?.status !== "connected" ||
+			accountData.stateBucket !== stateBucket
+		)
+			return { accountId, stateKey, status: "ignored" as const };
+
+		const connection = await withDisconnectOnAccessFailure(accountId, () =>
+			Connector.assume({
+				roleArn: accountData.roleArn,
+				region: accountData.region
+			})
+		);
+		const s3 = new S3Client({
+			credentials: connection.credentials,
+			region: accountData.region
+		});
+		const now = new Date().toISOString();
+		const policy = await Connection.getSyncPolicy(accountId);
+
+		let projection: StateProjection;
+		try {
+			projection = await withDisconnectOnAccessFailure(accountId, () =>
+				loadProjection(s3, stateBucket, state)
+			);
+		} catch (error) {
+			if (!isMissingObject(error)) throw error;
+			await removeDiscoveredStage({ accountId, ...state });
+			await removeStateProjection({ accountId, ...state });
+			return { accountId, stateKey, status: "removed" as const };
+		}
+
+		await db.entities.discoveredStage
+			.upsert({
+				accountId,
+				appName: state.appName,
+				stageName: state.stageName,
+				stateBucket,
+				stateKey,
+				lastModified: projection.sourceUpdatedAt,
+				discoveredAt: now
+			})
+			.go({ response: "none" });
+
+		if (!includesStage(policy, state)) {
+			await removeStateProjection({ accountId, ...state });
+			return { accountId, stateKey, status: "ignored" as const };
+		}
+
+		const { writes, conflicts } = await buildWrites({
+			accountId,
+			region: accountData.region,
+			stateBucket,
+			projections: [projection],
+			now,
+			completeDiscovery: false
+		});
+		for (const chunk of chunkWrites(writes))
+			await writeChunk(accountId, accountData.region, chunk);
+		await db.entities.account
+			.patch({ accountId })
+			.set({
+				lastSyncedAt: now,
+				updatedAt: now,
+				lastSyncConflicts: conflicts
+			})
+			.go({ response: "none" });
+
+		return {
+			accountId,
+			stateKey,
+			status:
+				conflicts.length === 0
+					? ("synced" as const)
+					: ("conflict" as const)
 		};
 	}
 );
@@ -340,6 +449,24 @@ async function listStateObjects(
 	return states;
 }
 
+async function enableStateEvents(s3: S3Client, bucket: string): Promise<void> {
+	const existing = await s3.send(
+		new GetBucketNotificationConfigurationCommand({ Bucket: bucket })
+	);
+	await s3.send(
+		new PutBucketNotificationConfigurationCommand({
+			Bucket: bucket,
+			NotificationConfiguration: {
+				EventBridgeConfiguration: {},
+				LambdaFunctionConfigurations:
+					existing.LambdaFunctionConfigurations,
+				QueueConfigurations: existing.QueueConfigurations,
+				TopicConfigurations: existing.TopicConfigurations
+			}
+		})
+	);
+}
+
 async function reconcileDiscovery(
 	accountId: string,
 	stateBucket: string,
@@ -423,12 +550,85 @@ async function loadProjection(
 	};
 }
 
+function parseStateKey(key: string): StateObject | undefined {
+	const match = /^app\/([^/]+)\/(.+)\.json$/.exec(key);
+	if (!match) return;
+	return { appName: match[1]!, stageName: match[2]!, key };
+}
+
+function isMissingObject(error: unknown): boolean {
+	if (typeof error !== "object" || error === null) return false;
+	const awsError = error as {
+		name?: unknown;
+		$metadata?: { httpStatusCode?: unknown };
+	};
+	return (
+		awsError.name === "NoSuchKey" ||
+		awsError.name === "NotFound" ||
+		awsError.$metadata?.httpStatusCode === 404
+	);
+}
+
+async function removeStateProjection(input: {
+	accountId: string;
+	appName: string;
+	stageName: string;
+}) {
+	const stage = await db.entities.stage
+		.get({ appName: input.appName, stageName: input.stageName })
+		.go({ consistent: true });
+	if (stage.data?.accountId !== input.accountId) return;
+
+	const resources = await db.entities.resource.query
+		.resource({ appName: input.appName, stageName: input.stageName })
+		.go({ pages: "all" });
+	for (const chunk of chunkArray(resources.data, maxTransactionActions)) {
+		const transaction = await db.transaction
+			.write(({ resource }) =>
+				chunk.map(item =>
+					resource
+						.delete({
+							appName: input.appName,
+							stageName: input.stageName,
+							resourceId: item.resourceId
+						})
+						.commit()
+				)
+			)
+			.go();
+		if (transaction.canceled)
+			throw new ServerError(
+				"sync_persistence_failed",
+				"Unable to remove SST state projections"
+			);
+	}
+	await db.entities.stage
+		.delete({ appName: input.appName, stageName: input.stageName })
+		.go({ response: "none" });
+	await removeEmptyApps([input.appName]);
+}
+
+async function removeDiscoveredStage(input: {
+	accountId: string;
+	appName: string;
+	stageName: string;
+}) {
+	await db.entities.discoveredStage
+		.delete({
+			accountId: input.accountId,
+			appName: input.appName,
+			stageName: input.stageName
+		})
+		.go({ response: "none" });
+}
+
 async function buildWrites(input: {
 	accountId: string;
 	region: string;
 	stateBucket: string;
 	projections: StateProjection[];
 	now: string;
+	completeDiscovery: boolean;
 }): Promise<{
 	writes: ProjectionWrite[];
 	staleAppNames: string[];
@@ -476,8 +676,9 @@ async function buildWrites(input: {
 		string,
 		{ appName: string; stageName: string }
 	>();
-	for (const stage of existingStages.data)
-		stagesToRead.set(stageKey(stage.appName, stage.stageName), stage);
+	if (input.completeDiscovery)
+		for (const stage of existingStages.data)
+			stagesToRead.set(stageKey(stage.appName, stage.stageName), stage);
 	for (const projection of projections)
 		stagesToRead.set(
 			stageKey(projection.appName, projection.stageName),
@@ -545,26 +746,29 @@ async function buildWrites(input: {
 			resourceId: resource.resourceId
 		});
 	}
-	for (const stage of existingStages.data) {
-		if (desiredStages.has(stageKey(stage.appName, stage.stageName)))
-			continue;
-		writes.push({
-			kind: "deleteStage",
-			appName: stage.appName,
-			stageName: stage.stageName
-		});
-	}
+	if (input.completeDiscovery)
+		for (const stage of existingStages.data) {
+			if (desiredStages.has(stageKey(stage.appName, stage.stageName)))
+				continue;
+			writes.push({
+				kind: "deleteStage",
+				appName: stage.appName,
+				stageName: stage.stageName
+			});
+		}
 	return {
 		writes,
 		conflicts,
 		projections,
-		staleAppNames: [
-			...new Set(
-				existingStages.data
-					.filter(stage => !desiredApps.has(stage.appName))
-					.map(stage => stage.appName)
-			)
-		]
+		staleAppNames: input.completeDiscovery
+			? [
+					...new Set(
+						existingStages.data
+							.filter(stage => !desiredApps.has(stage.appName))
+							.map(stage => stage.appName)
+					)
+				]
+			: []
 	};
 }
 

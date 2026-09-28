@@ -10,4 +10,4 @@ export {
 	type AccountSyncPolicy,
 	type StageSelector
 } from "./policy";
-export { refreshDiscovery, sync } from "./sync";
+export { refreshDiscovery, sync, syncStateObject } from "./sync";

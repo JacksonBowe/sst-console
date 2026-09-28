@@ -19,3 +19,22 @@ bus.subscribe(
 		}
 	}
 );
+
+bus.subscribe(
+	"StateObjectEvents",
+	{
+		handler: "packages/functions/src/events/state.handler",
+		link: [consoleConnections, consoleData],
+		environment: {
+			SST_CONSOLE_EXTERNAL_ID: externalId
+		},
+		permissions: [assumeAccountRolePermission]
+	},
+	{
+		pattern: {
+			source: ["aws.s3"],
+			detailType: ["Object Created", "Object Deleted"],
+			detail: { object: { key: [{ prefix: "app/" }] } }
+		}
+	}
+);

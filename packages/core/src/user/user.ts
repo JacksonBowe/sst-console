@@ -152,7 +152,13 @@ export const list = fn(
 		cognitoStatus: z.enum(CognitoStatus).optional(),
 		cognitoEnabled: z.boolean().optional()
 	}),
-	async ({ limit, cursor, email, cognitoStatus, cognitoEnabled }): Promise<Page<UserInfo>> => {
+	async ({
+		limit,
+		cursor,
+		email,
+		cognitoStatus,
+		cognitoEnabled
+	}): Promise<Page<UserInfo>> => {
 		let query = db.entities.user.query
 			.byId({})
 			.where((attribute, operation) => operation.exists(attribute.id));
@@ -176,7 +182,7 @@ export const list = fn(
 				hasMore: result.cursor !== null,
 				nextCursor: result.cursor
 			}
-		}
+		};
 	}
 );
 

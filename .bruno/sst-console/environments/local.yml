@@ -1,20 +1,20 @@
 name: local
 variables:
-  - secret: true
-    name: AwsAccountId
-  - secret: true
-    name: ApiBase
-  - secret: true
-    name: SSTApp
-  - secret: true
-    name: SSTAppStage
-  - secret: true
-    name: AuthEmail
-  - secret: true
-    name: AuthPassword
-  - secret: true
-    name: AuthNewPassword
-  - secret: true
-    name: AuthRecoveryCode
-  - secret: true
-    name: UserId
+    - secret: true
+      name: AwsAccountId
+    - secret: true
+      name: ApiBase
+    - secret: true
+      name: SSTApp
+    - secret: true
+      name: SSTAppStage
+    - secret: true
+      name: AuthEmail
+    - secret: true
+      name: AuthPassword
+    - secret: true
+      name: AuthNewPassword
+    - secret: true
+      name: AuthRecoveryCode
+    - secret: true
+      name: UserId

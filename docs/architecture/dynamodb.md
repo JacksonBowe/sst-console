@@ -144,6 +144,7 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 | App → stages                                 | app name, stage order                                 | Stage primary-key query                                     | Implemented                         |
 | Stage → resources                            | app and stage                                         | Resource primary-key query                                  | Implemented                         |
 | Reconcile account state projections          | worker: account ID                                    | `stagesByAccount`, then per-Stage resource queries          | Implemented                         |
+| Reconcile changed SST state object            | EventBridge worker: account ID + state key             | Account primary-key get; Stage/resource primary-key queries  | Implemented                         |
 | Latest state snapshot                        | app and stage, descending, limit 1                    | StateSnapshot primary-key query                             | Implemented                         |
 | Account sync history                         | account partition, descending sync prefix             | primary-key query                                           | Planned                             |
 | Durable connection registry                  | `Connection.list()`                                   | `ConsoleConnections` primary-key query                      | Implemented                         |
@@ -242,6 +243,17 @@ role or reading SSM/S3 state, it patches the existing Account to `disconnected`
 and rethrows the original error. Transient service and network failures do not
 change account status. Existing projections remain untouched until a complete
 state read succeeds.
+
+### Event-driven incremental sync
+
+Each connected Workload account forwards S3 `Object Created` and `Object Deleted`
+events for `app/` state keys from its SST state bucket to the Console EventBridge
+bus. The event worker validates the source account and bucket against the Account
+primary-key record, then reads the current S3 object. It never trusts event order:
+an object that exists is reconciled as one App/Stage projection; an absent object
+removes only that Account-owned Stage and its Resources. Duplicate and stale events
+therefore converge on current S3 state. Full account sync remains the connection and
+manual repair path.
 
 ### App-first projection cutover
 

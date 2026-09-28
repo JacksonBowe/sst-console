@@ -1,25 +1,25 @@
 info:
-  name: Get SST state resources
-  type: http
-  seq: 2
+    name: Get SST state resources
+    type: http
+    seq: 2
 
 http:
-  method: GET
-  url: "{{ApiBase}}/accounts/:accountId/state/:appName/:stageName/resources"
-  params:
-    - name: accountId
-      value: "{{AwsAccountId}}"
-      type: path
-    - name: appName
-      value: "{{SSTApp}}"
-      type: path
-    - name: stageName
-      value: "{{SSTAppStage}}"
-      type: path
-  auth: inherit
+    method: GET
+    url: "{{ApiBase}}/accounts/:accountId/state/:appName/:stageName/resources"
+    params:
+        - name: accountId
+          value: "{{AwsAccountId}}"
+          type: path
+        - name: appName
+          value: "{{SSTApp}}"
+          type: path
+        - name: stageName
+          value: "{{SSTAppStage}}"
+          type: path
+    auth: inherit
 
 settings:
-  encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5

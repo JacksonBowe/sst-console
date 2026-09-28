@@ -3,25 +3,29 @@ exports.handler = async event => {
 	let reason = "SST Console connector callback completed";
 
 	try {
-		if (event.RequestType !== "Delete") {
-			const payload = JSON.stringify({
-				accountId: event.ResourceProperties.AccountId,
-				region: event.ResourceProperties.Region,
-				requestType: event.RequestType,
-				roleArn: event.ResourceProperties.RoleArn
-			});
-			const result = await signedFetch(
-				event.ResourceProperties.CallbackUrl,
-				payload
-			);
-			if (!result.ok) {
-				throw new Error(`Console callback returned ${result.status}`);
-			}
+		const payload = JSON.stringify({
+			accountId: event.ResourceProperties.AccountId,
+			region: event.ResourceProperties.Region,
+			requestType: event.RequestType,
+			roleArn: event.ResourceProperties.RoleArn
+		});
+		const result = await signedFetch(
+			event.ResourceProperties.CallbackUrl,
+			payload
+		);
+		if (!result.ok) {
+			throw new Error(`Console callback returned ${result.status}`);
 		}
 	} catch (error) {
-		status = "FAILED";
-		reason =
-			error instanceof Error ? error.message : "Console callback failed";
+		if (event.RequestType === "Delete") {
+			console.warn("Console delete callback failed", error);
+		} else {
+			status = "FAILED";
+			reason =
+				error instanceof Error
+					? error.message
+					: "Console callback failed";
+		}
 	}
 
 	const body = JSON.stringify({

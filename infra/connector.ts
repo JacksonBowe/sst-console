@@ -23,7 +23,13 @@ const connectorEvent = new sst.aws.Function("ConnectorEvent", {
 	environment: {
 		SST_CONSOLE_EXTERNAL_ID: externalId
 	},
-	permissions: [assumeAccountRolePermission]
+	permissions: [
+		assumeAccountRolePermission,
+		{
+			actions: ["events:PutPermission", "events:RemovePermission"],
+			resources: [bus.arn]
+		}
+	]
 });
 
 new aws.lambda.Permission("ConnectorEventUrlPermission", {
@@ -63,6 +69,10 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 				Type: "String",
 				Description:
 					"The SST Console installation external ID. Do not change this value."
+			},
+			ConsoleEventBusArn: {
+				Type: "String",
+				Description: "EventBridge bus ARN receiving SST state updates."
 			}
 		},
 		Resources: {
@@ -133,6 +143,60 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 					]
 				}
 			},
+			SSTConsoleEventPublisherRole: {
+				Type: "AWS::IAM::Role",
+				Properties: {
+					AssumeRolePolicyDocument: {
+						Version: "2012-10-17",
+						Statement: [
+							{
+								Effect: "Allow",
+								Principal: { Service: "events.amazonaws.com" },
+								Action: "sts:AssumeRole"
+							}
+						]
+					},
+					Policies: [
+						{
+							PolicyName: "PublishConsoleStateEvents",
+							PolicyDocument: {
+								Version: "2012-10-17",
+								Statement: [
+									{
+										Effect: "Allow",
+										Action: "events:PutEvents",
+										Resource: { Ref: "ConsoleEventBusArn" }
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			SSTConsoleStateEventRule: {
+				Type: "AWS::Events::Rule",
+				DependsOn: ["SSTConsoleRegistration"],
+				Properties: {
+					EventPattern: {
+						source: ["aws.s3"],
+						"detail-type": ["Object Created", "Object Deleted"],
+						detail: { object: { key: [{ prefix: "app/" }] } }
+					},
+					State: "ENABLED",
+					Targets: [
+						{
+							Arn: { Ref: "ConsoleEventBusArn" },
+							Id: "SSTConsoleStateEvents",
+							RoleArn: {
+								"Fn::GetAtt": [
+									"SSTConsoleEventPublisherRole",
+									"Arn"
+								]
+							}
+						}
+					]
+				}
+			},
 			SSTConsoleRegistrationFunction: {
 				Type: "AWS::Lambda::Function",
 				Properties: {
@@ -188,21 +252,24 @@ const connectorQuickCreateUrl = $resolve({
 	templateUrl: connectorTemplateUrl,
 	controlAccountId,
 	callbackFunctionArn: connectorEvent.arn,
-	externalId
+	externalId,
+	consoleEventBusArn: bus.arn
 }).apply(
 	({
 		region,
 		templateUrl,
 		controlAccountId,
 		callbackFunctionArn,
-		externalId
+		externalId,
+		consoleEventBusArn
 	}) => {
 		const query = new URLSearchParams({
 			templateURL: templateUrl,
 			stackName: "SSTConsoleConnection",
 			param_ControlAccountId: controlAccountId,
 			param_CallbackFunctionArn: callbackFunctionArn,
-			param_ExternalId: externalId
+			param_ExternalId: externalId,
+			param_ConsoleEventBusArn: consoleEventBusArn
 		});
 
 		return `https://${region}.console.aws.amazon.com/cloudformation/home?region=${region}#/stacks/create/review?${query.toString()}`;

@@ -1,27 +1,27 @@
 info:
-  name: AuthRecoverConfirm
-  type: http
-  seq: 5
+    name: AuthRecoverConfirm
+    type: http
+    seq: 5
 
 http:
-  method: POST
-  url: "{{ApiBase}}/noauth/recover/confirm"
-  headers:
-    - name: Content-Type
-      value: application/json
-  body:
-    type: json
-    data: |-
-      {
-        "email": "{{AuthEmail}}",
-        "code": "{{AuthRecoveryCode}}",
-        "newPassword": "{{AuthNewPassword}}"
-      }
-  auth: inherit
+    method: POST
+    url: "{{ApiBase}}/noauth/recover/confirm"
+    headers:
+        - name: Content-Type
+          value: application/json
+    body:
+        type: json
+        data: |-
+            {
+              "email": "{{AuthEmail}}",
+              "code": "{{AuthRecoveryCode}}",
+              "newPassword": "{{AuthNewPassword}}"
+            }
+    auth: inherit
 
 settings:
-  encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: true
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
+    forwardAuthorizationHeader: true

@@ -70,12 +70,12 @@ Primary landing screen. Show all discovered SST applications across connected AW
 - Show one app card/row per app.
 - Select app to open App Detail screen.
 - Show app summary:
-  - app name
-  - number of stages
-  - stages and their owning account IDs
-  - regions
-  - resource counts
-  - last updated / latest known state timestamp
+    - app name
+    - number of stages
+    - stages and their owning account IDs
+    - regions
+    - resource counts
+    - last updated / latest known state timestamp
 - Make stage summaries selectable, opening matching Stage Detail screen.
 - Provide entry points for account connection, user management, and operational actions.
 
@@ -117,12 +117,12 @@ Show one SST app and every discovered stage belonging to it, including stages in
 - Display app metadata: created timestamp, updated timestamp, and number of stages.
 - List stages belonging to app.
 - For each stage, show:
-  - stage name
-  - owning AWS account ID
-  - region
-  - resource count
-  - latest snapshot / discovered-state information
-  - created and updated timestamps
+    - stage name
+    - owning AWS account ID
+    - region
+    - resource count
+    - latest snapshot / discovered-state information
+    - created and updated timestamps
 - Select stage to open Stage Detail screen.
 - Select owning account to open Account Detail screen.
 - Return to Home.
@@ -152,12 +152,12 @@ Show one deployed SST stage, its connected AWS account, latest discovered state,
 - Display latest snapshot metadata: snapshot timestamp and safe source/state discovery metadata.
 - Display resource hierarchy as expandable tree.
 - Show safe resource details:
-  - resource name / ID
-  - resource type
-  - parent/child relationship
-  - supported SST resource summary
-  - normalized AWS ARN where available
-  - safe physical metadata
+    - resource name / ID
+    - resource type
+    - parent/child relationship
+    - supported SST resource summary
+    - normalized AWS ARN where available
+    - safe physical metadata
 - Expand/collapse component/resource groups.
 - Copy safe identifiers such as ARN or resource ID.
 
@@ -195,12 +195,12 @@ Show all AWS accounts connected to SST Console and their connection/sync health.
 
 - List connected accounts.
 - Show account summary:
-  - AWS account ID
-  - region
-  - connection status
-  - role ARN or safe role identity summary
-  - last sync timestamp
-  - created/updated timestamps
+    - AWS account ID
+    - region
+    - connection status
+    - role ARN or safe role identity summary
+    - last sync timestamp
+    - created/updated timestamps
 - Select account to open Account Detail.
 - Start account-connection flow.
 - Show account status clearly: connected, disconnected, unknown/unavailable.

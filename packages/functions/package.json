@@ -4,6 +4,7 @@
 	"type": "module",
 	"module": "index.ts",
 	"dependencies": {
+		"@aws-sdk/client-eventbridge": "^3.1141.0",
 		"@console/core": "workspace:*",
 		"hono": "^4.13.9",
 		"zod": "^4.6.5"

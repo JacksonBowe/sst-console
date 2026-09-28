@@ -32,29 +32,29 @@ Do not use `JsonPreview` for product UI. UI spec explicitly forbids raw state pr
 
 ## Existing Component Audit
 
-| Existing component | Fit | Plan |
-| --- | --- | --- |
-| `Auth/CognitoAuth.vue` | Strong | Keep. Change surrounding `AuthLayout` only. Existing Cognito flows match spec. |
-| `App/AppHeader.vue` | Partial | Reuse as shell header base. Add Console-specific content and token-based styling. |
-| `Drawer/AppDrawer.vue` | Strong | Reuse for persistent desktop and overlay mobile sidebar. |
-| `Drawer/AppDrawerItem.vue` | Strong | Reuse for Apps, Accounts, Users, Operations navigation. |
-| `Dashboard/DashboardPage.vue` | Weak | Refactor or replace. Fixed `height: 100dvh` and `overflow: hidden` conflict with normal scrolling entity pages. |
-| `Dashboard/DashboardPageHeader.vue` | Partial | Replace with richer entity header: breadcrumbs, icon, title, status, subtitle, actions. |
-| `Table/BaseTable.vue` | Strong | Reuse for App Stages, Accounts, Account Stages, Users. Add server-pagination support and row-navigation/accessibility behavior. |
-| `Table/TableToolbar.vue` | Strong | Reuse for Users filtering and Resource tree search. |
-| `Table/TableSearch.vue` | Partial | Reuse visual input pattern only. Current generic local-filter behavior does not match all API contracts. |
-| `Table/TableFilter.vue` | Partial | Reuse for multi-select filters where appropriate. User API filters are single-value server query fields, so use compact dedicated controls there. |
-| `Dialog/DialogConfirm.vue` | Strong | Reuse/refine for sync, remove-user, recovery, backup confirmations. |
-| `Dialog/DialogForm.vue` | Partial | Reuse for Invite User after visual alignment. |
-| `Dialog/DialogTrigger.vue` | Partial | Usable, but pages may call Quasar Dialog directly for clearer typed dialog flows. |
-| `Input/SInput.vue` | Strong | Reuse for filters, invite form, code/copy workflow. |
-| `Select/SSelect.vue` | Strong | Reuse for account selection in Operations. |
-| `Expansion/SExpansionSection.vue` | Poor for explorer | Do not use for Resource Explorer. Card-like expanded sections conflict with dense nested tree requirement. May remain for future generic disclosure content. |
-| `PillTabs/PillTabs.vue` | Optional | Keep. Not required by MVP spec. Do not force tabs into entity pages. |
-| `theme/ThemeToggle.vue` | Incomplete | Renders icon only; no theme change, persistence, or click behavior. Complete it. |
-| `toast.ts`, `handleApiError()` | Partial | Keep only for transient confirmation. Add persistent inline result/error states for page mutations. |
-| `format.ts` | Partial | Extend with relative timestamp, invalid/missing timestamp handling, and identifier formatting helpers. |
-| `form/*` | Optional | `useForm` useful for Invite User. `useEntityForm` and unsaved-change guard are unnecessary for current read-heavy MVP. |
+| Existing component                  | Fit               | Plan                                                                                                                                                         |
+| ----------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Auth/CognitoAuth.vue`              | Strong            | Keep. Change surrounding `AuthLayout` only. Existing Cognito flows match spec.                                                                               |
+| `App/AppHeader.vue`                 | Partial           | Reuse as shell header base. Add Console-specific content and token-based styling.                                                                            |
+| `Drawer/AppDrawer.vue`              | Strong            | Reuse for persistent desktop and overlay mobile sidebar.                                                                                                     |
+| `Drawer/AppDrawerItem.vue`          | Strong            | Reuse for Apps, Accounts, Users, Operations navigation.                                                                                                      |
+| `Dashboard/DashboardPage.vue`       | Weak              | Refactor or replace. Fixed `height: 100dvh` and `overflow: hidden` conflict with normal scrolling entity pages.                                              |
+| `Dashboard/DashboardPageHeader.vue` | Partial           | Replace with richer entity header: breadcrumbs, icon, title, status, subtitle, actions.                                                                      |
+| `Table/BaseTable.vue`               | Strong            | Reuse for App Stages, Accounts, Account Stages, Users. Add server-pagination support and row-navigation/accessibility behavior.                              |
+| `Table/TableToolbar.vue`            | Strong            | Reuse for Users filtering and Resource tree search.                                                                                                          |
+| `Table/TableSearch.vue`             | Partial           | Reuse visual input pattern only. Current generic local-filter behavior does not match all API contracts.                                                     |
+| `Table/TableFilter.vue`             | Partial           | Reuse for multi-select filters where appropriate. User API filters are single-value server query fields, so use compact dedicated controls there.            |
+| `Dialog/DialogConfirm.vue`          | Strong            | Reuse/refine for sync, remove-user, recovery, backup confirmations.                                                                                          |
+| `Dialog/DialogForm.vue`             | Partial           | Reuse for Invite User after visual alignment.                                                                                                                |
+| `Dialog/DialogTrigger.vue`          | Partial           | Usable, but pages may call Quasar Dialog directly for clearer typed dialog flows.                                                                            |
+| `Input/SInput.vue`                  | Strong            | Reuse for filters, invite form, code/copy workflow.                                                                                                          |
+| `Select/SSelect.vue`                | Strong            | Reuse for account selection in Operations.                                                                                                                   |
+| `Expansion/SExpansionSection.vue`   | Poor for explorer | Do not use for Resource Explorer. Card-like expanded sections conflict with dense nested tree requirement. May remain for future generic disclosure content. |
+| `PillTabs/PillTabs.vue`             | Optional          | Keep. Not required by MVP spec. Do not force tabs into entity pages.                                                                                         |
+| `theme/ThemeToggle.vue`             | Incomplete        | Renders icon only; no theme change, persistence, or click behavior. Complete it.                                                                             |
+| `toast.ts`, `handleApiError()`      | Partial           | Keep only for transient confirmation. Add persistent inline result/error states for page mutations.                                                          |
+| `format.ts`                         | Partial           | Extend with relative timestamp, invalid/missing timestamp handling, and identifier formatting helpers.                                                       |
+| `form/*`                            | Optional          | `useForm` useful for Invite User. `useEntityForm` and unsaved-change guard are unnecessary for current read-heavy MVP.                                       |
 
 ## Contract Gaps
 
@@ -62,17 +62,17 @@ Frontend can render most screens from current API. Some spec fields need API con
 
 ### Available now
 
-| Screen | Current endpoint support |
-| --- | --- |
-| Home / Apps | `GET /apps` |
-| App Detail | `GET /apps/:appName` |
+| Screen                       | Current endpoint support               |
+| ---------------------------- | -------------------------------------- |
+| Home / Apps                  | `GET /apps`                            |
+| App Detail                   | `GET /apps/:appName`                   |
 | Stage Detail / Resource tree | `GET /apps/:appName/stages/:stageName` |
-| Accounts list | `GET /accounts` |
-| Account Detail | `GET /accounts/:accountId` |
-| Account sync | `POST /accounts/:accountId/sync` |
-| Users list/invite/remove | `GET`, `POST`, `DELETE /users` |
-| Operations recovery | `POST /accounts/recover` |
-| Operations backup | `POST /accounts/backup-connections` |
+| Accounts list                | `GET /accounts`                        |
+| Account Detail               | `GET /accounts/:accountId`             |
+| Account sync                 | `POST /accounts/:accountId/sync`       |
+| Users list/invite/remove     | `GET`, `POST`, `DELETE /users`         |
+| Operations recovery          | `POST /accounts/recover`               |
+| Operations backup            | `POST /accounts/backup-connections`    |
 
 ### Required contract fixes
 
@@ -207,28 +207,28 @@ Complete before page work.
 1. Extend SDK with typed non-auth API methods.
 2. Export endpoint response types from SDK.
 3. Create Vue Query composables:
-   - `useApps()`
-   - `useApp(appName)`
-   - `useStage(appName, stageName)`
-   - `useAccounts()`
-   - `useAccount(accountId)`
-   - `useSyncAccount()`
-   - `useRecoverAccounts()`
-   - `useBackupConnections()`
-   - `useUsers(filters)`
-   - `useInviteUser()`
-   - `useRemoveUser()`
+    - `useApps()`
+    - `useApp(appName)`
+    - `useStage(appName, stageName)`
+    - `useAccounts()`
+    - `useAccount(accountId)`
+    - `useSyncAccount()`
+    - `useRecoverAccounts()`
+    - `useBackupConnections()`
+    - `useUsers(filters)`
+    - `useInviteUser()`
+    - `useRemoveUser()`
 4. Define stable query keys:
-   - `['apps']`
-   - `['apps', appName]`
-   - `['stages', appName, stageName]`
-   - `['accounts']`
-   - `['accounts', accountId]`
-   - `['users', filters]`
+    - `['apps']`
+    - `['apps', appName]`
+    - `['stages', appName, stageName]`
+    - `['accounts']`
+    - `['accounts', accountId]`
+    - `['users', filters]`
 5. Define mutation invalidation:
-   - sync invalidates accounts, target account, apps, target app/stage paths;
-   - recovery invalidates accounts and apps;
-   - invite/remove invalidates users.
+    - sync invalidates accounts, target account, apps, target app/stage paths;
+    - recovery invalidates accounts and apps;
+    - invite/remove invalidates users.
 6. Preserve API errors in query/mutation state. Do not rely only on `Notify`.
 
 **Done when:** blank page can request every supported API with typed calls and consistent loading/error state.
@@ -239,46 +239,46 @@ Complete before page work.
 
 1. Add global design tokens in `packages/web/src/css/app.scss`.
 2. Define semantic CSS variables for both light/dark:
-   - page background
-   - content surface
-   - navigation surface
-   - border
-   - primary/secondary text
-   - muted text
-   - focus ring
-   - status colors
+    - page background
+    - content surface
+    - navigation surface
+    - border
+    - primary/secondary text
+    - muted text
+    - focus ring
+    - status colors
 3. Keep Quasar semantic colors aligned with design spec:
-   - positive = connected/success
-   - warning = caution
-   - negative = disconnected/destructive
-   - info = active/informational
+    - positive = connected/success
+    - warning = caution
+    - negative = disconnected/destructive
+    - info = active/informational
 4. Make `ThemeToggle` functional:
-   - switch Quasar `Dark` state;
-   - persist preference locally;
-   - restore preference during app startup;
-   - provide correct accessible label/state.
+    - switch Quasar `Dark` state;
+    - persist preference locally;
+    - restore preference during app startup;
+    - provide correct accessible label/state.
 
 ### Console shell
 
 1. Replace Quasar starter `MainLayout` with `ConsoleLayout`.
 2. Remove starter content:
-   - Quasar version display
-   - Essential Links
-   - starter `EssentialLink.vue` if no longer referenced
+    - Quasar version display
+    - Essential Links
+    - starter `EssentialLink.vue` if no longer referenced
 3. Build persistent sidebar using `AppDrawer` and `AppDrawerItem`.
 4. Sidebar routes:
-   - Apps → `/`
-   - Accounts → `/accounts`
-   - Users → `/users`
-   - Operations → `/operations`
+    - Apps → `/`
+    - Accounts → `/accounts`
+    - Users → `/users`
+    - Operations → `/operations`
 5. Sidebar footer:
-   - theme toggle
-   - current user email when session exposes it
-   - sign-out action
+    - theme toggle
+    - current user email when session exposes it
+    - sign-out action
 6. Add compact top app bar only where needed:
-   - mobile menu trigger
-   - mobile product identity
-   - optional global user controls
+    - mobile menu trigger
+    - mobile product identity
+    - optional global user controls
 7. Desktop: sidebar remains visible.
 8. Mobile: drawer becomes overlay; route selection closes it.
 9. Ensure page container scrolls normally.
@@ -287,14 +287,14 @@ Complete before page work.
 
 1. Replace starter `/second` route.
 2. Add routes:
-   - `/`
-   - `/apps/:appName`
-   - `/apps/:appName/stages/:stageName`
-   - `/accounts`
-   - `/accounts/connect`
-   - `/accounts/:accountId`
-   - `/users`
-   - `/operations`
+    - `/`
+    - `/apps/:appName`
+    - `/apps/:appName/stages/:stageName`
+    - `/accounts`
+    - `/accounts/connect`
+    - `/accounts/:accountId`
+    - `/users`
+    - `/operations`
 3. Add route names for all navigation and typed route helpers where practical.
 4. Keep App, Stage, Account Detail routes contextual; no sidebar entries.
 5. Place authenticated 404 beneath Console shell.
@@ -373,14 +373,14 @@ Requirements:
 - text always visible
 - optional icon/dot
 - supported variants:
-  - `connected`
-  - `disconnected`
-  - `unknown`
-  - `info`
-  - `pending`
-  - `success`
-  - `warning`
-  - `failure`
+    - `connected`
+    - `disconnected`
+    - `unknown`
+    - `info`
+    - `pending`
+    - `success`
+    - `warning`
+    - `failure`
 - semantic colors only
 - no color-only meaning
 
@@ -446,32 +446,32 @@ Refine `DialogConfirm`:
 ### Build
 
 1. Create Apps header:
-   - title: `Apps`
-   - subtitle: `{n} applications across {n} AWS accounts`
-   - primary action: `Connect account`
+    - title: `Apps`
+    - subtitle: `{n} applications across {n} AWS accounts`
+    - primary action: `Connect account`
 2. Derive app count and unique account count across stages.
 3. Render vertical App summary list, not KPI dashboard.
 4. Each App summary contains:
-   - app icon
-   - app name
-   - stage count
-   - unique account count
-   - unique regions count
-   - resource total
-   - updated timestamp
-   - selectable Stage preview items
+    - app icon
+    - app name
+    - stage count
+    - unique account count
+    - unique regions count
+    - resource total
+    - updated timestamp
+    - selectable Stage preview items
 5. Interaction rules:
-   - app title/main area → App Detail
-   - stage preview → Stage Detail
-   - stage click must not bubble and open App Detail
+    - app title/main area → App Detail
+    - stage preview → Stage Detail
+    - stage click must not bubble and open App Detail
 6. Empty state:
-   - explain discovery requires connected and synced account
-   - primary Connect account action
-   - optional View accounts action only when account query proves accounts exist
+    - explain discovery requires connected and synced account
+    - primary Connect account action
+    - optional View accounts action only when account query proves accounts exist
 7. Error state:
-   - “Unable to load Apps”
-   - Retry
-   - do not render same UI as no Apps
+    - “Unable to load Apps”
+    - Retry
+    - do not render same UI as no Apps
 8. Loading: App summary row skeletons.
 
 ### API dependency
@@ -497,25 +497,25 @@ None beyond typed `GET /apps`.
 
 1. Breadcrumbs: `Apps / {appName}`.
 2. Entity header:
-   - app icon
-   - app name
-   - stage count
-   - created/updated metadata
-   - no App-level sync/settings actions
+    - app icon
+    - app name
+    - stage count
+    - created/updated metadata
+    - no App-level sync/settings actions
 3. Main content:
-   - Stage table inside one `ContentSurface`
-   - columns: Stage, Account, Region, Resources, Latest state/snapshot, Updated
+    - Stage table inside one `ContentSurface`
+    - columns: Stage, Account, Region, Resources, Latest state/snapshot, Updated
 4. Navigation:
-   - stage name → Stage Detail
-   - account ID → Account Detail
-   - row click → Stage Detail, excluding inner links/buttons
+    - stage name → Stage Detail
+    - account ID → Account Detail
+    - row click → Stage Detail, excluding inner links/buttons
 5. Empty state:
-   - App exists but no discovered Stages
-   - explain state may have changed after sync
+    - App exists but no discovered Stages
+    - explain state may have changed after sync
 6. Error/not-found:
-   - map backend `app_not_found` to stale/discovered-state explanation
-   - return to Apps
-   - generic errors retain Retry.
+    - map backend `app_not_found` to stale/discovered-state explanation
+    - return to Apps
+    - generic errors retain Retry.
 
 ### API dependency
 
@@ -558,10 +558,10 @@ Responsibilities:
 - does not infer parent/child relations
 - supports keyboard navigation
 - supports tree semantics:
-  - `role="tree"`
-  - `role="treeitem"`
-  - expanded/collapsed state
-  - selected state
+    - `role="tree"`
+    - `role="treeitem"`
+    - expanded/collapsed state
+    - selected state
 - exposes selected resource event
 
 #### `ResourceTreeItem.vue`
@@ -580,14 +580,14 @@ Responsibilities:
 Responsibilities:
 
 - selected resource safe fields:
-  - name
-  - resource ID
-  - resource type
-  - kind
-  - normalized ARN when present
-  - URN when safe/required
-  - summary fields explicitly allowlisted by resource type
-  - parent context
+    - name
+    - resource ID
+    - resource type
+    - kind
+    - normalized ARN when present
+    - URN when safe/required
+    - summary fields explicitly allowlisted by resource type
+    - parent context
 - copy controls for safe IDs
 - no raw JSON/state output
 - empty selection state: “Select a resource to inspect details.”
@@ -596,17 +596,17 @@ Responsibilities:
 
 1. Breadcrumbs: `Apps / {appName} / {stageName}`.
 2. Header:
-   - title: stage name
-   - App link
-   - Account link
-   - Region
-   - Resource count
-   - latest snapshot metadata
+    - title: stage name
+    - App link
+    - Account link
+    - Region
+    - Resource count
+    - latest snapshot metadata
 3. Resource content:
-   - title: `Resources ({count})`
-   - optional local Resource search
-   - split pane desktop: tree minimum/maximum width; detail pane fills remainder
-   - narrow viewport: tree first; selected detail below tree or view toggle
+    - title: `Resources ({count})`
+    - optional local Resource search
+    - split pane desktop: tree minimum/maximum width; detail pane fills remainder
+    - narrow viewport: tree first; selected detail below tree or view toggle
 4. Select first root resource by default only if that behavior improves first-use experience; otherwise show explicit empty detail pane.
 5. Empty state: no safe resources discovered.
 6. Error state: stale stage route; failed load; no raw HTTP/router errors.
@@ -636,29 +636,29 @@ Do not use generic `SExpansionSection`. It adds card borders/padding per node an
 ### Build
 
 1. Header:
-   - title: `Accounts`
-   - subtitle: `{n} connected AWS accounts`
-   - primary action: Connect account
+    - title: `Accounts`
+    - subtitle: `{n} connected AWS accounts`
+    - primary action: Connect account
 2. Account table:
-   - Account ID
-   - Region
-   - Connection status
-   - Safe role identity
-   - Last sync
-   - Created/Updated where useful
-   - row actions
+    - Account ID
+    - Region
+    - Connection status
+    - Safe role identity
+    - Last sync
+    - Created/Updated where useful
+    - row actions
 3. Account ID:
-   - monospace
-   - selectable/copyable
-   - link to Account Detail
+    - monospace
+    - selectable/copyable
+    - link to Account Detail
 4. Quick sync:
-   - optional row action
-   - opens sync confirmation
-   - disabled while target account is syncing
+    - optional row action
+    - opens sync confirmation
+    - disabled while target account is syncing
 5. Empty:
-   - no accounts connected
-   - connect CTA
-   - explanation that Sync discovers Apps
+    - no accounts connected
+    - connect CTA
+    - explanation that Sync discovers Apps
 6. Error: retryable failed list distinct from no accounts.
 
 ### API dependency
@@ -684,38 +684,38 @@ Requires account-list timestamp fields for full spec table. Implement minimal ta
 
 1. Breadcrumb: `Accounts / {accountId}`.
 2. Header:
-   - account ID
-   - Connected/Disconnected status
-   - primary action: Sync account
+    - account ID
+    - Connected/Disconnected status
+    - primary action: Sync account
 3. Metadata:
-   - region
-   - safe role identity
-   - last successful sync
-   - created/updated timestamps
+    - region
+    - safe role identity
+    - last successful sync
+    - created/updated timestamps
 4. Inline status/result area:
-   - pending sync state
-   - success result summary
-   - failure details from safe API error
-   - remains visible after notification disappears
+    - pending sync state
+    - success result summary
+    - failure details from safe API error
+    - remains visible after notification disappears
 5. Sync dialog:
-   - exact target account ID
-   - explanation that sync updates projection and can remove stale entities
-   - Cancel / Sync account
-   - duplicate-submit prevention
+    - exact target account ID
+    - explanation that sync updates projection and can remove stale entities
+    - Cancel / Sync account
+    - duplicate-submit prevention
 6. On success:
-   - invalidate/refetch account, accounts list, apps, stage paths
-   - retain visible result
+    - invalidate/refetch account, accounts list, apps, stage paths
+    - retain visible result
 7. Discovered Stages table:
-   - App
-   - Stage
-   - Region
-   - Resources
-   - latest state
-   - updated
-   - App link and Stage link
+    - App
+    - Stage
+    - Region
+    - Resources
+    - latest state
+    - updated
+    - App link and Stage link
 8. Empty stages:
-   - explain no SST state has been discovered yet
-   - Sync account CTA when status allows.
+    - explain no SST state has been discovered yet
+    - Sync account CTA when status allows.
 
 ### API dependency
 
@@ -740,27 +740,27 @@ Full Stage table requires Account Detail summary contract addition.
 
 1. Breadcrumb: `Accounts / Connect account`.
 2. Header:
-   - title: Connect AWS account
-   - short explanation this is connector installation, not manual registration
+    - title: Connect AWS account
+    - short explanation this is connector installation, not manual registration
 3. Step-oriented content:
-   - Understand requirements
-   - Deploy connector
-   - Verify connection
-   - Sync account
+    - Understand requirements
+    - Deploy connector
+    - Verify connection
+    - Sync account
 4. Dedicated code/value surfaces:
-   - CloudFormation Quick Create link/button
-   - connector template URL
-   - required supplied configuration values, only if safe
-   - copy controls
+    - CloudFormation Quick Create link/button
+    - connector template URL
+    - required supplied configuration values, only if safe
+    - copy controls
 5. Expected outcome:
-   - callback registers account
-   - account appears in Accounts
-   - user syncs to discover Apps/Stages
+    - callback registers account
+    - account appears in Accounts
+    - user syncs to discover Apps/Stages
 6. Troubleshooting section:
-   - account missing
-   - disconnected
-   - role assumption failure
-   - sync failure
+    - account missing
+    - disconnected
+    - role assumption failure
+    - sync failure
 7. Link to Accounts.
 
 ### API/infra dependency
@@ -788,41 +788,41 @@ Requires real deployment values injected as Vite environment values. No placehol
 ### Build
 
 1. Header:
-   - title: Users
-   - primary Invite user action
+    - title: Users
+    - primary Invite user action
 2. Compact controls above table:
-   - exact Email filter
-   - Cognito status select
-   - Enabled-state select
-   - clear filters action
+    - exact Email filter
+    - Cognito status select
+    - Enabled-state select
+    - clear filters action
 3. Server-driven list:
-   - send query parameters
-   - reset cursor when filters change
-   - use API `meta.nextCursor`
+    - send query parameters
+    - reset cursor when filters change
+    - use API `meta.nextCursor`
 4. Table:
-   - Email
-   - Cognito status
-   - Enabled state
-   - Created
-   - Updated
-   - Actions
+    - Email
+    - Cognito status
+    - Enabled state
+    - Created
+    - Updated
+    - Actions
 5. Pagination:
-   - Prefer explicit **Load more** for opaque cursor API.
-   - Avoid fake page numbers when API provides no total/page index.
+    - Prefer explicit **Load more** for opaque cursor API.
+    - Avoid fake page numbers when API provides no total/page index.
 6. Invite dialog:
-   - email field
-   - validation
-   - explain Cognito email/invitation process
-   - pending state
-   - refetch list after success
+    - email field
+    - validation
+    - explain Cognito email/invitation process
+    - pending state
+    - refetch list after success
 7. Remove dialog:
-   - exact user email in title/body
-   - destructive semantic styling
-   - clear statement that Console/Cognito access is deleted
-   - refetch list after success
+    - exact user email in title/body
+    - destructive semantic styling
+    - clear statement that Console/Cognito access is deleted
+    - refetch list after success
 8. Empty states:
-   - no users
-   - no users match current filters
+    - no users
+    - no users match current filters
 9. Do not add roles, disabling, profile editing, resend invites, or User Detail route.
 
 ### API dependency
@@ -848,31 +848,31 @@ No required new endpoint. Use exact email semantics honestly.
 ### Build
 
 1. Header:
-   - title: Operations
-   - short restrained warning: affects Console discovery/recovery state
+    - title: Operations
+    - short restrained warning: affects Console discovery/recovery state
 2. `OperationCard` contract:
-   - action name
-   - purpose
-   - impact
-   - prerequisites
-   - action slot
-   - inline pending/success/error output
+    - action name
+    - purpose
+    - impact
+    - prerequisites
+    - action slot
+    - inline pending/success/error output
 3. Recover accounts card:
-   - explain durable registry restore
-   - explicitly say no SST state sync occurs
-   - confirmation dialog
-   - result table/list: account ID, recovered/failed status, safe error message
-   - Accounts link
+    - explain durable registry restore
+    - explicitly say no SST state sync occurs
+    - confirmation dialog
+    - result table/list: account ID, recovered/failed status, safe error message
+    - Accounts link
 4. Backup connections card:
-   - mark migration/recovery only
-   - explain purpose
-   - confirmation
-   - show backed-up count/result
+    - mark migration/recovery only
+    - explain purpose
+    - confirmation
+    - show backed-up count/result
 5. Resync account card:
-   - `SSelect` from Accounts query
-   - account ID + region option labels
-   - same sync confirmation semantics as Account Detail
-   - after success, link target Account
+    - `SSelect` from Accounts query
+    - account ID + region option labels
+    - same sync confirmation semantics as Account Detail
+    - after success, link target Account
 6. Do not add generic admin tools, global resync, raw API runner, repair tools, terminal, raw state, or mutation controls.
 
 **Done when:** uncommon operations are clear, scoped, confirmed, and retain their result.
@@ -883,10 +883,10 @@ No required new endpoint. Use exact email semantics honestly.
 
 1. Keep Cognito logic intact.
 2. Refine `AuthLayout`:
-   - desktop split branding/form layout
-   - single-column mobile layout
-   - restrained product context
-   - auth card/form stays primary focus
+    - desktop split branding/form layout
+    - single-column mobile layout
+    - restrained product context
+    - auth card/form stays primary focus
 3. Use existing Auth component status banner/error handling.
 4. Do not add unsupported self-registration if product disables it.
 
@@ -953,12 +953,12 @@ Add:
 - router/auth guard tests
 - composable query/mutation tests with mocked SDK
 - screen tests for:
-  - Home navigation
-  - App → Stage → Account relationship links
-  - Stage resource selection
-  - account sync confirmation/invalidation
-  - User invite/remove dialogs
-  - Operations recover/backup/result display
+    - Home navigation
+    - App → Stage → Account relationship links
+    - Stage resource selection
+    - account sync confirmation/invalidation
+    - User invite/remove dialogs
+    - Operations recover/backup/result display
 - keyboard tests for Resource Tree
 - responsive smoke tests for shell and Explorer
 - one Playwright path: login → App → Stage → select Resource → Account → Sync confirmation

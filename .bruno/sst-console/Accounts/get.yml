@@ -1,19 +1,19 @@
 info:
-  name: Get account projections
-  type: http
-  seq: 1
+    name: Get account projections
+    type: http
+    seq: 1
 
 http:
-  method: GET
-  url: "{{ApiBase}}/accounts/:accountId"
-  params:
-    - name: accountId
-      value: "{{AwsAccountId}}"
-      type: path
-  auth: inherit
+    method: GET
+    url: "{{ApiBase}}/accounts/:accountId"
+    params:
+        - name: accountId
+          value: "{{AwsAccountId}}"
+          type: path
+    auth: inherit
 
 settings:
-  encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
