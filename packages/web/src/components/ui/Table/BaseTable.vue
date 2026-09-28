@@ -24,7 +24,10 @@
 		<!-- No data slot -->
 		<template #no-data>
 			<slot name="no-data">
-				<div class="fit column flex-center q-pa-lg text-muted">
+				<div
+					v-if="!loading"
+					class="fit column flex-center q-pa-lg text-muted"
+				>
 					<q-icon :name="emptyIcon" size="48px" class="q-mb-sm" />
 					<span v-if="hasFilters">{{ emptyFilteredMessage }}</span>
 					<span v-else>{{ emptyMessage }}</span>

@@ -1,8 +1,11 @@
 <template>
 	<div class="copy-value">
-		<span class="copy-value__text text-mono" :title="value">{{
-			value
-		}}</span>
+		<span
+			v-if="!copyOnly"
+			class="copy-value__text text-mono"
+			:title="value"
+			>{{ value }}</span
+		>
 		<q-btn
 			flat
 			dense
@@ -23,10 +26,11 @@ import { ref } from "vue";
 
 const props = withDefaults(
 	defineProps<{
+		copyOnly?: boolean | undefined;
 		label?: string | undefined;
 		value: string;
 	}>(),
-	{ label: "value" }
+	{ copyOnly: false, label: "value" }
 );
 
 const copied = ref(false);
