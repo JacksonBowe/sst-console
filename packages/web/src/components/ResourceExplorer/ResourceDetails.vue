@@ -1,12 +1,25 @@
 <template>
 	<div v-if="resource" class="resource-details">
-		<div>
-			<div class="text-overline text-secondary">{{
-				resource.resourceType
-			}}</div>
-			<div class="text-h6">{{
-				resource.name || resource.resourceId
-			}}</div>
+		<div class="resource-details__header">
+			<div>
+				<div class="text-overline text-secondary">{{
+					resource.resourceType
+				}}</div>
+				<div class="text-h6">{{
+					resource.name || resource.resourceId
+				}}</div>
+			</div>
+			<q-btn
+				v-if="resource.normalizedArn"
+				flat
+				no-caps
+				color="primary"
+				icon="sym_r_open_in_new"
+				label="Open in AWS Console"
+				:href="awsConsoleUrl(resource.normalizedArn)"
+				target="_blank"
+				rel="noopener noreferrer"
+			/>
 		</div>
 
 		<dl class="resource-details__fields">
@@ -50,6 +63,10 @@ import type { ResourceTree } from "@sst-console/sdk";
 import { CopyValue } from "@/components/ui/Identifier";
 
 defineProps<{ resource?: ResourceTree | undefined }>();
+
+function awsConsoleUrl(arn: string) {
+	return `https://console.aws.amazon.com/go/view?arn=${encodeURIComponent(arn)}`;
+}
 </script>
 
 <style scoped lang="scss">
@@ -57,6 +74,13 @@ defineProps<{ resource?: ResourceTree | undefined }>();
 	display: grid;
 	gap: 1.5rem;
 	padding: 1.25rem;
+}
+
+.resource-details__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
 }
 
 .resource-details__fields {
@@ -74,5 +98,12 @@ defineProps<{ resource?: ResourceTree | undefined }>();
 .resource-details__fields dd {
 	margin: 0;
 	min-width: 0;
+}
+
+@media (max-width: 599px) {
+	.resource-details__header {
+		align-items: stretch;
+		flex-direction: column;
+	}
 }
 </style>
