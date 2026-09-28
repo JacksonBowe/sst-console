@@ -7,24 +7,35 @@
 				v-model="email"
 				type="email"
 				autocomplete="email"
+				lazy-rules="ondemand"
 				hide-bottom-space
-				readonly
 				:label="texts.emailLabel"
-			/>
-			<SPasswordInput
-				v-model="newPassword"
-				:label="texts.newPasswordLabel"
-				autocomplete="new-password"
-				:rules="passwordRuleSet"
+				:rules="emailRules"
 				:disable="loading"
 			/>
+
 			<SPasswordInput
-				v-model="confirmPassword"
-				:label="texts.confirmPasswordLabel"
-				autocomplete="new-password"
-				:rules="confirmPasswordRules"
+				v-model="password"
+				:label="texts.passwordLabel"
+				autocomplete="current-password"
+				:allow-visibility-toggle="false"
+				:rules="passwordRules"
 				:disable="loading"
-			/>
+			>
+				<template #labelActions>
+					<a
+						href=""
+						class="text-caption text-primary text-weight-medium"
+						:class="{ 'text-grey-6': loading }"
+						:aria-disabled="loading"
+						@click.prevent="
+							!loading && emit('requestStep', 'forgot-password')
+						"
+					>
+						{{ texts.forgotPasswordLink }}
+					</a>
+				</template>
+			</SPasswordInput>
 
 			<q-btn
 				type="submit"
@@ -32,30 +43,31 @@
 				unelevated
 				no-caps
 				class="full-width text-weight-bold"
-				:label="texts.setPasswordButton"
+				:label="texts.signInButton"
 				:loading="loading"
 			/>
 		</q-form>
 
-		<div class="text-center text-body2 text-grey-7">
+		<div v-if="allowSignUp" class="text-center text-body2 text-grey-7">
+			Need an account?
 			<a
 				href=""
-				class="text-primary text-weight-medium"
+				class="text-primary text-weight-medium q-ml-xs"
 				:class="{ 'text-grey-6': loading }"
 				:aria-disabled="loading"
-				@click.prevent="!loading && emit('requestStep', 'sign-in')"
+				@click.prevent="!loading && emit('requestStep', 'sign-up')"
 			>
-				{{ texts.backToSignInLink }}
+				{{ texts.signUpLink }}
 			</a>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { ref } from "vue";
 
-import { rules } from "../form";
-import { SInput, SPasswordInput } from "../Input";
+import { rules } from "@/components/ui/form";
+import { SInput, SPasswordInput } from "@/components/ui/Input";
 import CognitoStatusBanner from "./CognitoStatusBanner.vue";
 import type {
 	CognitoAuthStatus,
@@ -63,25 +75,25 @@ import type {
 	CognitoAuthStep,
 	CognitoAuthTexts
 } from "./types";
+import { useInitialEmail } from "./useInitialEmail";
 
 const props = defineProps<{
 	loading: boolean;
 	status: CognitoAuthStatus | null;
 	texts: CognitoAuthTexts;
 	initialEmail?: string;
-	session?: string;
+	allowSignUp: boolean;
 	passwordPolicy: CognitoPasswordPolicy;
 }>();
 
 const emit = defineEmits<{
-	submit: [payload: { email: string; session: string; newPassword: string }];
+	submit: [payload: { email: string; password: string }];
 	requestStep: [step: CognitoAuthStep];
 }>();
 
-const email = ref(props.initialEmail ?? "");
-const newPassword = ref("");
-const confirmPassword = ref("");
-const passwordRuleSet = rules.passwordPolicy(props.passwordPolicy, {
+const email = useInitialEmail(() => props.initialEmail);
+const password = ref("");
+const passwordRules = rules.passwordPolicy(props.passwordPolicy, {
 	required: props.texts.requiredMessage,
 	minimumLength: props.texts.minPasswordMessage,
 	lowercase: props.texts.passwordLowercaseMessage,
@@ -89,25 +101,12 @@ const passwordRuleSet = rules.passwordPolicy(props.passwordPolicy, {
 	symbol: props.texts.passwordSymbolMessage,
 	uppercase: props.texts.passwordUppercaseMessage
 });
-const confirmPasswordRules = computed(() => [
+const emailRules = [
 	...rules.required(props.texts.requiredMessage),
-	...rules.isEqualTo(newPassword.value, props.texts.passwordMismatchMessage)
-]);
-
-watch(
-	() => props.initialEmail,
-	value => {
-		if (value !== undefined) {
-			email.value = value;
-		}
-	}
-);
+	...rules.isEmail(props.texts.invalidEmailMessage)
+];
 
 function onSubmit() {
-	emit("submit", {
-		email: email.value,
-		session: props.session ?? "",
-		newPassword: newPassword.value
-	});
+	emit("submit", { email: email.value, password: password.value });
 }
 </script>

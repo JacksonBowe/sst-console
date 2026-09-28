@@ -34,8 +34,12 @@
 <script setup lang="ts">
 import { useQuasar } from "quasar";
 
-import { AppDrawer, AppDrawerItem, type DrawerNavItem } from "../Drawer";
-import { ThemeToggle } from "../theme";
+import {
+	AppDrawer,
+	AppDrawerItem,
+	type DrawerNavItem
+} from "@/components/ui/Drawer";
+import { ThemeToggle } from "@/components/ui/theme";
 import ConsoleUserMenu from "./ConsoleUserMenu.vue";
 
 defineProps<{ modelValue: boolean }>();

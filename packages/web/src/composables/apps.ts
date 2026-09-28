@@ -25,10 +25,14 @@ export function useApp(appName: MaybeRefOrGetter<string>) {
 	});
 }
 
-export function useStage(appName: string, stageName: string) {
+export function useStage(
+	appName: MaybeRefOrGetter<string>,
+	stageName: MaybeRefOrGetter<string>
+) {
 	return useQuery({
-		queryKey: appQueryKeys.stage(appName, stageName),
-		queryFn: () => api.getStage(appName, stageName),
-		enabled: Boolean(appName && stageName)
+		queryKey: () =>
+			appQueryKeys.stage(toValue(appName), toValue(stageName)),
+		queryFn: () => api.getStage(toValue(appName), toValue(stageName)),
+		enabled: () => Boolean(toValue(appName) && toValue(stageName))
 	});
 }

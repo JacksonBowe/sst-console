@@ -40,8 +40,8 @@
 </template>
 
 <script setup lang="ts">
-import { rules } from "../form";
-import { SInput } from "../Input";
+import { rules } from "@/components/ui/form";
+import { SInput } from "@/components/ui/Input";
 import CognitoStatusBanner from "./CognitoStatusBanner.vue";
 import type {
 	CognitoAuthStatus,

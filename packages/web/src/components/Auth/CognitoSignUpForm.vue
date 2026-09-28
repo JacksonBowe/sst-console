@@ -4,6 +4,15 @@
 
 		<q-form class="column q-gutter-y-md" @submit.prevent="onSubmit">
 			<SInput
+				v-model="name"
+				autocomplete="name"
+				lazy-rules="ondemand"
+				hide-bottom-space
+				:label="texts.nameLabel"
+				:rules="requiredRules"
+				:disable="loading"
+			/>
+			<SInput
 				v-model="email"
 				type="email"
 				autocomplete="email"
@@ -17,25 +26,21 @@
 			<SPasswordInput
 				v-model="password"
 				:label="texts.passwordLabel"
-				autocomplete="current-password"
-				:allow-visibility-toggle="false"
+				autocomplete="new-password"
+				lazy-rules="ondemand"
+				hide-bottom-space
 				:rules="passwordRules"
 				:disable="loading"
-			>
-				<template #labelActions>
-					<a
-						href=""
-						class="text-caption text-primary text-weight-medium"
-						:class="{ 'text-grey-6': loading }"
-						:aria-disabled="loading"
-						@click.prevent="
-							!loading && emit('requestStep', 'forgot-password')
-						"
-					>
-						{{ texts.forgotPasswordLink }}
-					</a>
-				</template>
-			</SPasswordInput>
+			/>
+			<SPasswordInput
+				v-model="confirmPassword"
+				:label="texts.confirmPasswordLabel"
+				autocomplete="new-password"
+				lazy-rules="ondemand"
+				hide-bottom-space
+				:rules="confirmPasswordRules"
+				:disable="loading"
+			/>
 
 			<q-btn
 				type="submit"
@@ -43,31 +48,31 @@
 				unelevated
 				no-caps
 				class="full-width text-weight-bold"
-				:label="texts.signInButton"
+				:label="texts.signUpButton"
 				:loading="loading"
 			/>
 		</q-form>
 
-		<div v-if="allowSignUp" class="text-center text-body2 text-grey-7">
-			Need an account?
+		<div class="text-center text-body2 text-grey-7">
+			Already have an account?
 			<a
 				href=""
 				class="text-primary text-weight-medium q-ml-xs"
 				:class="{ 'text-grey-6': loading }"
 				:aria-disabled="loading"
-				@click.prevent="!loading && emit('requestStep', 'sign-up')"
+				@click.prevent="!loading && emit('requestStep', 'sign-in')"
 			>
-				{{ texts.signUpLink }}
+				{{ texts.backToSignInLink }}
 			</a>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
-import { rules } from "../form";
-import { SInput, SPasswordInput } from "../Input";
+import { rules } from "@/components/ui/form";
+import { SInput, SPasswordInput } from "@/components/ui/Input";
 import CognitoStatusBanner from "./CognitoStatusBanner.vue";
 import type {
 	CognitoAuthStatus,
@@ -82,17 +87,23 @@ const props = defineProps<{
 	status: CognitoAuthStatus | null;
 	texts: CognitoAuthTexts;
 	initialEmail?: string;
-	allowSignUp: boolean;
 	passwordPolicy: CognitoPasswordPolicy;
 }>();
 
 const emit = defineEmits<{
-	submit: [payload: { email: string; password: string }];
+	submit: [payload: { name: string; email: string; password: string }];
 	requestStep: [step: CognitoAuthStep];
 }>();
 
+const name = ref("");
 const email = useInitialEmail(() => props.initialEmail);
 const password = ref("");
+const confirmPassword = ref("");
+const requiredRules = rules.required(props.texts.requiredMessage);
+const emailRules = [
+	...rules.required(props.texts.requiredMessage),
+	...rules.isEmail(props.texts.invalidEmailMessage)
+];
 const passwordRules = rules.passwordPolicy(props.passwordPolicy, {
 	required: props.texts.requiredMessage,
 	minimumLength: props.texts.minPasswordMessage,
@@ -101,12 +112,16 @@ const passwordRules = rules.passwordPolicy(props.passwordPolicy, {
 	symbol: props.texts.passwordSymbolMessage,
 	uppercase: props.texts.passwordUppercaseMessage
 });
-const emailRules = [
+const confirmPasswordRules = computed(() => [
 	...rules.required(props.texts.requiredMessage),
-	...rules.isEmail(props.texts.invalidEmailMessage)
-];
+	...rules.isEqualTo(password.value, props.texts.passwordMismatchMessage)
+]);
 
 function onSubmit() {
-	emit("submit", { email: email.value, password: password.value });
+	emit("submit", {
+		name: name.value,
+		email: email.value,
+		password: password.value
+	});
 }
 </script>

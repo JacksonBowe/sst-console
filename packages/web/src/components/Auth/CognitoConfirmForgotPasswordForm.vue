@@ -73,8 +73,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-import { rules } from "../form";
-import { SInput, SPasswordInput } from "../Input";
+import { rules } from "@/components/ui/form";
+import { SInput, SPasswordInput } from "@/components/ui/Input";
 import CognitoStatusBanner from "./CognitoStatusBanner.vue";
 import type {
 	CognitoAuthStatus,

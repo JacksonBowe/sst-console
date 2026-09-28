@@ -45,7 +45,7 @@ import {
 	AppDetailLoadingState,
 	AppMetadata,
 	AppStagesTable
-} from "@/components/ui/App";
+} from "@/components/App";
 import {
 	DashboardPage,
 	DashboardPageBreadcrumbs,

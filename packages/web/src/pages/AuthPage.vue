@@ -13,7 +13,7 @@ import {
 	CognitoAuth,
 	type CognitoAuthHandlers,
 	type CognitoPasswordPolicy
-} from "@/components/ui/Auth";
+} from "@/components/Auth";
 import {
 	useInviteConfirm,
 	useLogin,

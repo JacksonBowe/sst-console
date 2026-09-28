@@ -25,7 +25,7 @@
 import { useQuasar } from "quasar";
 import { ref } from "vue";
 
-import { ConsoleHeader, ConsoleSidebar } from "@/components/ui/Console";
+import { ConsoleHeader, ConsoleSidebar } from "@/components/Console";
 
 const drawerOpen = ref(false);
 const $q = useQuasar();

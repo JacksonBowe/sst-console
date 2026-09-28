@@ -83,8 +83,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import { AppsList } from "@/components/ui/App";
-import { ConnectAccountTrigger } from "@/components/ui/Accounts";
+import { AppsList } from "@/components/App";
+import { ConnectAccountTrigger } from "@/components/Accounts";
 import {
 	DashboardPage,
 	DashboardPageContent,
