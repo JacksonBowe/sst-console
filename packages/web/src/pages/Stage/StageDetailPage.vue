@@ -1,14 +1,11 @@
 <template>
 	<DashboardPage>
 		<DashboardPageBreadcrumbs :segments="breadcrumbs" class="q-mb-md" />
-		<DashboardPageHeader class="stage-detail-page__header">
-			<div class="stage-detail-header">
-				<q-icon name="sym_r_account_tree" size="28px" color="primary" />
-				<div class="text-h5 text-weight-bold">
-					{{ stage?.stageName ?? stageName }}
-				</div>
-			</div>
-		</DashboardPageHeader>
+		<StageDetailHeader
+			:stage="stage"
+			:title="stage?.stageName ?? stageName"
+			icon="sym_r_account_tree"
+		/>
 
 		<DashboardPageContent>
 			<StageDetailLoadingState v-if="stageQuery.isPending.value" />
@@ -35,14 +32,14 @@ import {
 	ResourceExplorer,
 	StageDetailEmptyResources,
 	StageDetailErrorState,
+	StageDetailHeader,
 	StageDetailLoadingState,
 	StageMetadata
 } from "@/components/App/Detail/Stage";
 import {
 	DashboardPage,
 	DashboardPageBreadcrumbs,
-	DashboardPageContent,
-	DashboardPageHeader
+	DashboardPageContent
 } from "@/components/ui/Dashboard";
 import { useStage } from "@/composables/apps";
 import {
@@ -83,11 +80,3 @@ const isNotFound = computed(() => {
 	return error instanceof ApiError && error.code === "stage_not_found";
 });
 </script>
-
-<style scoped lang="scss">
-.stage-detail-header {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-}
-</style>

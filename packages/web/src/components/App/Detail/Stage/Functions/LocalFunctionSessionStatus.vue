@@ -23,7 +23,6 @@ import type {
 	LocalConnectionStatus,
 	LocalInvocation
 } from "@/composables/local";
-import { localSessionStatusPresentation } from "./local-session-status";
 
 const props = defineProps<{
 	status: LocalConnectionStatus;
@@ -31,9 +30,19 @@ const props = defineProps<{
 	lastEventAt?: number | undefined;
 }>();
 
-const presentation = computed(() =>
-	localSessionStatusPresentation(props.status)
-);
+const presentation = computed(() => {
+	if (props.status === "connected") {
+		return {
+			label: "Connected",
+			color: "positive",
+			icon: "sym_r_check_circle"
+		};
+	}
+	if (props.status === "connecting") {
+		return { label: "Connecting", color: "warning", icon: "sym_r_sync" };
+	}
+	return { label: "Disconnected", color: "negative", icon: "sym_r_error" };
+});
 const lastEventLabel = computed(() => {
 	if (!props.lastEventAt) return "No events received";
 	return formatDateTime(new Date(props.lastEventAt).toISOString());

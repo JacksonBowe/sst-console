@@ -19,7 +19,17 @@
 					class="q-mb-xs"
 					@click="handleBackClick"
 				/>
-				<DashboardPageHeaderTitle :title="title" />
+				<DashboardPageHeaderTitle v-if="icon">
+					<q-icon
+						:name="icon"
+						size="28px"
+						color="primary"
+						class="q-mr-sm"
+					/>
+					{{ title }}
+				</DashboardPageHeaderTitle>
+				<DashboardPageHeaderTitle v-else :title="title" />
+				<!-- Make subtitle text color configurable -->
 				<div v-if="subtitle" class="text-body2 text-grey-7 q-mt-xs">
 					{{ subtitle }}
 				</div>
@@ -55,6 +65,7 @@ type NormalizedBack = {
 const props = defineProps<{
 	title?: string | undefined;
 	subtitle?: string | undefined;
+	icon?: string | undefined;
 	back?: DashboardPageHeaderBack | undefined;
 }>();
 

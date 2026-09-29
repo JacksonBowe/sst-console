@@ -1,20 +1,16 @@
 <template>
 	<DashboardPage>
 		<DashboardPageBreadcrumbs :segments="breadcrumbs" class="q-mb-md" />
-		<FunctionPageHeader
-			:app-name="stage?.appName ?? appName"
-			:stage-name="stage?.stageName ?? stageName"
-			:region="stage?.region ?? ''"
-			:is-local="isLocalStage"
-		>
-			<template v-if="isLocalStage" #sessionStatus>
-				<LocalFunctionSessionStatus
-					:status="localSession.status.value"
-					:invocations="localSession.invocations.value"
-					:last-event-at="localSession.lastEventAt.value"
-				/>
-			</template>
-		</FunctionPageHeader>
+		<StageDetailHeader
+			:stage="stage"
+			title="Functions"
+			icon="sym_r_functions"
+			:subtitle="
+				isLocalStage
+					? 'Live invocation activity from your local SST dev environment.'
+					: undefined
+			"
+		/>
 
 		<DashboardPageContent
 			:class="{ 'stage-function-page__content--local': isLocalStage }"
@@ -28,7 +24,7 @@
 			<template v-else-if="stage">
 				<FunctionInvocationWorkspace
 					v-if="isLocalStage"
-					:invocations="localSession.invocations.value"
+					:invocations="localSession.invocations"
 					@clear="localSession.clear"
 					class="col"
 				/>
@@ -46,9 +42,8 @@ import { useRoute } from "vue-router";
 import {
 	FunctionInvocationWorkspace,
 	FunctionNavigator,
-	FunctionPageHeader,
-	LocalFunctionSessionStatus,
 	StageDetailErrorState,
+	StageDetailHeader,
 	StageDetailLoadingState
 } from "@/components/App/Detail/Stage";
 import {
@@ -58,16 +53,17 @@ import {
 } from "@/components/ui/Dashboard";
 import { useStage } from "@/composables/apps";
 import { functionResourcesFor } from "@/composables/apps/stage-resources";
-import { localSessionMatchesStage, useLocalSession } from "@/composables/local";
+import { localSessionMatchesStage } from "@/composables/local";
+import { useLocalSessionStore } from "@/stores/local-session";
 
 const route = useRoute();
 const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
 const stageQuery = useStage(appName, stageName);
 const stage = computed(() => stageQuery.data.value);
-const localSession = useLocalSession();
+const localSession = useLocalSessionStore();
 const isLocalStage = computed(() =>
-	localSessionMatchesStage(localSession.identity.value, stage.value)
+	localSessionMatchesStage(localSession.identity, stage.value)
 );
 const functionResources = computed(() =>
 	functionResourcesFor(stage.value?.resources ?? [])

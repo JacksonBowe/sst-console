@@ -1,4 +1,4 @@
-import type { LocalIdentity } from "./types";
+import type { LocalConnectionStatus, LocalIdentity } from "./types";
 
 export type StageIdentity = {
 	appName: string;
@@ -17,4 +17,12 @@ export function localSessionMatchesStage(
 		identity.stage === stage.stageName &&
 		(!identity.region || identity.region === stage.region)
 	);
+}
+
+export function localSessionIsLiveForStage(
+	status: LocalConnectionStatus,
+	identity: LocalIdentity | undefined,
+	stage: StageIdentity | undefined
+): boolean {
+	return status === "connected" && localSessionMatchesStage(identity, stage);
 }

@@ -23,12 +23,17 @@
 
 <script setup lang="ts">
 import { useQuasar } from "quasar";
-import { ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 
 import { ConsoleHeader, ConsoleSidebar } from "@/components/Console";
+import { useLocalSessionStore } from "@/stores/local-session";
 
 const drawerOpen = ref(false);
 const $q = useQuasar();
+const localSession = useLocalSessionStore();
+
+onMounted(() => localSession.start());
+onBeforeUnmount(() => localSession.stop());
 </script>
 
 <style lang="scss" scoped></style>
