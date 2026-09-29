@@ -73,3 +73,23 @@ body {
 .bg-info-3 {
 	background-color: var(--q-info-3) !important;
 }
+
+.q-gap-xs {
+	gap: map-get($space-xs, x);
+}
+
+.q-gap-sm {
+	gap: map-get($space-sm, x);
+}
+
+.q-gap-md {
+	gap: map-get($space-md, x);
+}
+
+.q-gap-lg {
+	gap: map-get($space-lg, x);
+}
+
+.q-gap-xl {
+	gap: map-get($space-xl, x);
+}

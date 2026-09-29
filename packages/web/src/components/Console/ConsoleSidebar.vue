@@ -17,9 +17,10 @@
 				v-for="item in navigation"
 				:key="item.label"
 				:item="item"
-				@click="closeOnMobile"
 			/>
 		</nav>
+
+		<StageContextNavigation />
 
 		<template #footer>
 			<div class="row items-center justify-between q-px-sm q-py-xs">
@@ -32,8 +33,6 @@
 </template>
 
 <script setup lang="ts">
-import { useQuasar } from "quasar";
-
 import {
 	AppDrawer,
 	AppDrawerItem,
@@ -41,11 +40,11 @@ import {
 } from "@/components/ui/Drawer";
 import { ThemeToggle } from "@/components/ui/theme";
 import ConsoleUserMenu from "./ConsoleUserMenu.vue";
+import StageContextNavigation from "./StageContextNavigation.vue";
 
 defineProps<{ modelValue: boolean }>();
 
 const emit = defineEmits<{ "update:modelValue": [value: boolean] }>();
-const $q = useQuasar();
 
 const navigation: DrawerNavItem[] = [
 	{ label: "Apps", icon: "sym_r_deployed_code", to: "/apps" },
@@ -53,10 +52,6 @@ const navigation: DrawerNavItem[] = [
 	{ label: "Users", icon: "sym_r_group", to: "/users" },
 	{ label: "Operations", icon: "sym_r_build", to: "/operations" }
 ];
-
-function closeOnMobile(): void {
-	if ($q.screen.lt.md) emit("update:modelValue", false);
-}
 </script>
 
 <style lang="scss" scoped>
