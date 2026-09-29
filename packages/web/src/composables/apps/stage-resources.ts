@@ -64,6 +64,14 @@ export function resourcesForStageCategory(
 	});
 }
 
+export function functionResourcesFor(
+	resources: ResourceTree[]
+): ResourceTree[] {
+	return flattenResources(resources).filter(
+		resource => resource.resourceType === "sst.aws.Function"
+	);
+}
+
 function flattenResources(resources: ResourceTree[]): ResourceTree[] {
 	return resources.flatMap(resource => [
 		resource,

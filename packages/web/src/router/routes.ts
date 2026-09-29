@@ -26,7 +26,12 @@ const routes: RouteRecordRaw[] = [
 				component: () => import("@/pages/StageDetailPage.vue")
 			},
 			{
-				path: "apps/:appName/stages/:stageName/resources/:category",
+				path: "apps/:appName/stages/:stageName/functions",
+				name: "stage-functions",
+				component: () => import("@/pages/StageFunctionPage.vue")
+			},
+			{
+				path: "apps/:appName/stages/:stageName/resources/:category(dynamodb|s3|cognito)",
 				name: "stage-resource",
 				component: () => import("@/pages/StageDetailPage.vue")
 			},

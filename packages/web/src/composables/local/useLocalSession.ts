@@ -35,6 +35,7 @@ export function useLocalSession() {
 	const status = ref<LocalConnectionStatus>("disconnected");
 	const identity = ref<LocalIdentity>();
 	const invocations = ref<LocalInvocation[]>([]);
+	const lastEventAt = ref<number>();
 	const error = ref<string>();
 	let socket: WebSocket | undefined;
 	let reconnectTimer: number | undefined;
@@ -79,7 +80,6 @@ export function useLocalSession() {
 			candidate.onclose = () => {
 				if (stopped || socket !== candidate) return;
 				status.value = "disconnected";
-				identity.value = undefined;
 				reconnectTimer = window.setTimeout(attempt, RECONNECT_DELAY);
 			};
 		};
@@ -97,9 +97,11 @@ export function useLocalSession() {
 
 		if (message.type === "cli.dev" && isIdentity(message.properties)) {
 			identity.value = message.properties;
+			lastEventAt.value = Date.now();
 			return;
 		}
 		if (message.type !== "invocation") return;
+		lastEventAt.value = Date.now();
 
 		const items = Array.isArray(message.properties)
 			? message.properties
@@ -140,7 +142,15 @@ export function useLocalSession() {
 	onMounted(connect);
 	onBeforeUnmount(stop);
 
-	return { status, identity, invocations, error, isConnected, clear };
+	return {
+		status,
+		identity,
+		invocations,
+		lastEventAt,
+		error,
+		isConnected,
+		clear
+	};
 }
 
 function localSocketUrls() {

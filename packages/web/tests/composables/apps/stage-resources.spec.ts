@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	functionResourcesFor,
 	getStageResourceCategory,
 	resourcesForStageCategory,
 	stageResourceCategoriesFor
-} from "@/components/Console/stage-navigation";
+} from "@/composables/apps/stage-resources";
 import { stageResources } from "../../fixtures/stage-resources";
 
 describe("stage resource navigation", () => {
@@ -24,6 +25,12 @@ describe("stage resource navigation", () => {
 		expect(resources[0]?.resourceId).toBe("api");
 		expect(
 			resources[0]?.children.map(resource => resource.resourceId)
+		).toEqual(["handler"]);
+	});
+
+	it("finds Function resources without retaining non-Function ancestors", () => {
+		expect(
+			functionResourcesFor(stageResources).map(item => item.resourceId)
 		).toEqual(["handler"]);
 	});
 

@@ -1,17 +1,7 @@
 <template>
-	<div class="local-stage-workspace column full-height">
-		<q-banner dense rounded class="bg-positive text-white">
-			<template #avatar><q-icon name="sym_r_terminal" /></template>
-			Local SST CLI connected. Showing live function activity from this
-			machine.
-		</q-banner>
-		<div class="row justify-end">
-			<q-badge outline color="positive"
-				>{{ invocations.length }} retained</q-badge
-			>
-		</div>
-		<div class="local-stage-workspace__content row no-wrap col">
-			<LocalInvocationFeed
+	<div class="function-invocation-workspace column full-height">
+		<div class="function-invocation-workspace__content row no-wrap col">
+			<FunctionInvocationFeed
 				class="col-4"
 				:invocations="invocations"
 				:selected-id="selectedId"
@@ -21,7 +11,9 @@
 			<q-separator vertical />
 			<div class="col column">
 				<q-scroll-area class="col">
-					<LocalInvocationDetail :invocation="selectedInvocation" />
+					<FunctionInvocationDetail
+						:invocation="selectedInvocation"
+					/>
 				</q-scroll-area>
 			</div>
 		</div>
@@ -32,8 +24,8 @@
 import { computed, ref, watch } from "vue";
 
 import type { LocalInvocation } from "@/composables/local";
-import LocalInvocationDetail from "./LocalInvocationDetail.vue";
-import LocalInvocationFeed from "./LocalInvocationFeed.vue";
+import FunctionInvocationDetail from "./FunctionInvocationDetail.vue";
+import FunctionInvocationFeed from "./FunctionInvocationFeed.vue";
 
 const props = defineProps<{ invocations: LocalInvocation[] }>();
 defineEmits<{ clear: [] }>();
@@ -59,12 +51,12 @@ watch(
 </script>
 
 <style scoped lang="scss">
-.local-stage-workspace {
+.function-invocation-workspace {
 	gap: 1rem;
 	min-height: 0;
 }
 
-.local-stage-workspace__content {
+.function-invocation-workspace__content {
 	min-height: 0;
 }
 </style>

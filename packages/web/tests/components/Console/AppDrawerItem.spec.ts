@@ -30,7 +30,7 @@ describe("AppDrawerItem", () => {
 					component: { template: "" }
 				},
 				{
-					path: "/apps/:appName/stages/:stageName/resources/:category",
+					path: "/apps/:appName/stages/:stageName/functions",
 					component: { template: "" }
 				}
 			]
@@ -52,7 +52,7 @@ describe("AppDrawerItem", () => {
 			props: {
 				item: {
 					label: "Functions",
-					to: "/apps/console/stages/dev/resources/functions",
+					to: "/apps/console/stages/dev/functions",
 					exact: true
 				}
 			},
@@ -66,10 +66,10 @@ describe("AppDrawerItem", () => {
 			functions.get("[data-drawer-item]").attributes("data-active")
 		).toBe("false");
 		expect(functions.get("[data-drawer-item]").attributes("data-to")).toBe(
-			"/apps/console/stages/dev/resources/functions"
+			"/apps/console/stages/dev/functions"
 		);
 
-		await router.push("/apps/console/stages/dev/resources/functions");
+		await router.push("/apps/console/stages/dev/functions");
 
 		expect(
 			overview.get("[data-drawer-item]").attributes("data-active")

@@ -52,9 +52,9 @@
 import { AppDrawerItem, type DrawerNavItem } from "@/components/ui/Drawer";
 import { SSelect } from "@/components/ui/Select";
 import { useApps, useStage } from "@/composables/apps";
+import { stageResourceCategoriesFor } from "@/composables/apps/stage-resources";
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { stageResourceCategoriesFor } from "./stage-navigation";
 
 const route = useRoute();
 const router = useRouter();
@@ -62,7 +62,10 @@ const appsQuery = useApps();
 const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
 const isStageRoute = computed(
-	() => route.name === "stage-detail" || route.name === "stage-resource"
+	() =>
+		route.name === "stage-detail" ||
+		route.name === "stage-functions" ||
+		route.name === "stage-resource"
 );
 const stageQuery = useStage(appName, stageName);
 
@@ -92,7 +95,10 @@ const resourceItems = computed<DrawerNavItem[]>(() => {
 	return stageResourceCategoriesFor(resources).map(category => ({
 		label: category.label,
 		icon: category.icon,
-		to: `${stageOverviewPath()}/resources/${category.key}`,
+		to:
+			category.key === "functions"
+				? `${stageOverviewPath()}/functions`
+				: `${stageOverviewPath()}/resources/${category.key}`,
 		exact: true
 	}));
 });

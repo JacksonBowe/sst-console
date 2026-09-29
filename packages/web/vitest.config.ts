@@ -6,7 +6,10 @@ export default defineConfig({
 	plugins: [vue()],
 	resolve: {
 		alias: {
-			"@": fileURLToPath(new URL("./src", import.meta.url))
+			"@": fileURLToPath(new URL("./src", import.meta.url)),
+			"@sst-console/sdk": fileURLToPath(
+				new URL("../sdk/src", import.meta.url)
+			)
 		}
 	},
 	test: {

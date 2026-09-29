@@ -8,19 +8,9 @@
 					{{ stage?.stageName ?? stageName }}
 				</div>
 			</div>
-			<PillTabs
-				v-if="isLocalStage"
-				v-model="workspace"
-				:options="workspaceTabs"
-			/>
 		</DashboardPageHeader>
 
-		<DashboardPageContent
-			:class="{
-				'stage-detail-page__content--local':
-					isLocalStage && workspace === 'local' && !resourceCategory
-			}"
-		>
+		<DashboardPageContent>
 			<StageDetailLoadingState v-if="stageQuery.isPending.value" />
 			<StageDetailErrorState
 				v-else-if="stageQuery.isError.value"
@@ -28,23 +18,9 @@
 				@retry="stageQuery.refetch()"
 			/>
 			<template v-else-if="stage">
-				<LocalStageWorkspace
-					v-if="
-						isLocalStage &&
-						workspace === 'local' &&
-						!resourceCategory
-					"
-					:invocations="localSession.invocations.value"
-					@clear="localSession.clear"
-					class="col"
-				/>
-				<template v-else>
-					<StageMetadata :stage="stage" />
-					<StageDetailEmptyResources
-						v-if="!visibleResources.length"
-					/>
-					<ResourceExplorer v-else :resources="visibleResources" />
-				</template>
+				<StageMetadata :stage="stage" />
+				<StageDetailEmptyResources v-if="!visibleResources.length" />
+				<ResourceExplorer v-else :resources="visibleResources" />
 			</template>
 		</DashboardPageContent>
 	</DashboardPage>
@@ -52,43 +28,34 @@
 
 <script setup lang="ts">
 import { ApiError } from "@sst-console/sdk";
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
 import { useRoute } from "vue-router";
 
 import {
+	ResourceExplorer,
 	StageDetailEmptyResources,
 	StageDetailErrorState,
 	StageDetailLoadingState,
 	StageMetadata
 } from "@/components/App/Detail/Stage";
-import { LocalStageWorkspace } from "@/components/LocalStage";
-import { ResourceExplorer } from "@/components/ResourceExplorer";
 import {
 	DashboardPage,
 	DashboardPageBreadcrumbs,
 	DashboardPageContent,
 	DashboardPageHeader
 } from "@/components/ui/Dashboard";
-import { PillTabs } from "@/components/ui/PillTabs";
 import { useStage } from "@/composables/apps";
-import { useLocalSession } from "@/composables/local";
 import {
 	getStageResourceCategory,
 	resourcesForStageCategory,
 	type StageResourceCategory
-} from "@/components/Console/stage-navigation";
+} from "@/composables/apps/stage-resources";
 
 const route = useRoute();
 const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
 const stageQuery = useStage(appName, stageName);
 const stage = computed(() => stageQuery.data.value);
-const localSession = useLocalSession();
-const workspace = ref<"overview" | "local">("local");
-const workspaceTabs = [
-	{ value: "overview" as const, label: "Overview" },
-	{ value: "local" as const, label: "Local" }
-];
 const resourceCategory = computed(() => {
 	if (route.name !== "stage-resource") return undefined;
 	const category = String(route.params.category ?? "");
@@ -102,20 +69,6 @@ const visibleResources = computed(() => {
 		resourceCategory.value as StageResourceCategory
 	);
 });
-const isLocalStage = computed(() => {
-	const identity = localSession.identity.value;
-	if (!identity || !stage.value) return false;
-	return (
-		identity.app === stage.value.appName &&
-		identity.stage === stage.value.stageName &&
-		(!identity.region || identity.region === stage.value.region)
-	);
-});
-
-watch(isLocalStage, connected => {
-	if (!connected) workspace.value = "overview";
-});
-
 const breadcrumbs = computed(() => [
 	{ label: "Apps", to: { name: "apps" } },
 	{
@@ -136,14 +89,5 @@ const isNotFound = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: 0.75rem;
-}
-
-.stage-detail-page__header {
-	align-items: center;
-	justify-content: space-between;
-}
-
-.stage-detail-page__content--local {
-	height: 74vh;
 }
 </style>
