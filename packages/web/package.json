@@ -19,7 +19,8 @@
 		"lint:check": "oxfmt --check && oxlint",
 		"dev": "quasar dev",
 		"build": "quasar build",
-		"typecheck": "vue-tsc --noEmit",
+		"test": "vitest",
+		"typecheck": "quasar prepare --silent && vue-tsc --noEmit",
 		"postinstall": "quasar prepare --silent"
 	},
 	"dependencies": {
@@ -27,13 +28,17 @@
 		"@tanstack/vue-query": "^5.103.2",
 		"pinia": "^4.0.2",
 		"quasar": "^2.33.1",
+		"shiki": "^4.4.3",
 		"vue": "^3.5.22",
 		"vue-router": "^5.0.6"
 	},
 	"devDependencies": {
 		"@quasar/app-vite": "^3.10.0",
 		"@types/node": "^22.19.11",
+		"@vitejs/plugin-vue": "^6.0.9",
+		"@vue/test-utils": "^2.5.1",
 		"autoprefixer": "^10.4.27",
+		"happy-dom": "^20.14.5",
 		"oxfmt": "^0.x",
 		"oxlint": "^1.x",
 		"oxlint-tsgolint": "^7.0.2001",

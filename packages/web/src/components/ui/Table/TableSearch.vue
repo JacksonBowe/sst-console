@@ -7,7 +7,6 @@
 		:modelValue="modelValue"
 		@update:modelValue="$emit('update:modelValue', $event)"
 		:style="$q.screen.gt.xs ? 'width: 250px' : 'flex: 1'"
-		class="q-mr-sm bg-white"
 	>
 		<template v-slot:append>
 			<q-icon v-if="!modelValue" name="sym_r_search" />
@@ -19,6 +18,6 @@
 import SInput from "../Input/SInput.vue";
 
 defineProps({
-	modelValue: String
+	modelValue: String,
 });
 </script>

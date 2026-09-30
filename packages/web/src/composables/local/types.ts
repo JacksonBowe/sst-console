@@ -1,0 +1,42 @@
+export type LocalConnectionStatus = "connecting" | "connected" | "disconnected";
+
+export type LocalInvocationStatus =
+	| "pending"
+	| "success"
+	| "application_error"
+	| "platform_error";
+
+export type LocalLogLine = {
+	id: string;
+	timestamp: number;
+	message: string;
+};
+
+export type LocalInvocation = {
+	id: string;
+	source?: string | undefined;
+	http?:
+		| {
+				method: string;
+				path: string;
+		  }
+		| undefined;
+	input?: unknown;
+	output?: unknown;
+	start: number;
+	end?: number | undefined;
+	status: LocalInvocationStatus;
+	logs: LocalLogLine[];
+	errors: Array<{
+		error?: string | undefined;
+		message?: string | undefined;
+		stack: string[];
+	}>;
+	duration?: number | undefined;
+};
+
+export type LocalIdentity = {
+	app: string;
+	stage: string;
+	region?: string;
+};

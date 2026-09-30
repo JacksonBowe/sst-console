@@ -18,12 +18,18 @@ const props = withDefaults(
 		dense?: boolean;
 		/** Dense options list (consistent with field density) */
 		optionsDense?: boolean;
+		/** Render popup options as rounded items by default. */
+		roundedOptions?: boolean;
 		/** External label rendered above the select (shadcn pattern). Suppresses QSelect's floating label. */
 		label?: string;
+		/* External label rendered above the select (shadcn pattern). Suppresses QSelect's floating label. */
+		labelAbove?: boolean;
 	}>(),
 	{
 		outlined: true,
-		dense: true
+		dense: true,
+		roundedOptions: true,
+		labelAbove: true
 	}
 );
 
@@ -100,18 +106,24 @@ defineExpose({
 
 <template>
 	<div class="s-select">
-		<label v-if="label" class="s-select__label">{{ label }}</label>
+		<label v-if="labelAbove && label" class="s-select__label">{{
+			label
+		}}</label>
 		<QSelect
 			ref="qRef"
 			v-bind="forwardedAttrs"
 			:model-value="props.modelValue"
 			:outlined="outlined"
 			:dense="dense"
+			:label="!labelAbove ? label : undefined"
 			:options-dense="optionsDense"
 			:menu-offset="[0, 4]"
 			transition-show="jump-down"
 			transition-hide="jump-down"
 			dropdown-icon="sym_r_keyboard_arrow_down"
+			:popup-content-class="
+				roundedOptions ? 's-select__options' : undefined
+			"
 			@update:model-value="emit('update:modelValue', $event)"
 		>
 			<template v-for="(_, name) in $slots" #[name]="slotProps">
@@ -139,56 +151,52 @@ defineExpose({
 	&__label {
 		font-size: 0.875rem;
 		font-weight: 500;
-		color: $grey-7;
+		// color: $grey-7;
+		color: var(--q-secondary);
 		margin-bottom: 6px;
 		line-height: 1.25;
 		user-select: none;
 	}
 }
 
-// ---------- Dropdown icon ----------
-
 .q-select {
-	.q-select__dropdown-icon {
-		color: $grey-4;
+	// ---------- Idle outlined border ----------
+
+	&.q-field--outlined:not(.q-field--focused):not(.q-field--error):not(
+			.q-field--disabled
+		) {
+		:deep(.q-field__control::before) {
+			border-color: $separator-color;
+		}
 	}
 
-	// &:hover .q-select__dropdown-icon {
-	// 	color: $grey-6;
-	// }
+	.q-select__dropdown-icon {
+		color: var(--q-secondary);
+	}
+}
 
-	// ---------- Chips inside select ----------
+.body--dark .q-select {
+	&.q-field--outlined:not(.q-field--focused):not(.q-field--error):not(
+			.q-field--disabled
+	) {
+		:deep(.q-field__control::before) {
+			border-color: $separator-dark-color;
+		}
+	}
+}
 
-	// &.q-select--with-chips {
-	// 	.q-field__native {
-	// 		gap: 4px;
-	// 		flex-wrap: wrap;
-	// 		padding: 2px 0;
-	// 	}
+// Popup teleports outside component, so selector must be global.
+:global(.s-select__options) {
+	padding: 4px;
+	border-radius: $generic-border-radius;
+}
 
-	// 	// Make chips inside the field denser
-	// 	.q-chip {
-	// 		margin: 0;
-	// 	}
-	// }
+:global(.s-select__options .q-item) {
+	border-radius: $generic-border-radius;
+	overflow: hidden;
+}
 
-	// ---------- Disabled ----------
-
-	// &.q-field--disabled {
-	// 	opacity: 0.5;
-
-	// 	.q-select__dropdown-icon {
-	// 		color: $grey-3;
-	// 	}
-	// }
-
-	// ---------- Suppress focus-helper overlay ----------
-
-	// > .q-field__inner > .q-field__control > .q-field__control-container {
-	// 	> .q-field__native {
-	// 		// Tighten up the native display area
-	// 		min-height: 0;
-	// 	}
-	// }
+:global(.s-select__options .q-item + .q-item) {
+	margin-top: 2px;
 }
 </style>

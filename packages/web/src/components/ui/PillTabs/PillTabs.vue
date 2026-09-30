@@ -59,7 +59,7 @@ function select(value: T) {
 	gap: 2px;
 	padding: 4px;
 	background: rgba(127, 127, 127, 0.1);
-	border-radius: 10px;
+	border-radius: $generic-border-radius;
 }
 
 .pill-tabs__btn {
@@ -69,7 +69,7 @@ function select(value: T) {
 	padding: 6px 12px;
 	border: 0;
 	background: transparent;
-	border-radius: 7px;
+	border-radius: $button-border-radius;
 	font: inherit;
 	font-size: 13px;
 	font-weight: 500;

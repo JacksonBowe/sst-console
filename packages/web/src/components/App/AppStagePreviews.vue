@@ -7,7 +7,7 @@
 			flat
 			dense
 			no-caps
-			color="primary"
+			:color="isLocalStage(stage) ? 'positive' : 'primary'"
 			:label="stage.stageName"
 			:aria-label="`Open ${stage.stageName} Stage`"
 			:to="{
@@ -21,10 +21,27 @@
 <script setup lang="ts">
 import type { AppStage } from "@sst-console/sdk";
 
-defineProps<{
+import { localSessionIsLiveForStage } from "@/composables/local";
+import { useLocalSessionStore } from "@/stores/local-session";
+
+const props = defineProps<{
 	appName: string;
 	stages: AppStage[];
 }>();
+
+const localSession = useLocalSessionStore();
+
+function isLocalStage(stage: AppStage) {
+	return localSessionIsLiveForStage(
+		localSession.status,
+		localSession.identity,
+		{
+			appName: props.appName,
+			stageName: stage.stageName,
+			region: stage.region
+		}
+	);
+}
 </script>
 
 <style scoped lang="scss">
