@@ -166,12 +166,22 @@ defineExpose({
 			.q-field--disabled
 		) {
 		:deep(.q-field__control::before) {
-			border-color: var(--q-border);
+			border-color: $separator-color;
 		}
 	}
 
 	.q-select__dropdown-icon {
 		color: var(--q-secondary);
+	}
+}
+
+.body--dark .q-select {
+	&.q-field--outlined:not(.q-field--focused):not(.q-field--error):not(
+			.q-field--disabled
+	) {
+		:deep(.q-field__control::before) {
+			border-color: $separator-dark-color;
+		}
 	}
 }
 
