@@ -29,7 +29,7 @@
 		<q-card-section
 			:class="[
 				'col column no-wrap overflow-hidden',
-				activePanel === 'overview' ? 'q-pa-md' : 'q-pa-none',
+				activePanel === 'overview' ? 'q-pa-md' : 'q-pa-none'
 			]"
 		>
 			<div v-if="activePanel === 'overview'" class="col column no-wrap">
@@ -87,9 +87,17 @@
 				:logs="invocation.logs"
 			/>
 			<InvocationErrorPanel
-				v-else
+				v-else-if="invocation.status === 'platform_error'"
 				class="col"
 				:errors="invocation.errors"
+			/>
+			<InvocationPayloadPanel
+				v-else
+				class="col"
+				redact
+				:label="httpErrorLabel"
+				:value="output"
+				empty-message="No error response captured."
 			/>
 		</q-card-section>
 	</q-card>
@@ -109,6 +117,7 @@
 import { computed, ref, watch } from "vue";
 
 import type { LocalInvocation } from "@/composables/local";
+import { localInvocationHttpStatus } from "@/composables/local";
 import { parseJsonBody } from "@/util/json";
 import InvocationDetailHeader from "./InvocationDetailHeader.vue";
 import InvocationErrorPanel from "./InvocationErrorPanel.vue";
@@ -122,13 +131,31 @@ type InvocationPanel = "overview" | "input" | "output" | "logs" | "errors";
 const activePanel = ref<InvocationPanel>("overview");
 const input = computed(() => parseJsonBody(props.invocation?.input));
 const output = computed(() => parseJsonBody(props.invocation?.output));
-const hasErrors = computed(() =>
-	props.invocation?.errors.some(
-		(error) => error.error || error.message || error.stack.length,
-	),
+const hasErrors = computed(
+	() =>
+		props.invocation?.status === "application_error" ||
+		props.invocation?.status === "platform_error"
 );
+const httpErrorLabel = computed(() => {
+	const status = localInvocationHttpStatus(props.invocation?.output);
+	return status === undefined ? "Error response" : `HTTP ${status} response`;
+});
 watch(
-	() => props.invocation?.id,
-	() => (activePanel.value = "overview"),
+	() => ({ id: props.invocation?.id, status: props.invocation?.status }),
+	(current, previous) => {
+		const isNewInvocation = current.id !== previous?.id;
+		const becameError =
+			isErrorStatus(current.status) &&
+			current.status !== previous?.status;
+		if (!isNewInvocation && !becameError) return;
+		activePanel.value = isErrorStatus(current.status)
+			? "errors"
+			: "overview";
+	},
+	{ immediate: true }
 );
+
+function isErrorStatus(status: LocalInvocation["status"] | undefined) {
+	return status === "application_error" || status === "platform_error";
+}
 </script>

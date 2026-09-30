@@ -8,6 +8,8 @@ const appInput = z.object({ appName: z.string().min(1) });
 const stageInput = appInput.extend({ stageName: z.string().min(1) });
 
 export const list = async () => {
+	throw new Error("Test");
+
 	console.log('Single line test - with JSON object test below')
 	const apps = await db.entities.app.query.byName({}).go({ pages: "all" });
 	console.log(apps)

@@ -40,6 +40,7 @@
 import { computed } from "vue";
 
 import type { LocalInvocation } from "@/composables/local";
+import { localInvocationStatusDisplay } from "@/composables/local";
 
 const props = defineProps<{
 	invocation: LocalInvocation;
@@ -54,18 +55,11 @@ const httpLabel = computed(() => {
 	if (!props.invocation.http) return undefined;
 	return `(${props.invocation.http.method} ${props.invocation.http.path})`;
 });
-const statusLabel = computed(
-	() =>
-		({ pending: "Running", success: "Success", error: "Error" })[
-			props.invocation.status
-		]
+const statusDisplay = computed(() =>
+	localInvocationStatusDisplay(props.invocation.status)
 );
-const statusColor = computed(
-	() =>
-		({ pending: "warning", success: "positive", error: "negative" })[
-			props.invocation.status
-		]
-);
+const statusLabel = computed(() => statusDisplay.value.label);
+const statusColor = computed(() => statusDisplay.value.color);
 const durationLabel = computed(() =>
 	props.invocation.duration === undefined
 		? "—"

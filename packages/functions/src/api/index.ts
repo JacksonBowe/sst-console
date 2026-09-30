@@ -51,6 +51,8 @@ function requestMeta(c: Context) {
 }
 
 app.onError((err, c) => {
+	throw new Error("");
+
 	if (err instanceof PublicError) {
 		return c.json(
 			{
@@ -89,13 +91,13 @@ app.onError((err, c) => {
 			...(isProd
 				? {}
 				: {
-						// helpful during dev; avoid in prod
-						debug: {
-							message: e.message,
-							stack: e.stack,
-							name: e.name
-						}
-					})
+					// helpful during dev; avoid in prod
+					debug: {
+						message: e.message,
+						stack: e.stack,
+						name: e.name
+					}
+				})
 		},
 		500
 	);

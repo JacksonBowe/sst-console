@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import InvocationDetail from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationDetail.vue";
 import InvocationErrorPanel from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationErrorPanel.vue";
 import InvocationLogPanel from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationLogPanel.vue";
+import InvocationListRow from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationListRow.vue";
 import InvocationPayloadPanel from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationPayloadPanel.vue";
 import type { LocalInvocation } from "@/composables/local";
 
@@ -24,6 +25,7 @@ const stubs = {
 	},
 	QIcon: true,
 	QScrollArea: { template: "<div><slot /></div>" },
+	QSpace: true,
 	QSeparator: true,
 	QTabs: {
 		emits: ["update:modelValue"],
@@ -128,6 +130,26 @@ describe("InvocationDetail", () => {
 		expect(wrapper.text()).toContain('"accepted": true');
 	});
 
+	it("shows handled HTTP errors separately from platform errors", async () => {
+		const wrapper = mount(InvocationDetail, {
+			props: {
+				invocation: {
+					...invocation,
+					status: "application_error",
+					output: {
+						statusCode: 500,
+						body: '{"code":"internal_error"}'
+					}
+				}
+			},
+			global: { stubs }
+		});
+
+		expect(wrapper.text()).toContain("Error");
+		expect(wrapper.text()).toContain("HTTP 500 response");
+		expect(wrapper.text()).toContain('"code": "internal_error"');
+	});
+
 	it("redacts secrets in JSON request bodies", async () => {
 		const wrapper = mount(InvocationDetail, {
 			props: {
@@ -230,6 +252,22 @@ describe("InvocationLogPanel", () => {
 		});
 
 		expect(wrapper.get("pre").text()).toBe("first\n  second");
+	});
+});
+
+describe("InvocationListRow", () => {
+	it("shows application error status indicator", () => {
+		const wrapper = mount(InvocationListRow, {
+			props: {
+				invocation: { ...invocation, status: "application_error" },
+				active: false
+			}
+		});
+
+		expect(wrapper.text()).toContain("Error");
+		expect(
+			wrapper.get(".invocation-list-row__status-dot").classes()
+		).toContain("bg-warning");
 	});
 });
 

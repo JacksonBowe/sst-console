@@ -6,6 +6,7 @@ import type {
 	LocalInvocation,
 	LocalLogLine
 } from "@/composables/local/types";
+import { localInvocationStatus } from "@/composables/local/invocation-status";
 
 const MAX_INVOCATIONS = 200;
 const RECONNECT_DELAY = 3_000;
@@ -188,7 +189,7 @@ function normalizeInvocation(item: SocketInvocation): LocalInvocation {
 		output: item.output,
 		start: item.start ?? Date.now(),
 		end,
-		status: errors.length ? "error" : end ? "success" : "pending",
+		status: localInvocationStatus({ end, errors, output: item.output }),
 		logs,
 		errors,
 		duration:

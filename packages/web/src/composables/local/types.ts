@@ -1,6 +1,10 @@
 export type LocalConnectionStatus = "connecting" | "connected" | "disconnected";
 
-export type LocalInvocationStatus = "pending" | "success" | "error";
+export type LocalInvocationStatus =
+	| "pending"
+	| "success"
+	| "application_error"
+	| "platform_error";
 
 export type LocalLogLine = {
 	id: string;
