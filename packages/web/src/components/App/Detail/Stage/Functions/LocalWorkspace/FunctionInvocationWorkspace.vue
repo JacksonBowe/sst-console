@@ -1,7 +1,7 @@
 <template>
 	<div class="column full-height overflow-hidden">
 		<div class="row no-wrap col overflow-hidden">
-			<div class="col-4 bg-red relative-position">
+			<div class="col-4 relative-position">
 				<InvocationList
 					class="absolute-full"
 					:invocations="invocations"
