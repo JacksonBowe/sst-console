@@ -16,7 +16,7 @@
 		"format:check": "oxfmt --check package.json tsconfig.json sst.config.ts console.config.example.ts infra packages/functions/src",
 		"lint": "oxfmt && oxlint --fix",
 		"lint:check": "oxfmt --check && oxlint",
-		"typecheck": "bunx tsc --noEmit",
+		"typecheck": "bunx tsc --noEmit --project packages/core/tsconfig.json && bunx tsc --noEmit --project packages/functions/tsconfig.json && bunx tsc --noEmit --project packages/sdk/tsconfig.json && bun run --cwd packages/web typecheck",
 		"check": "bun run format:check && bun run lint:check && bun run typecheck",
 		"tree": "mkdir -p .tmp-tree && git ls-tree -r --name-only HEAD   | sed 's|/[^/]*$||'   | sort -u   | xargs -I{} mkdir -p .tmp-tree/{} && tree -d .tmp-tree && rm -rf .tmp-tree"
 	},

@@ -23,8 +23,16 @@ export const upsert = (input: {
 	updatedAt: string;
 }) =>
 	connections.entities.connection
-		.upsert(input)
-		.ifNotExists({ createdAt: input.createdAt })
+		.update({ accountId: input.accountId })
+		.ifNotExists({
+			createdAt: input.createdAt,
+			syncPolicy: defaultSyncPolicy
+		})
+		.set({
+			region: input.region,
+			roleArn: input.roleArn,
+			updatedAt: input.updatedAt
+		})
 		.go({ response: "none" });
 
 export const list = async () => {

@@ -20,7 +20,7 @@
 		"dev": "quasar dev",
 		"build": "quasar build",
 		"test": "vitest",
-		"typecheck": "vue-tsc --noEmit",
+		"typecheck": "quasar prepare --silent && vue-tsc --noEmit",
 		"postinstall": "quasar prepare --silent"
 	},
 	"dependencies": {
