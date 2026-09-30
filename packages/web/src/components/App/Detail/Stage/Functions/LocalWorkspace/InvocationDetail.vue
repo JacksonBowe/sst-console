@@ -1,37 +1,44 @@
 <template>
-	<q-card v-if="invocation" flat bordered class="invocation-detail">
-		<q-card-section>
+	<q-card v-if="invocation" flat bordered>
+		<q-card-section class="q-pa-xs">
 			<InvocationDetailHeader :invocation="invocation" />
 		</q-card-section>
-		<q-tabs
-			v-model="activePanel"
-			align="left"
-			dense
-			no-caps
-			active-color="primary"
-			indicator-color="primary"
-			class="invocation-detail__tabs"
-		>
-			<q-tab name="overview" label="Overview" />
-			<q-tab name="input" label="Input" />
-			<q-tab name="output" label="Output" />
-			<q-tab name="logs" label="Logs" />
-			<q-tab v-if="hasErrors" name="errors" label="Error" />
-		</q-tabs>
+		<q-separator />
+		<q-card-section class="q-pa-xs">
+			<q-tabs
+				v-model="activePanel"
+				align="left"
+				dense
+				no-caps
+				active-color="primary"
+				indicator-color="primary"
+				class="q-px-sm"
+			>
+				<q-tab name="overview" label="Overview" />
+				<q-tab name="input" label="Input" />
+				<q-tab name="output" label="Output" />
+				<q-tab name="logs" label="Logs" />
+				<q-tab v-if="hasErrors" name="errors" label="Error" />
+			</q-tabs>
+		</q-card-section>
 		<q-separator />
 		<q-card-section class="invocation-detail__panel">
 			<template v-if="activePanel === 'overview'">
-				<div class="invocation-detail__payloads">
-					<InvocationPayloadPanel
-						label="Input"
-						:value="invocation.input"
-						empty-message="No input captured."
-					/>
-					<InvocationPayloadPanel
-						label="Output"
-						:value="invocation.output"
-						empty-message="No output captured."
-					/>
+				<div class="row q-col-gutter-md">
+					<div class="col-12 col-sm-6">
+						<InvocationPayloadPanel
+							label="Input"
+							:value="invocation.input"
+							empty-message="No input captured."
+						/>
+					</div>
+					<div class="col-12 col-sm-6">
+						<InvocationPayloadPanel
+							label="Output"
+							:value="invocation.output"
+							empty-message="No output captured."
+						/>
+					</div>
 				</div>
 				<InvocationLogPanel :logs="invocation.logs" class="q-mt-md" />
 			</template>
@@ -80,30 +87,12 @@ const props = defineProps<{ invocation?: LocalInvocation | undefined }>();
 const activePanel = ref("overview");
 const hasErrors = computed(() =>
 	props.invocation?.errors.some(
-		error => error.error || error.message || error.stack.length
-	)
+		(error) => error.error || error.message || error.stack.length,
+	),
 );
 
 watch(
 	() => props.invocation?.id,
-	() => (activePanel.value = "overview")
+	() => (activePanel.value = "overview"),
 );
 </script>
-
-<style scoped lang="scss">
-.invocation-detail__tabs {
-	padding: 0 0.5rem;
-}
-
-.invocation-detail__payloads {
-	display: grid;
-	gap: 1rem;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (max-width: 700px) {
-	.invocation-detail__payloads {
-		grid-template-columns: 1fr;
-	}
-}
-</style>
