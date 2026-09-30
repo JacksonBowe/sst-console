@@ -1,5 +1,5 @@
 <template>
-	<div class="column full-height overflow-hidden q-gap-md">
+	<div class="column full-height q-gap-md">
 		<LocalActivityToolbar
 			:text="filters.text"
 			:statuses="filters.facets.status ?? []"

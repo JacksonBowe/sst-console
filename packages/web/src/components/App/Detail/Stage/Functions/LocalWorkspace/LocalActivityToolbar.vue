@@ -9,6 +9,7 @@
 			:options="invocationStatusOptions"
 			:model-value="statuses"
 			@update:model-value="$emit('update:statuses', $event)"
+			menu-width="narrow"
 		/>
 		<q-space />
 		<q-btn

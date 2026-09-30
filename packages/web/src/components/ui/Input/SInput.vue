@@ -19,8 +19,8 @@ const props = withDefaults(
 	}>(),
 	{
 		outlined: true,
-		dense: true
-	}
+		dense: true,
+	},
 );
 
 const emit = defineEmits<{
@@ -57,7 +57,7 @@ defineExpose({
 	},
 	get nativeEl() {
 		return qRef.value?.nativeEl ?? null;
-	}
+	},
 });
 </script>
 
