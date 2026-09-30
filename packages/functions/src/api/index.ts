@@ -51,8 +51,6 @@ function requestMeta(c: Context) {
 }
 
 app.onError((err, c) => {
-	throw new Error("");
-
 	if (err instanceof PublicError) {
 		return c.json(
 			{
