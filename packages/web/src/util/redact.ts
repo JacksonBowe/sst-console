@@ -16,7 +16,7 @@ const sensitiveKeys = new Set([
 	"awssecretaccesskey",
 	"sessiontoken",
 	"awssessiontoken",
-	"awssecuritytoken",
+	"awssecuritytoken"
 ]);
 
 export function redactSensitiveData(value: unknown): unknown {

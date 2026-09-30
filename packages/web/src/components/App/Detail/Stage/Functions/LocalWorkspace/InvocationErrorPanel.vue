@@ -1,44 +1,50 @@
 <template>
-	<section
+	<q-card
 		v-if="visibleErrors.length"
-		class="invocation-error-panel bordered rounded-borders"
+		class="invocation-error-panel column no-wrap overflow-hidden"
 		aria-labelledby="invocation-errors-title"
 	>
-		<div class="q-px-md q-py-sm text-negative">
-			<h3 id="invocation-errors-title" class="text-subtitle2 q-my-none"
-				>Error</h3
+		<q-card-section
+			class="row items-center justify-between q-px-md q-py-sm bg-secondary-2"
+		>
+			<h3
+				id="invocation-errors-title"
+				class="text-subtitle2 q-my-none text-negative"
 			>
-		</div>
+				Error
+			</h3>
+			<q-btn
+				flat
+				dense
+				round
+				size="sm"
+				:icon="copied ? 'sym_r_check' : 'sym_r_content_copy'"
+				aria-label="Copy errors"
+				@click="copy"
+			/>
+		</q-card-section>
 		<q-separator />
-		<div
+		<q-card-section
 			v-for="(error, index) in visibleErrors"
 			:key="index"
 			class="q-pa-md"
 		>
-			<div class="row items-start justify-between q-gutter-sm">
-				<div v-if="error.error" class="text-weight-medium">{{
-					error.error
-				}}</div>
-				<q-btn
-					flat
-					dense
-					round
-					size="sm"
-					icon="sym_r_content_copy"
-					:aria-label="`Copy error ${index + 1}`"
-					@click="copy(error)"
-				/>
+			<div v-if="error.error" class="text-weight-medium">
+				{{ error.error }}
 			</div>
 			<div v-if="error.message" class="q-mt-xs">{{ error.message }}</div>
 			<pre v-if="error.stack.length" class="q-mt-sm">{{
 				error.stack.join("\n")
 			}}</pre>
-		</div>
-	</section>
+		</q-card-section>
+		<span class="sr-only" aria-live="polite">{{
+			copied ? "Errors copied" : ""
+		}}</span>
+	</q-card>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 type InvocationError = {
 	error?: string | undefined;
@@ -47,34 +53,30 @@ type InvocationError = {
 };
 
 const props = defineProps<{ errors: InvocationError[] }>();
+const copied = ref(false);
 const visibleErrors = computed(() =>
 	props.errors.filter(
 		error => error.error || error.message || error.stack.length
 	)
 );
 
-async function copy(error: InvocationError) {
-	const text = [error.error, error.message, error.stack.join("\n")]
-		.filter(Boolean)
-		.join("\n");
+async function copy() {
+	const text = visibleErrors.value
+		.map(error => [error.error, error.message, error.stack.join("\n")])
+		.map(parts => parts.filter(Boolean).join("\n"))
+		.join("\n\n");
 	try {
 		await navigator.clipboard.writeText(text);
+		copied.value = true;
+		window.setTimeout(() => (copied.value = false), 1500);
 	} catch {
-		// Text remains selectable when clipboard access is unavailable.
+		copied.value = false;
 	}
 }
 </script>
 
 <style scoped lang="scss">
-.invocation-error-panel {
-	border-color: color-mix(
-		in srgb,
-		var(--q-negative) 45%,
-		var(--q-secondary-2)
-	);
-}
-
-.invocation-error-panel > div + div {
+.invocation-error-panel :deep(.q-card__section + .q-card__section) {
 	border-top: 1px solid color-mix(in srgb, var(--q-negative) 20%, transparent);
 }
 
@@ -90,5 +92,15 @@ pre {
 	line-height: 1.5;
 	white-space: pre-wrap;
 	word-break: break-word;
+}
+
+.sr-only {
+	clip: rect(0, 0, 0, 0);
+	clip-path: inset(50%);
+	height: 1px;
+	overflow: hidden;
+	position: absolute;
+	white-space: nowrap;
+	width: 1px;
 }
 </style>

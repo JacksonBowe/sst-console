@@ -70,7 +70,7 @@ Apps / {appName} / Local
 
 ## Local Function session header
 
-The shared Function page header answers: *which app/stage/function context is open?* Local Mode adds session health beneath or beside that identity; this information does not appear on unrelated Local resource screens.
+The shared Function page header answers: _which app/stage/function context is open?_ Local Mode adds session health beneath or beside that identity; this information does not appear on unrelated Local resource screens.
 
 ```text
 [app icon] {appName}  [● Local]  Stage: {stageName}  Region: {region}
@@ -128,12 +128,12 @@ Desktop uses a fixed, scrollable left pane. The selected invocation's detail fil
 
 Recommended columns:
 
-| Column | Content |
-| --- | --- |
-| Time | Localised start time |
-| Function | Invocation source/function name |
-| Status | Running, Success, or Error; text plus semantic icon/dot |
-| Duration | Duration when complete and available |
+| Column   | Content                                                 |
+| -------- | ------------------------------------------------------- |
+| Time     | Localised start time                                    |
+| Function | Invocation source/function name                         |
+| Status   | Running, Success, or Error; text plus semantic icon/dot |
+| Duration | Duration when complete and available                    |
 
 Requirements:
 
@@ -263,25 +263,25 @@ StageFunctionPage
 
 ### Component inventory
 
-| Component | Scope | Responsibility | User interaction | Visual guidance |
-| --- | --- | --- | --- | --- |
-| `StageContextHeader` | Shared | App, stage, region, and compact current-mode context. | Parent links navigate; no telemetry action ownership. | One compact identity row. No metrics/cards. |
-| `StageResourceSidebar` | Shared | Combines global shell with stage app/stage context and resource navigation. | Select app/stage, Overview, or one resource category. | Persistent left rail; only one contextual item active. |
-| `FunctionPageHeader` | Shared structure, mode slots | Names Functions and provides source-appropriate status/actions. | Local status is informational; deployed actions query logs. | Dense heading/toolbar line. Local session indicators occupy secondary header space only. |
-| `FunctionNavigator` | Shared | Lists Functions discovered in selected stage; owns current function selection. | Select Function to scope deployed inspection; Local selection may filter/highlight activity when supported. | Narrow navigation/list surface. Selected Function uses same active treatment as resource navigation. |
-| `LocalFunctionActivityWorkspace` | Local only | Arranges live invocation list and selected invocation detail. | Receives invocation selection, toolbar actions, and live updates. | Full-height split pane; list fixed width, detail fills remaining space. |
-| `LocalActivityToolbar` | Local only | Presents capabilities: pause/follow, clear, local filter, retention display/control. | Emits only supported controls. Disabled/absent when unsupported. | Compact right-aligned toolbar; no primary marketing-style button. |
-| `InvocationList` | Shared presentation primitive | Scroll container and keyboard/list semantics for normalised invocation rows. | Select row; preserve selection during incoming updates when possible. | Dense table/list with one scroll owner. |
-| `InvocationListItem` | Shared presentation primitive | Renders timestamp, function, status, duration. | Click/keyboard selects invocation. | Compact separator row; active state independent from success/error colour. |
-| `InvocationDetail` | Local only initially | Composes selected invocation's summary, payloads, logs, and errors. | Tab or section selection; copy individual supported values. | Detail pane scroll owner; structured sections, not a large raw JSON block. |
-| `InvocationSummary` | Reusable | Renders available normalised execution facts. | None beyond copyable values when applicable. | Compact key/value grid; omit unavailable facts. |
-| `InvocationPayloadPanel` | Reusable | Displays input or output safely. | Copy payload; scroll long content. | Bordered code surface, monospace content only. |
-| `InvocationLogPanel` | Reusable | Displays ordered normalised log lines. | Auto-follow and filters only when source supports them. | Dense chronological log surface with internal scroll. |
-| `InvocationErrorPanel` | Reusable | Displays error message and received stack frames. | Copy/select error text. | Negative semantic accent, readable neutral body text. |
-| `DeployedFunctionInspector` | Deployed only | Composes selected function summary and CloudWatch log discovery/query flow. | Select function, log group/stream, time range, then query/refresh. | Function-first content pane; no live global invocation list. |
-| `CloudWatchLogGroupNavigator` | Deployed only | Lists log groups/streams supplied for selected Function. | Select target before query. | Compact hierarchy/list adjacent to or above results. |
-| `CloudWatchQueryToolbar` | Deployed only | Owns query inputs and refresh action. | Change time range/filter; explicitly run or refresh query. | Compact controls near results; query state visible. |
-| `CloudWatchLogViewer` | Deployed only | Renders returned CloudWatch events. | Select/copy events; paginate/load more only when contract supports it. | Reuse log typography and status patterns; show query/loading/empty/error states. |
+| Component                        | Scope                         | Responsibility                                                                       | User interaction                                                                                            | Visual guidance                                                                                      |
+| -------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `StageContextHeader`             | Shared                        | App, stage, region, and compact current-mode context.                                | Parent links navigate; no telemetry action ownership.                                                       | One compact identity row. No metrics/cards.                                                          |
+| `StageResourceSidebar`           | Shared                        | Combines global shell with stage app/stage context and resource navigation.          | Select app/stage, Overview, or one resource category.                                                       | Persistent left rail; only one contextual item active.                                               |
+| `FunctionPageHeader`             | Shared structure, mode slots  | Names Functions and provides source-appropriate status/actions.                      | Local status is informational; deployed actions query logs.                                                 | Dense heading/toolbar line. Local session indicators occupy secondary header space only.             |
+| `FunctionNavigator`              | Shared                        | Lists Functions discovered in selected stage; owns current function selection.       | Select Function to scope deployed inspection; Local selection may filter/highlight activity when supported. | Narrow navigation/list surface. Selected Function uses same active treatment as resource navigation. |
+| `LocalFunctionActivityWorkspace` | Local only                    | Arranges live invocation list and selected invocation detail.                        | Receives invocation selection, toolbar actions, and live updates.                                           | Full-height split pane; list fixed width, detail fills remaining space.                              |
+| `LocalActivityToolbar`           | Local only                    | Presents capabilities: pause/follow, clear, local filter, retention display/control. | Emits only supported controls. Disabled/absent when unsupported.                                            | Compact right-aligned toolbar; no primary marketing-style button.                                    |
+| `InvocationList`                 | Shared presentation primitive | Scroll container and keyboard/list semantics for normalised invocation rows.         | Select row; preserve selection during incoming updates when possible.                                       | Dense table/list with one scroll owner.                                                              |
+| `InvocationListItem`             | Shared presentation primitive | Renders timestamp, function, status, duration.                                       | Click/keyboard selects invocation.                                                                          | Compact separator row; active state independent from success/error colour.                           |
+| `InvocationDetail`               | Local only initially          | Composes selected invocation's summary, payloads, logs, and errors.                  | Tab or section selection; copy individual supported values.                                                 | Detail pane scroll owner; structured sections, not a large raw JSON block.                           |
+| `InvocationSummary`              | Reusable                      | Renders available normalised execution facts.                                        | None beyond copyable values when applicable.                                                                | Compact key/value grid; omit unavailable facts.                                                      |
+| `InvocationPayloadPanel`         | Reusable                      | Displays input or output safely.                                                     | Copy payload; scroll long content.                                                                          | Bordered code surface, monospace content only.                                                       |
+| `InvocationLogPanel`             | Reusable                      | Displays ordered normalised log lines.                                               | Auto-follow and filters only when source supports them.                                                     | Dense chronological log surface with internal scroll.                                                |
+| `InvocationErrorPanel`           | Reusable                      | Displays error message and received stack frames.                                    | Copy/select error text.                                                                                     | Negative semantic accent, readable neutral body text.                                                |
+| `DeployedFunctionInspector`      | Deployed only                 | Composes selected function summary and CloudWatch log discovery/query flow.          | Select function, log group/stream, time range, then query/refresh.                                          | Function-first content pane; no live global invocation list.                                         |
+| `CloudWatchLogGroupNavigator`    | Deployed only                 | Lists log groups/streams supplied for selected Function.                             | Select target before query.                                                                                 | Compact hierarchy/list adjacent to or above results.                                                 |
+| `CloudWatchQueryToolbar`         | Deployed only                 | Owns query inputs and refresh action.                                                | Change time range/filter; explicitly run or refresh query.                                                  | Compact controls near results; query state visible.                                                  |
+| `CloudWatchLogViewer`            | Deployed only                 | Renders returned CloudWatch events.                                                  | Select/copy events; paginate/load more only when contract supports it.                                      | Reuse log typography and status patterns; show query/loading/empty/error states.                     |
 
 ### Composition rules
 
@@ -295,27 +295,27 @@ StageFunctionPage
 
 ### Local Function activity
 
-| User/system event | Required result |
-| --- | --- |
-| Local session connects | Header changes to Connected; live activity empty state remains until first invocation. |
-| WebSocket receives new invocation | Normalise/upsert, sort reverse chronologically, update retained count and last-event time. Do not steal selection from an invocation user is inspecting. |
-| User selects invocation | Active row changes; detail pane renders its available summary, payload, logs, output, and errors. |
-| Selected invocation receives update | Detail updates in place; pending may transition to Success or Error. |
-| User filters activity | List changes locally using only supported fields; selection clears or remains only if selected invocation still matches. |
-| User clears activity | Clear local retained view and send supported local clear message. Selected detail becomes empty state. |
-| User pauses/follows stream | Apply only if capability exists; label/state changes immediately and visible activity behaviour matches it. |
-| WebSocket disconnects | Preserve retained activity, show disconnected/reconnecting header state, and distinguish it from no invocations. |
+| User/system event                   | Required result                                                                                                                                          |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local session connects              | Header changes to Connected; live activity empty state remains until first invocation.                                                                   |
+| WebSocket receives new invocation   | Normalise/upsert, sort reverse chronologically, update retained count and last-event time. Do not steal selection from an invocation user is inspecting. |
+| User selects invocation             | Active row changes; detail pane renders its available summary, payload, logs, output, and errors.                                                        |
+| Selected invocation receives update | Detail updates in place; pending may transition to Success or Error.                                                                                     |
+| User filters activity               | List changes locally using only supported fields; selection clears or remains only if selected invocation still matches.                                 |
+| User clears activity                | Clear local retained view and send supported local clear message. Selected detail becomes empty state.                                                   |
+| User pauses/follows stream          | Apply only if capability exists; label/state changes immediately and visible activity behaviour matches it.                                              |
+| WebSocket disconnects               | Preserve retained activity, show disconnected/reconnecting header state, and distinguish it from no invocations.                                         |
 
 ### Deployed Function logs
 
-| User/system event | Required result |
-| --- | --- |
-| User selects Function | Show function summary and its available log group/stream choices. Do not query unrelated functions. |
-| User selects log target/time range | Update query controls; query only on explicit action if contract/cost warrants it. |
-| User queries or refreshes | Show scoped loading state in log results; retain query context. |
-| Query succeeds with events | Render chronological CloudWatch events in `CloudWatchLogViewer`. |
-| Query succeeds with no events | Explain no events matched selected function, target, and time range. |
-| Query fails | Preserve selected Function/query context; show retryable error distinct from no logs. |
+| User/system event                  | Required result                                                                                     |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------- |
+| User selects Function              | Show function summary and its available log group/stream choices. Do not query unrelated functions. |
+| User selects log target/time range | Update query controls; query only on explicit action if contract/cost warrants it.                  |
+| User queries or refreshes          | Show scoped loading state in log results; retain query context.                                     |
+| Query succeeds with events         | Render chronological CloudWatch events in `CloudWatchLogViewer`.                                    |
+| Query succeeds with no events      | Explain no events matched selected function, target, and time range.                                |
+| Query fails                        | Preserve selected Function/query context; show retryable error distinct from no logs.               |
 
 ### Keyboard and accessibility
 

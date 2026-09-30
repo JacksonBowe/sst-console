@@ -278,10 +278,10 @@ Define and implement only the data contract needed for deployed Function inspect
 ### Agent work
 
 1. Document/implement typed SDK and Vue Query contracts for:
-   - stage Functions;
-   - selected Function safe identity/metadata;
-   - available CloudWatch log groups/streams;
-   - scoped log-event query with time range/filter/cursor where supported.
+    - stage Functions;
+    - selected Function safe identity/metadata;
+    - available CloudWatch log groups/streams;
+    - scoped log-event query with time range/filter/cursor where supported.
 2. Define loading, empty, permission, not-found, and query-failure API semantics.
 3. Verify returned fields are safe for Console display.
 4. Build source/composable boundaries so visual components do not call AWS/CloudWatch directly.

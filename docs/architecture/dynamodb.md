@@ -144,7 +144,7 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 | App → stages                                 | app name, stage order                                 | Stage primary-key query                                     | Implemented                         |
 | Stage → resources                            | app and stage                                         | Resource primary-key query                                  | Implemented                         |
 | Reconcile account state projections          | worker: account ID                                    | `stagesByAccount`, then per-Stage resource queries          | Implemented                         |
-| Reconcile changed SST state object            | EventBridge worker: account ID + state key             | Account primary-key get; Stage/resource primary-key queries  | Implemented                         |
+| Reconcile changed SST state object           | EventBridge worker: account ID + state key            | Account primary-key get; Stage/resource primary-key queries | Implemented                         |
 | Latest state snapshot                        | app and stage, descending, limit 1                    | StateSnapshot primary-key query                             | Implemented                         |
 | Account sync history                         | account partition, descending sync prefix             | primary-key query                                           | Planned                             |
 | Durable connection registry                  | `Connection.list()`                                   | `ConsoleConnections` primary-key query                      | Implemented                         |

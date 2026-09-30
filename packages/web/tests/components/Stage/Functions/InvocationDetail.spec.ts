@@ -130,7 +130,7 @@ describe("InvocationDetail", () => {
 		expect(wrapper.text()).toContain('"accepted": true');
 	});
 
-	it("shows handled HTTP errors separately from platform errors", async () => {
+	it("keeps handled HTTP errors on overview", async () => {
 		const wrapper = mount(InvocationDetail, {
 			props: {
 				invocation: {
@@ -146,8 +146,31 @@ describe("InvocationDetail", () => {
 		});
 
 		expect(wrapper.text()).toContain("Error");
+		expect(wrapper.text()).not.toContain("HTTP 500 response");
+		await wrapper.get('[data-tab="errors"]').trigger("click");
 		expect(wrapper.text()).toContain("HTTP 500 response");
 		expect(wrapper.text()).toContain('"code": "internal_error"');
+	});
+
+	it("opens platform errors on the error tab", () => {
+		const wrapper = mount(InvocationDetail, {
+			props: {
+				invocation: {
+					...invocation,
+					status: "platform_error",
+					errors: [
+						{
+							error: "Error",
+							message: "Function crashed",
+							stack: ["at handler"]
+						}
+					]
+				}
+			},
+			global: { stubs }
+		});
+
+		expect(wrapper.text()).toContain("Function crashed");
 	});
 
 	it("redacts secrets in JSON request bodies", async () => {
@@ -290,8 +313,8 @@ describe("InvocationErrorPanel", () => {
 		expect(wrapper.text()).toContain("TypeError");
 		expect(wrapper.text()).toContain("Bad input");
 		expect(wrapper.text()).toContain("at checkout");
-		expect(wrapper.findAll('[aria-label^="Copy error"]')).toHaveLength(1);
-		await wrapper.get('[aria-label="Copy error 1"]').trigger("click");
+		expect(wrapper.findAll('[aria-label="Copy errors"]')).toHaveLength(1);
+		await wrapper.get('[aria-label="Copy errors"]').trigger("click");
 		expect(clipboardWrite).toHaveBeenCalledWith(
 			"TypeError\nBad input\nat checkout"
 		);

@@ -29,8 +29,8 @@ const props = withDefaults(
 		outlined: true,
 		dense: true,
 		roundedOptions: true,
-		labelAbove: true,
-	},
+		labelAbove: true
+	}
 );
 
 const emit = defineEmits<{
@@ -100,7 +100,7 @@ defineExpose({
 
 	get hasError() {
 		return qRef.value?.hasError ?? false;
-	},
+	}
 });
 </script>
 

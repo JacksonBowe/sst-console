@@ -41,14 +41,14 @@ import type { LocalLogLine } from "@/composables/local";
 
 const props = defineProps<{ logs: LocalLogLine[] }>();
 const orderedLogs = computed(() =>
-	[...props.logs].sort((left, right) => left.timestamp - right.timestamp),
+	[...props.logs].sort((left, right) => left.timestamp - right.timestamp)
 );
 
 function formatTime(timestamp: number) {
 	return new Date(timestamp).toLocaleTimeString([], {
 		hour: "2-digit",
 		minute: "2-digit",
-		second: "2-digit",
+		second: "2-digit"
 	});
 }
 </script>

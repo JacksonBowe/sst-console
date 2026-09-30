@@ -144,13 +144,12 @@ watch(
 	() => ({ id: props.invocation?.id, status: props.invocation?.status }),
 	(current, previous) => {
 		const isNewInvocation = current.id !== previous?.id;
-		const becameError =
+		const changedErrorStatus =
 			isErrorStatus(current.status) &&
 			current.status !== previous?.status;
-		if (!isNewInvocation && !becameError) return;
-		activePanel.value = isErrorStatus(current.status)
-			? "errors"
-			: "overview";
+		if (!isNewInvocation && !changedErrorStatus) return;
+		activePanel.value =
+			current.status === "platform_error" ? "errors" : "overview";
 	},
 	{ immediate: true }
 );
