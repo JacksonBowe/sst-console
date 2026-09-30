@@ -1,9 +1,8 @@
 <template>
 	<div class="column full-height overflow-hidden">
-		<div class="row no-wrap col overflow-hidden q-gap-md">
-			<div class="col-4 relative-position">
+		<div class="row no-wrap col overflow-hidden q-col-gutter-md">
+			<div class="col-4">
 				<InvocationList
-					class="absolute-full"
 					:invocations="invocations"
 					:status="status"
 					:selected-id="selectedId"
@@ -57,20 +56,3 @@ watch(
 	{ immediate: true },
 );
 </script>
-
-<style scoped lang="scss">
-@media (max-width: 800px) {
-	.row {
-		flex-direction: column;
-	}
-
-	.row > .col-4,
-	.row > .col-8 {
-		width: 100%;
-	}
-
-	.row > .col-4 {
-		flex: 0 0 16rem;
-	}
-}
-</style>
