@@ -1,4 +1,4 @@
-export function parseJsonResponseBody(value: unknown): unknown {
+export function parseJsonBody(value: unknown): unknown {
 	if (!isRecord(value)) return value;
 
 	if (typeof value.body === "string") {

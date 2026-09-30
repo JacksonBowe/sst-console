@@ -127,6 +127,24 @@ describe("InvocationDetail", () => {
 		expect(wrapper.text()).toContain('"body": {');
 		expect(wrapper.text()).toContain('"accepted": true');
 	});
+
+	it("redacts secrets in JSON request bodies", async () => {
+		const wrapper = mount(InvocationDetail, {
+			props: {
+				invocation: {
+					...invocation,
+					input: {
+						body: '{"refreshToken":"abcd1234efgh5678"}'
+					}
+				}
+			},
+			global: { stubs }
+		});
+
+		await wrapper.get('[data-tab="input"]').trigger("click");
+		expect(wrapper.text()).toContain('"refreshToken": "abcd…5678"');
+		expect(wrapper.text()).not.toContain("abcd1234efgh5678");
+	});
 });
 
 describe("InvocationPayloadPanel", () => {

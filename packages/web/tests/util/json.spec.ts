@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { parseJsonResponseBody } from "@/util/response";
+import { parseJsonBody } from "@/util/json";
 
-describe("parseJsonResponseBody", () => {
-	it("parses a JSON Lambda response body without mutation", () => {
+describe("parseJsonBody", () => {
+	it("parses a root JSON body without mutation", () => {
 		const output = {
 			statusCode: 200,
 			body: '{"id":"response-1"}'
 		};
 
-		expect(parseJsonResponseBody(output)).toEqual({
+		expect(parseJsonBody(output)).toEqual({
 			statusCode: 200,
 			body: { id: "response-1" }
 		});
@@ -21,7 +21,7 @@ describe("parseJsonResponseBody", () => {
 			response: { statusCode: 200, body: '{"id":"response-1"}' }
 		};
 
-		expect(parseJsonResponseBody(output)).toEqual({
+		expect(parseJsonBody(output)).toEqual({
 			response: { statusCode: 200, body: { id: "response-1" } }
 		});
 	});
@@ -29,6 +29,6 @@ describe("parseJsonResponseBody", () => {
 	it("keeps non-JSON response bodies unchanged", () => {
 		const output = { response: { body: "Internal server error" } };
 
-		expect(parseJsonResponseBody(output)).toBe(output);
+		expect(parseJsonBody(output)).toBe(output);
 	});
 });
