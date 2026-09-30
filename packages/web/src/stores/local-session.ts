@@ -34,6 +34,7 @@ type SocketMessage = {
 
 type LocalSessionState = {
 	status: LocalConnectionStatus;
+	isStreaming: boolean;
 	identity?: LocalIdentity | undefined;
 	invocations: LocalInvocation[];
 	lastEventAt?: number | undefined;
@@ -47,6 +48,7 @@ let started = false;
 export const useLocalSessionStore = defineStore("local-session", {
 	state: (): LocalSessionState => ({
 		status: "disconnected",
+		isStreaming: true,
 		identity: undefined,
 		invocations: [],
 		lastEventAt: undefined,
@@ -67,6 +69,7 @@ export const useLocalSessionStore = defineStore("local-session", {
 			socket?.close();
 			socket = undefined;
 			this.status = "disconnected";
+			this.isStreaming = true;
 			this.identity = undefined;
 			this.invocations = [];
 			this.lastEventAt = undefined;
@@ -81,6 +84,9 @@ export const useLocalSessionStore = defineStore("local-session", {
 					properties: { source: "all" }
 				})
 			);
+		},
+		toggleStreaming() {
+			this.isStreaming = !this.isStreaming;
 		},
 		connect() {
 			if (!started) return;
@@ -134,6 +140,7 @@ export const useLocalSessionStore = defineStore("local-session", {
 			const items = Array.isArray(message.properties)
 				? message.properties
 				: [message.properties];
+			if (!this.isStreaming) return;
 			for (const item of items) {
 				if (!isRecord(item) || typeof item.id !== "string") continue;
 				this.upsertInvocation(item as SocketInvocation);

@@ -26,8 +26,10 @@
 					v-if="isLocalStage"
 					:invocations="localSession.invocations"
 					:status="localSession.status"
+					:is-streaming="localSession.isStreaming"
 					class="col"
 					@clear="localSession.clear()"
+					@toggle-stream="localSession.toggleStreaming()"
 				/>
 				<FunctionNavigator v-else :functions="functionResources" />
 			</template>

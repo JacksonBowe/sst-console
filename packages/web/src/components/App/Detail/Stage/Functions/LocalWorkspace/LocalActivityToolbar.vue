@@ -20,6 +20,19 @@
 			flat
 			dense
 			no-caps
+			:icon="isStreaming ? 'sym_r_pause' : 'sym_r_play_arrow'"
+			:label="isStreaming ? 'Pause stream' : 'Resume stream'"
+			:aria-label="
+				isStreaming
+					? 'Pause local invocation stream'
+					: 'Resume local invocation stream'
+			"
+			@click="$emit('toggle-stream')"
+		/>
+		<q-btn
+			flat
+			dense
+			no-caps
 			icon="sym_r_delete_sweep"
 			label="Clear activity"
 			aria-label="Clear local invocation activity"
@@ -32,16 +45,21 @@
 import {
 	TableClearFilters,
 	TableFilter,
-	TableSearch,
+	TableSearch
 } from "@/components/ui/Table";
 import { invocationStatusOptions } from "./invocation-filters";
 
-defineProps<{
-	text: string;
-	statuses: string[];
-}>();
+withDefaults(
+	defineProps<{
+		text: string;
+		statuses: string[];
+		isStreaming?: boolean;
+	}>(),
+	{ isStreaming: true }
+);
 defineEmits<{
 	clear: [];
+	"toggle-stream": [];
 	"update:text": [text: string];
 	"update:statuses": [statuses: string[]];
 }>();

@@ -3,6 +3,7 @@
 		<template v-if="showFunctionSession" #actions>
 			<LocalFunctionSessionStatus
 				:status="localSession.status"
+				:is-streaming="localSession.isStreaming"
 				:invocations="localSession.invocations"
 				:last-event-at="localSession.lastEventAt"
 			/>

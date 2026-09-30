@@ -57,7 +57,7 @@ describe("FunctionInvocationWorkspace", () => {
 			}
 		});
 
-		await wrapper.get("button").trigger("click");
+		await wrapper.findAll("button")[1]!.trigger("click");
 		expect(wrapper.emitted("clear")).toHaveLength(1);
 	});
 

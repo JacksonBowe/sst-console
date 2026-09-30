@@ -9,6 +9,17 @@
 			<span class="text-body2">WebSocket {{ presentation.label }}</span>
 		</div>
 		<q-separator vertical />
+		<div class="row items-center q-gutter-xs" role="status">
+			<q-icon
+				:name="isStreaming ? 'sym_r_play_circle' : 'sym_r_pause_circle'"
+				:color="isStreaming ? 'positive' : 'warning'"
+				size="16px"
+			/>
+			<span class="text-body2">{{
+				isStreaming ? "Streaming live" : "Stream paused"
+			}}</span>
+		</div>
+		<q-separator vertical />
 		<div class="text-body2">{{ invocations.length }} retained</div>
 		<q-separator vertical />
 		<div class="text-body2">Last event {{ lastEventLabel }}</div>
@@ -26,6 +37,7 @@ import type {
 
 const props = defineProps<{
 	status: LocalConnectionStatus;
+	isStreaming: boolean;
 	invocations: LocalInvocation[];
 	lastEventAt?: number | undefined;
 }>();
