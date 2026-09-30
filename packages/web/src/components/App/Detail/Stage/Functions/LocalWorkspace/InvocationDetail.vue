@@ -1,5 +1,10 @@
 <template>
-	<q-card v-if="invocation" flat bordered class="column no-wrap full-height">
+	<q-card
+		v-if="invocation"
+		flat
+		bordered
+		class="invocation-detail column no-wrap full-height"
+	>
 		<q-card-section class="q-pa-sm bg-secondary-2">
 			<InvocationDetailHeader :invocation="invocation" />
 		</q-card-section>
@@ -29,27 +34,31 @@
 		<q-card-section
 			:class="[
 				'col column no-wrap overflow-hidden',
-				activePanel === 'overview' ? 'q-pa-md' : 'q-pa-none'
+				activePanel === 'overview' ? 'q-pa-none' : 'q-pa-none',
 			]"
 		>
 			<div v-if="activePanel === 'overview'" class="col column no-wrap">
-				<div class="row q-col-gutter-md col-7">
-					<div class="col-12 col-sm-6 column">
+				<div class="row q-col-gutter-m col-7">
+					<div
+						class="col-12 col-sm-6 column invocation-detail__input-payload-panel"
+					>
 						<InvocationPayloadPanel
 							class="col"
 							flat
-							bordered
+							square
 							redact
 							label="Input"
 							:value="input"
 							empty-message="No input captured."
 						/>
 					</div>
-					<div class="col-12 col-sm-6 column">
+					<div
+						class="col-12 col-sm-6 column invocation-detail__output-payload-panel"
+					>
 						<InvocationPayloadPanel
 							class="col"
 							flat
-							bordered
+							square
 							redact
 							label="Output"
 							:value="output"
@@ -59,9 +68,9 @@
 				</div>
 				<InvocationLogPanel
 					:logs="invocation.logs"
-					class="col q-mt-md"
+					class="col q-mt-m"
 					flat
-					bordered
+					square
 				/>
 			</div>
 			<InvocationPayloadPanel
@@ -134,7 +143,7 @@ const output = computed(() => parseJsonBody(props.invocation?.output));
 const hasErrors = computed(
 	() =>
 		props.invocation?.status === "application_error" ||
-		props.invocation?.status === "platform_error"
+		props.invocation?.status === "platform_error",
 );
 const httpErrorLabel = computed(() => {
 	const status = localInvocationHttpStatus(props.invocation?.output);
@@ -151,10 +160,29 @@ watch(
 		activePanel.value =
 			current.status === "platform_error" ? "errors" : "overview";
 	},
-	{ immediate: true }
+	{ immediate: true },
 );
 
 function isErrorStatus(status: LocalInvocation["status"] | undefined) {
 	return status === "application_error" || status === "platform_error";
 }
 </script>
+
+<style lang="scss" scoped>
+.invocation-detail__input-payload-panel {
+	border-right: 1px solid $separator-color;
+	border-bottom: 1px solid $separator-color;
+}
+
+.invocation-detail.q-card--dark .invocation-detail__input-payload-panel {
+	border-color: $separator-dark-color;
+}
+
+.invocation-detail__output-payload-panel {
+	border-bottom: 1px solid $separator-color;
+}
+
+.invocation-detail.q-card--dark .invocation-detail__output-payload-panel {
+	border-color: $separator-dark-color;
+}
+</style>
