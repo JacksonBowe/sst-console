@@ -43,7 +43,7 @@
 							class="col"
 							redact
 							label="Output"
-							:value="invocation.output"
+							:value="output"
 							empty-message="No output captured."
 						/>
 					</div>
@@ -66,7 +66,7 @@
 				class="col"
 				redact
 				label="Output"
-				:value="invocation.output"
+				:value="output"
 				empty-message="No output captured."
 			/>
 			<InvocationLogPanel
@@ -101,12 +101,14 @@ import InvocationDetailHeader from "./InvocationDetailHeader.vue";
 import InvocationErrorPanel from "./InvocationErrorPanel.vue";
 import InvocationLogPanel from "./InvocationLogPanel.vue";
 import InvocationPayloadPanel from "./InvocationPayloadPanel.vue";
+import { parseJsonResponseBody } from "@/util/response";
 
 const props = defineProps<{ invocation?: LocalInvocation | undefined }>();
 
 type InvocationPanel = "overview" | "input" | "output" | "logs" | "errors";
 
 const activePanel = ref<InvocationPanel>("overview");
+const output = computed(() => parseJsonResponseBody(props.invocation?.output));
 const hasErrors = computed(() =>
 	props.invocation?.errors.some(
 		error => error.error || error.message || error.stack.length

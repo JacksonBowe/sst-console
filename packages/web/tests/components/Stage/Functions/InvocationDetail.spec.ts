@@ -109,6 +109,24 @@ describe("InvocationDetail", () => {
 		await wrapper.get('[data-tab="logs"]').trigger("click");
 		expect(wrapper.text()).toContain("No log lines yet.");
 	});
+
+	it("renders JSON Lambda response bodies as structured output", async () => {
+		const wrapper = mount(InvocationDetail, {
+			props: {
+				invocation: {
+					...invocation,
+					output: {
+						response: { body: '{"accepted":true}' }
+					}
+				}
+			},
+			global: { stubs }
+		});
+
+		await wrapper.get('[data-tab="output"]').trigger("click");
+		expect(wrapper.text()).toContain('"body": {');
+		expect(wrapper.text()).toContain('"accepted": true');
+	});
 });
 
 describe("InvocationPayloadPanel", () => {
