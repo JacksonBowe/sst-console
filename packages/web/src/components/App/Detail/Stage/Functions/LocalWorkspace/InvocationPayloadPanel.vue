@@ -1,0 +1,79 @@
+<template>
+	<section
+		class="invocation-payload-panel bordered rounded-borders"
+		:aria-labelledby="titleId"
+	>
+		<div class="row items-center justify-between q-px-md q-py-sm">
+			<h3 :id="titleId" class="text-subtitle2 q-my-none">{{ label }}</h3>
+			<q-btn
+				v-if="hasValue"
+				flat
+				dense
+				round
+				size="sm"
+				:icon="copied ? 'sym_r_check' : 'sym_r_content_copy'"
+				:aria-label="`Copy ${label.toLowerCase()}`"
+				@click="copy"
+			/>
+		</div>
+		<q-separator />
+		<div v-if="hasValue" class="invocation-payload-panel__scroll q-pa-sm">
+			<pre>{{ formattedValue }}</pre>
+		</div>
+		<div v-else class="q-pa-md text-secondary">{{ emptyMessage }}</div>
+		<span class="sr-only" aria-live="polite">{{
+			copied ? `${label} copied` : ""
+		}}</span>
+	</section>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from "vue";
+
+const props = defineProps<{
+	label: string;
+	value?: unknown;
+	emptyMessage: string;
+}>();
+
+const copied = ref(false);
+const titleId = `invocation-payload-${props.label.toLowerCase()}`;
+const hasValue = computed(() => props.value !== undefined);
+const formattedValue = computed(() => JSON.stringify(props.value, null, 2));
+
+async function copy() {
+	try {
+		await navigator.clipboard.writeText(formattedValue.value);
+		copied.value = true;
+		window.setTimeout(() => (copied.value = false), 1500);
+	} catch {
+		copied.value = false;
+	}
+}
+</script>
+
+<style scoped lang="scss">
+.invocation-payload-panel__scroll {
+	max-height: 18rem;
+	overflow: auto;
+}
+
+pre {
+	margin: 0;
+	font-family: monospace;
+	font-size: 0.78rem;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.sr-only {
+	clip: rect(0, 0, 0, 0);
+	clip-path: inset(50%);
+	height: 1px;
+	overflow: hidden;
+	position: absolute;
+	white-space: nowrap;
+	width: 1px;
+}
+</style>

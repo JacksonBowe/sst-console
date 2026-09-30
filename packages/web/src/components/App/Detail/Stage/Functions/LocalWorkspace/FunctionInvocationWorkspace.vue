@@ -1,6 +1,6 @@
 <template>
 	<div class="column full-height overflow-hidden">
-		<div class="row no-wrap col overflow-hidden">
+		<div class="row no-wrap col overflow-hidden q-gap-md">
 			<div class="col-4 relative-position">
 				<InvocationList
 					class="absolute-full"
@@ -11,12 +11,11 @@
 				/>
 			</div>
 
-			<div class="col-8 column overflow-hidden">
-				<q-scroll-area class="col">
-					<FunctionInvocationDetail
-						:invocation="selectedInvocation"
-					/>
-				</q-scroll-area>
+			<div class="col-8">
+				<InvocationDetail
+					:invocation="selectedInvocation"
+					class="fit"
+				/>
 			</div>
 		</div>
 	</div>
@@ -29,7 +28,7 @@ import type {
 	LocalConnectionStatus,
 	LocalInvocation,
 } from "@/composables/local";
-import FunctionInvocationDetail from "./FunctionInvocationDetail.vue";
+import InvocationDetail from "./InvocationDetail.vue";
 import InvocationList from "./InvocationList.vue";
 
 const props = defineProps<{
@@ -58,3 +57,20 @@ watch(
 	{ immediate: true },
 );
 </script>
+
+<style scoped lang="scss">
+@media (max-width: 800px) {
+	.row {
+		flex-direction: column;
+	}
+
+	.row > .col-4,
+	.row > .col-8 {
+		width: 100%;
+	}
+
+	.row > .col-4 {
+		flex: 0 0 16rem;
+	}
+}
+</style>
