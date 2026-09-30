@@ -8,8 +8,10 @@ const appInput = z.object({ appName: z.string().min(1) });
 const stageInput = appInput.extend({ stageName: z.string().min(1) });
 
 export const list = async () => {
-	console.log('test')
+	console.log('Single line test - with JSON object test below')
 	const apps = await db.entities.app.query.byName({}).go({ pages: "all" });
+	console.log(apps)
+	console.log('And back to a single line')
 	return Promise.all(apps.data.map(app => summary(app)));
 };
 
