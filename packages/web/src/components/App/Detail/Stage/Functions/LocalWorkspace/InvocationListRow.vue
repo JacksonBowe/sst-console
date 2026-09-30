@@ -1,14 +1,19 @@
 <template>
 	<div
+		:id="`invocation-${invocation.id}`"
 		class="invocation-list-row row no-wrap items-center q-px-md q-py-sm"
 		:class="{ 'invocation-list-row--active': active }"
 		:aria-label="rowLabel"
 		:aria-selected="active"
-		role="listitem"
-		tabindex="0"
+		role="option"
+		:tabindex="active ? 0 : -1"
 		@click="$emit('select', invocation.id)"
 		@keydown.enter.prevent="$emit('select', invocation.id)"
 		@keydown.space.prevent="$emit('select', invocation.id)"
+		@keydown.down.prevent="$emit('navigate', 'next')"
+		@keydown.up.prevent="$emit('navigate', 'previous')"
+		@keydown.home.prevent="$emit('navigate', 'first')"
+		@keydown.end.prevent="$emit('navigate', 'last')"
 	>
 		<div class="col-2 invocation-list-row__time">
 			{{ formatTime(invocation.start) }}
@@ -46,7 +51,10 @@ const props = defineProps<{
 	invocation: LocalInvocation;
 	active: boolean;
 }>();
-defineEmits<{ select: [id: string] }>();
+defineEmits<{
+	select: [id: string];
+	navigate: [direction: "next" | "previous" | "first" | "last"];
+}>();
 
 const sourceName = computed(
 	() => props.invocation.source?.split("::").at(-1) ?? "Unknown source"

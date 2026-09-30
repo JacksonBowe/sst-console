@@ -27,6 +27,7 @@
 					:invocations="localSession.invocations"
 					:status="localSession.status"
 					class="col"
+					@clear="localSession.clear()"
 				/>
 				<FunctionNavigator v-else :functions="functionResources" />
 			</template>

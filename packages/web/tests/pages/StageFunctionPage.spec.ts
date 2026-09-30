@@ -64,7 +64,8 @@ vi.mock("@/components/App/Detail/Stage", () => ({
 	StageDetailErrorState: { template: "<div data-stage-error />" },
 	StageDetailLoadingState: { template: "<div data-stage-loading />" },
 	FunctionInvocationWorkspace: {
-		template: "<div data-function-workspace />"
+		emits: ["clear"],
+		template: "<button data-function-workspace @click=\"$emit('clear')\" />"
 	},
 	FunctionNavigator: {
 		props: { functions: { type: Array, required: true } },
@@ -83,6 +84,7 @@ vi.mock("@/components/ui/Dashboard", () => ({
 describe("StageFunctionPage", () => {
 	beforeEach(() => {
 		localSession.identity = undefined;
+		localSession.clear.mockClear();
 		stage.value = {
 			appName: "console",
 			stageName: "dev",
@@ -110,5 +112,17 @@ describe("StageFunctionPage", () => {
 
 		expect(wrapper.find("[data-function-workspace]").exists()).toBe(true);
 		expect(wrapper.find("[data-function-navigator]").exists()).toBe(false);
+	});
+
+	it("clears local activity from local workspace action", async () => {
+		localSession.identity = {
+			app: "console",
+			stage: "dev",
+			region: "us-east-1"
+		};
+		const wrapper = mount(StageFunctionPage);
+
+		await wrapper.get("[data-function-workspace]").trigger("click");
+		expect(localSession.clear).toHaveBeenCalledOnce();
 	});
 });

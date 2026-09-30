@@ -13,9 +13,19 @@ import { computed } from "vue";
 
 import type { LocalConnectionStatus } from "@/composables/local";
 
-const props = defineProps<{ status: LocalConnectionStatus }>();
+const props = defineProps<{
+	status: LocalConnectionStatus;
+	filtered?: boolean;
+}>();
 
 const presentation = computed(() => {
+	if (props.filtered) {
+		return {
+			icon: "sym_r_search_off",
+			title: "No matching invocations",
+			detail: "Change or clear filters to show local activity."
+		};
+	}
 	if (props.status === "connected") {
 		return {
 			icon: "sym_r_terminal",

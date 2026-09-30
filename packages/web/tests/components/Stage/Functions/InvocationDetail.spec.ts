@@ -292,6 +292,18 @@ describe("InvocationListRow", () => {
 			wrapper.get(".invocation-list-row__status-dot").classes()
 		).toContain("bg-warning");
 	});
+
+	it("navigates with keyboard while keeping one tab stop", async () => {
+		const wrapper = mount(InvocationListRow, {
+			props: { invocation, active: true }
+		});
+
+		expect(wrapper.get('[role="option"]').attributes("tabindex")).toBe("0");
+		await wrapper
+			.get('[role="option"]')
+			.trigger("keydown", { key: "ArrowDown" });
+		expect(wrapper.emitted("navigate")).toEqual([["next"]]);
+	});
 });
 
 describe("InvocationErrorPanel", () => {
