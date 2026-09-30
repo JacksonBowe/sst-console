@@ -9,7 +9,15 @@
 				class="q-mr-sm"
 			/>
 			<div>
-				<h2 class="text-h6 q-my-none">{{ sourceName }}</h2>
+				<h2 class="text-h6 q-my-none">
+					{{ sourceName }}
+					<span
+						v-if="httpLabel"
+						class="text-body2 text-secondary q-ml-xs"
+					>
+						{{ httpLabel }}
+					</span>
+				</h2>
 				<div class="text-body2 text-secondary">
 					Invocation at {{ formatDateTime(invocation.start) }}
 				</div>
@@ -44,6 +52,10 @@ const props = defineProps<{ invocation: LocalInvocation }>();
 const sourceName = computed(
 	() => props.invocation.source?.split("::").at(-1) ?? "Unknown source"
 );
+const httpLabel = computed(() => {
+	if (!props.invocation.http) return undefined;
+	return `(${props.invocation.http.method} ${props.invocation.http.path})`;
+});
 const statusLabel = computed(
 	() =>
 		({ pending: "Running", success: "Success", error: "Error" })[
