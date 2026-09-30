@@ -12,6 +12,22 @@
 			<div class="row items-center q-gutter-xs">
 				<q-badge color="primary" class="q-px-sm q-py-xs">JSON</q-badge>
 				<q-btn
+					v-if="props.redact && hasValue"
+					flat
+					dense
+					round
+					size="sm"
+					:icon="
+						redacted ? 'sym_r_visibility_off' : 'sym_r_visibility'
+					"
+					:aria-label="
+						redacted
+							? `Reveal ${label.toLowerCase()}`
+							: `Redact ${label.toLowerCase()}`
+					"
+					@click="toggleRedaction"
+				/>
+				<q-btn
 					v-if="hasValue"
 					flat
 					dense
@@ -43,17 +59,26 @@
 import { computed, ref } from "vue";
 
 import CodePreview from "@/components/ui/CodePreview/CodePreview.vue";
+import { redactSensitiveData } from "@/util/redact";
 
 const props = defineProps<{
 	label: string;
 	value?: unknown;
 	emptyMessage: string;
+	redact?: boolean;
 }>();
 
 const copied = ref(false);
+const redacted = ref(props.redact);
 const titleId = `invocation-payload-${props.label.toLowerCase()}`;
 const hasValue = computed(() => props.value !== undefined);
-const formattedValue = computed(() => JSON.stringify(props.value, null, 2));
+const formattedValue = computed(() =>
+	JSON.stringify(
+		redacted.value ? redactSensitiveData(props.value) : props.value,
+		null,
+		2
+	)
+);
 
 async function copy() {
 	try {
@@ -63,6 +88,10 @@ async function copy() {
 	} catch {
 		copied.value = false;
 	}
+}
+
+function toggleRedaction() {
+	redacted.value = !redacted.value;
 }
 </script>
 

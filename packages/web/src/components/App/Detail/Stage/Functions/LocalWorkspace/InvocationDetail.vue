@@ -32,6 +32,7 @@
 					<div class="col-12 col-sm-6 column">
 						<InvocationPayloadPanel
 							class="col"
+							redact
 							label="Input"
 							:value="invocation.input"
 							empty-message="No input captured."
@@ -40,6 +41,7 @@
 					<div class="col-12 col-sm-6 column">
 						<InvocationPayloadPanel
 							class="col"
+							redact
 							label="Output"
 							:value="invocation.output"
 							empty-message="No output captured."
@@ -54,6 +56,7 @@
 			<InvocationPayloadPanel
 				v-else-if="activePanel === 'input'"
 				class="col"
+				redact
 				label="Input"
 				:value="invocation.input"
 				empty-message="No input captured."
@@ -61,6 +64,7 @@
 			<InvocationPayloadPanel
 				v-else-if="activePanel === 'output'"
 				class="col"
+				redact
 				label="Output"
 				:value="invocation.output"
 				empty-message="No output captured."
@@ -105,11 +109,11 @@ type InvocationPanel = "overview" | "input" | "output" | "logs" | "errors";
 const activePanel = ref<InvocationPanel>("overview");
 const hasErrors = computed(() =>
 	props.invocation?.errors.some(
-		(error) => error.error || error.message || error.stack.length,
-	),
+		error => error.error || error.message || error.stack.length
+	)
 );
 watch(
 	() => props.invocation?.id,
-	() => (activePanel.value = "overview"),
+	() => (activePanel.value = "overview")
 );
 </script>

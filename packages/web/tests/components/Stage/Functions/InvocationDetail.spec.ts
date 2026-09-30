@@ -17,6 +17,7 @@ const stubs = {
 	QCardSection: { template: "<div><slot /></div>" },
 	QBadge: { template: "<span><slot /></span>" },
 	QBtn: {
+		emits: ["click"],
 		inheritAttrs: false,
 		template:
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>'
@@ -111,6 +112,14 @@ describe("InvocationDetail", () => {
 });
 
 describe("InvocationPayloadPanel", () => {
+	beforeEach(() => {
+		clipboardWrite.mockReset();
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: { writeText: clipboardWrite }
+		});
+	});
+
 	it("renders a JSON card header", () => {
 		const wrapper = mount(InvocationPayloadPanel, {
 			props: {
@@ -138,6 +147,38 @@ describe("InvocationPayloadPanel", () => {
 		await wrapper.get('[aria-label="Copy input"]').trigger("click");
 
 		expect(clipboardWrite).toHaveBeenCalledWith('{\n  "id": "input-1"\n}');
+	});
+
+	it("redacts input secrets until revealed", async () => {
+		const wrapper = mount(InvocationPayloadPanel, {
+			props: {
+				label: "Input",
+				value: {
+					authorization: "Bearer 1234567890abcdef",
+					apiKey: "abcd1234efgh5678",
+					aws_secret_access_key: "wxyz1234efgh5678"
+				},
+				emptyMessage: "Missing",
+				redact: true
+			},
+			global: { stubs }
+		});
+
+		expect(wrapper.text()).toContain("Bearer 1234…cdef");
+		expect(wrapper.text()).toContain("abcd…5678");
+		expect(wrapper.text()).toContain("wxyz…5678");
+		expect(wrapper.text()).not.toContain("1234567890abcdef");
+		await wrapper.get('[aria-label="Copy input"]').trigger("click");
+		expect(clipboardWrite).toHaveBeenLastCalledWith(
+			expect.stringContaining("Bearer 1234…cdef")
+		);
+
+		await wrapper.get('[aria-label="Reveal input"]').trigger("click");
+		expect(wrapper.text()).toContain("Bearer 1234567890abcdef");
+		await wrapper.get('[aria-label="Copy input"]').trigger("click");
+		expect(clipboardWrite).toHaveBeenLastCalledWith(
+			expect.stringContaining("Bearer 1234567890abcdef")
+		);
 	});
 });
 
