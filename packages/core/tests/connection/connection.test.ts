@@ -46,4 +46,22 @@ describe("connection entity", () => {
 			ignoreList: []
 		});
 	});
+
+	it("includes every update placeholder in DynamoDB expression values", () => {
+		const params = connections.entities.connection
+			.update({ accountId: "123456789012" })
+			.ifNotExists({ createdAt: "2026-01-01T00:00:00.000Z" })
+			.set({
+				region: "us-east-1",
+				roleArn: "arn:aws:iam::123456789012:role/SSTConsoleRole",
+				updatedAt: "2026-01-01T00:00:00.000Z"
+			})
+			.params();
+		const placeholders = params.UpdateExpression?.match(/:\w+/g) ?? [];
+
+		for (const placeholder of placeholders)
+			expect(params.ExpressionAttributeValues).toHaveProperty(
+				placeholder
+			);
+	});
 });

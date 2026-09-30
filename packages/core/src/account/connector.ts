@@ -12,6 +12,7 @@ import { db } from "../db";
 import { InputError, ServerError } from "../error";
 import { defineEvent } from "../event";
 import { fn } from "../util/fn";
+import { removeAccountProjections } from "./projection";
 
 const sts = new STSClient({});
 const roleArn =
@@ -142,6 +143,8 @@ export const register = fn(CallbackSchema, async input => {
 			createdAt: now,
 			updatedAt: now
 		});
+	} else {
+		await removeAccountProjections(input.accountId);
 	}
 	await db.entities.account
 		.upsert({

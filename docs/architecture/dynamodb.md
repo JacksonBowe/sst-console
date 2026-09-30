@@ -198,9 +198,11 @@ access pattern.
 
 Connector Create/Update callback upserts account ID, region, and role ARN into
 `ConsoleConnections`, then writes the Console-facing Account projection to
-`ConsoleData`. Workload-stack Delete does not remove the durable connection
-record. Recovery is an explicit API action, never automatic on startup: query
-the registry and upsert each Account projection. Recovery does not sync; users
+`ConsoleData`. Workload-stack Delete removes that account's Stage, Resource, and
+discovery projections, then removes Apps left without stages; snapshots and the
+durable connection record remain. Recovery is an explicit API action, never
+automatic on startup: query the registry and upsert each Account projection.
+Recovery does not sync; users
 invoke the existing per-account sync action after confirming restored accounts.
 Per-account failures are reported without stopping recovery of other accounts.
 Before first use after deploying this change, existing Account records must be

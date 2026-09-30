@@ -24,10 +24,7 @@ export const upsert = (input: {
 }) =>
 	connections.entities.connection
 		.update({ accountId: input.accountId })
-		.ifNotExists({
-			createdAt: input.createdAt,
-			syncPolicy: defaultSyncPolicy
-		})
+		.ifNotExists({ createdAt: input.createdAt })
 		.set({
 			region: input.region,
 			roleArn: input.roleArn,
