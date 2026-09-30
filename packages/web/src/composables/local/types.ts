@@ -11,6 +11,12 @@ export type LocalLogLine = {
 export type LocalInvocation = {
 	id: string;
 	source?: string | undefined;
+	http?:
+		| {
+				method: string;
+				path: string;
+		  }
+		| undefined;
 	input?: unknown;
 	output?: unknown;
 	start: number;

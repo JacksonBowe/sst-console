@@ -183,6 +183,7 @@ function normalizeInvocation(item: SocketInvocation): LocalInvocation {
 	return {
 		id: item.id!,
 		source: item.source,
+		http: normalizeHttp(item.input),
 		input: item.input,
 		output: item.output,
 		start: item.start ?? Date.now(),
@@ -194,6 +195,15 @@ function normalizeInvocation(item: SocketInvocation): LocalInvocation {
 			item.report?.duration ??
 			(end && item.start ? end - item.start : undefined)
 	};
+}
+
+function normalizeHttp(value: unknown) {
+	if (!isRecord(value) || !isRecord(value.requestContext)) return undefined;
+	const http = value.requestContext.http;
+	if (!isRecord(http)) return undefined;
+	if (typeof http.method !== "string" || typeof http.path !== "string")
+		return undefined;
+	return { method: http.method, path: http.path };
 }
 
 function isIdentity(value: unknown): value is LocalIdentity {

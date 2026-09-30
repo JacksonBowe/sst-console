@@ -25,7 +25,7 @@
 				<FunctionInvocationWorkspace
 					v-if="isLocalStage"
 					:invocations="localSession.invocations"
-					@clear="localSession.clear"
+					:status="localSession.status"
 					class="col"
 				/>
 				<FunctionNavigator v-else :functions="functionResources" />
@@ -44,12 +44,12 @@ import {
 	FunctionNavigator,
 	StageDetailErrorState,
 	StageDetailHeader,
-	StageDetailLoadingState
+	StageDetailLoadingState,
 } from "@/components/App/Detail/Stage";
 import {
 	DashboardPage,
 	DashboardPageBreadcrumbs,
-	DashboardPageContent
+	DashboardPageContent,
 } from "@/components/ui/Dashboard";
 import { useStage } from "@/composables/apps";
 import { functionResourcesFor } from "@/composables/apps/stage-resources";
@@ -63,25 +63,25 @@ const stageQuery = useStage(appName, stageName);
 const stage = computed(() => stageQuery.data.value);
 const localSession = useLocalSessionStore();
 const isLocalStage = computed(() =>
-	localSessionMatchesStage(localSession.identity, stage.value)
+	localSessionMatchesStage(localSession.identity, stage.value),
 );
 const functionResources = computed(() =>
-	functionResourcesFor(stage.value?.resources ?? [])
+	functionResourcesFor(stage.value?.resources ?? []),
 );
 const breadcrumbs = computed(() => [
 	{ label: "Apps", to: { name: "apps" } },
 	{
 		label: appName.value,
-		to: { name: "app-detail", params: { appName: appName.value } }
+		to: { name: "app-detail", params: { appName: appName.value } },
 	},
 	{
 		label: stage.value?.stageName ?? stageName.value,
 		to: {
 			name: "stage-detail",
-			params: { appName: appName.value, stageName: stageName.value }
-		}
+			params: { appName: appName.value, stageName: stageName.value },
+		},
 	},
-	{ label: "Functions" }
+	{ label: "Functions" },
 ]);
 const isNotFound = computed(() => {
 	const error = stageQuery.error.value;
