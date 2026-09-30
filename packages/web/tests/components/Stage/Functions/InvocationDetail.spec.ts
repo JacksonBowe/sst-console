@@ -106,6 +106,20 @@ describe("InvocationDetail", () => {
 });
 
 describe("InvocationPayloadPanel", () => {
+	it("renders a JSON card header", () => {
+		const wrapper = mount(InvocationPayloadPanel, {
+			props: {
+				label: "Input",
+				value: { id: "input-1" },
+				emptyMessage: "Missing"
+			},
+			global: { stubs }
+		});
+
+		expect(wrapper.get("h3").text()).toBe("Input");
+		expect(wrapper.text()).toContain("JSON");
+	});
+
 	it("copies received structured data", async () => {
 		const wrapper = mount(InvocationPayloadPanel, {
 			props: {

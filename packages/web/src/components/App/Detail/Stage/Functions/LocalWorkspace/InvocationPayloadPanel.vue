@@ -1,30 +1,42 @@
 <template>
-	<section
-		class="invocation-payload-panel bordered rounded-borders"
+	<q-card
+		flat
+		bordered
+		class="invocation-payload-panel"
 		:aria-labelledby="titleId"
 	>
-		<div class="row items-center justify-between q-px-md q-py-sm">
+		<q-card-section
+			class="row items-center justify-between q-px-md q-py-sm bg-secondary-2"
+		>
 			<h3 :id="titleId" class="text-subtitle2 q-my-none">{{ label }}</h3>
-			<q-btn
-				v-if="hasValue"
-				flat
-				dense
-				round
-				size="sm"
-				:icon="copied ? 'sym_r_check' : 'sym_r_content_copy'"
-				:aria-label="`Copy ${label.toLowerCase()}`"
-				@click="copy"
-			/>
-		</div>
+			<div class="row items-center q-gutter-xs">
+				<q-badge color="primary" class="q-px-sm q-py-xs">JSON</q-badge>
+				<q-btn
+					v-if="hasValue"
+					flat
+					dense
+					round
+					size="sm"
+					:icon="copied ? 'sym_r_check' : 'sym_r_content_copy'"
+					:aria-label="`Copy ${label.toLowerCase()}`"
+					@click="copy"
+				/>
+			</div>
+		</q-card-section>
 		<q-separator />
-		<div v-if="hasValue" class="invocation-payload-panel__scroll q-pa-sm">
+		<q-card-section
+			v-if="hasValue"
+			class="invocation-payload-panel__scroll q-pa-sm"
+		>
 			<pre>{{ formattedValue }}</pre>
-		</div>
-		<div v-else class="q-pa-md text-secondary">{{ emptyMessage }}</div>
+		</q-card-section>
+		<q-card-section v-else class="q-pa-md text-secondary">
+			{{ emptyMessage }}
+		</q-card-section>
 		<span class="sr-only" aria-live="polite">{{
 			copied ? `${label} copied` : ""
 		}}</span>
-	</section>
+	</q-card>
 </template>
 
 <script setup lang="ts">
