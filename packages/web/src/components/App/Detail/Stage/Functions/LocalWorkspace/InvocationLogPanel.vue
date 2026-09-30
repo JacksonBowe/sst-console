@@ -1,7 +1,5 @@
 <template>
 	<q-card
-		flat
-		bordered
 		class="column no-wrap full-height overflow-hidden"
 		aria-labelledby="invocation-logs-title"
 	>

@@ -26,12 +26,19 @@
 			</q-tabs>
 		</q-card-section>
 		<q-separator />
-		<q-card-section class="col column no-wrap overflow-hidden">
+		<q-card-section
+			:class="[
+				'col column no-wrap overflow-hidden',
+				activePanel === 'overview' ? 'q-pa-md' : 'q-pa-none',
+			]"
+		>
 			<div v-if="activePanel === 'overview'" class="col column no-wrap">
 				<div class="row q-col-gutter-md col-7">
 					<div class="col-12 col-sm-6 column">
 						<InvocationPayloadPanel
 							class="col"
+							flat
+							bordered
 							redact
 							label="Input"
 							:value="input"
@@ -41,6 +48,8 @@
 					<div class="col-12 col-sm-6 column">
 						<InvocationPayloadPanel
 							class="col"
+							flat
+							bordered
 							redact
 							label="Output"
 							:value="output"
@@ -51,11 +60,14 @@
 				<InvocationLogPanel
 					:logs="invocation.logs"
 					class="col q-mt-md"
+					flat
+					bordered
 				/>
 			</div>
 			<InvocationPayloadPanel
 				v-else-if="activePanel === 'input'"
 				class="col"
+				flat
 				redact
 				label="Input"
 				:value="input"
@@ -97,11 +109,11 @@
 import { computed, ref, watch } from "vue";
 
 import type { LocalInvocation } from "@/composables/local";
+import { parseJsonBody } from "@/util/json";
 import InvocationDetailHeader from "./InvocationDetailHeader.vue";
 import InvocationErrorPanel from "./InvocationErrorPanel.vue";
 import InvocationLogPanel from "./InvocationLogPanel.vue";
 import InvocationPayloadPanel from "./InvocationPayloadPanel.vue";
-import { parseJsonBody } from "@/util/json";
 
 const props = defineProps<{ invocation?: LocalInvocation | undefined }>();
 
@@ -112,11 +124,11 @@ const input = computed(() => parseJsonBody(props.invocation?.input));
 const output = computed(() => parseJsonBody(props.invocation?.output));
 const hasErrors = computed(() =>
 	props.invocation?.errors.some(
-		error => error.error || error.message || error.stack.length
-	)
+		(error) => error.error || error.message || error.stack.length,
+	),
 );
 watch(
 	() => props.invocation?.id,
-	() => (activePanel.value = "overview")
+	() => (activePanel.value = "overview"),
 );
 </script>
