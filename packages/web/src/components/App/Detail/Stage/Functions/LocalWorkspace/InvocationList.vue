@@ -8,13 +8,17 @@
 				class="invocation-list__header row no-wrap items-center"
 				role="row"
 			>
-				<div class="col-3" role="columnheader">Time</div>
+				<div class="col-2" role="columnheader">Time</div>
 				<div class="col" role="columnheader">Function</div>
-				<div class="col-3" role="columnheader">Status</div>
-				<div class="col-2" role="columnheader">Duration</div>
+				<div class="col-2 q-pr-md text-right" role="columnheader">Status</div>
+				<div class="col-1 text-right" role="columnheader">Duration</div>
 			</div>
 			<q-separator />
-			<q-scroll-area class="col">
+			<q-scroll-area
+				class="col"
+				:vertical-bar-style="{ width: '6px' }"
+				:vertical-thumb-style="{ width: '6px' }"
+			>
 				<div role="list">
 					<InvocationListRow
 						v-for="invocation in invocations"
@@ -33,7 +37,7 @@
 <script setup lang="ts">
 import type {
 	LocalConnectionStatus,
-	LocalInvocation
+	LocalInvocation,
 } from "@/composables/local";
 import InvocationListEmptyState from "./InvocationListEmptyState.vue";
 import InvocationListRow from "./InvocationListRow.vue";
