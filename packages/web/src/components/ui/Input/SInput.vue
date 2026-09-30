@@ -98,5 +98,21 @@ defineExpose({
 		line-height: 1.25;
 		user-select: none;
 	}
+
+	:deep(
+		.q-field--outlined:not(.q-field--focused):not(.q-field--error)
+			.q-field__control::before
+	) {
+		border-color: $separator-color;
+	}
+}
+
+.body--dark .s-input {
+	:deep(
+		.q-field--outlined:not(.q-field--focused):not(.q-field--error)
+			.q-field__control::before
+	) {
+		border-color: $separator-dark-color;
+	}
 }
 </style>
