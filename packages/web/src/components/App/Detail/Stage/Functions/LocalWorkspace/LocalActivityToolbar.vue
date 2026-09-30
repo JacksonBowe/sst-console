@@ -1,6 +1,6 @@
 <template>
-	<div class="row items-center">
-		<table-search
+	<div class="row items-stretch q-gutter-sm">
+		<TableSearch
 			:model-value="text"
 			@update:model-value="$emit('update:text', $event ?? '')"
 		/>
@@ -10,6 +10,10 @@
 			:model-value="statuses"
 			@update:model-value="$emit('update:statuses', $event)"
 			menu-width="narrow"
+		/>
+		<TableClearFilters
+			:filters="{ text, facets: { status: statuses } }"
+			@clear-facets="$emit('update:statuses', [])"
 		/>
 		<q-space />
 		<q-btn
@@ -25,7 +29,11 @@
 </template>
 
 <script setup lang="ts">
-import { TableFilter, TableSearch } from "@/components/ui/Table";
+import {
+	TableClearFilters,
+	TableFilter,
+	TableSearch,
+} from "@/components/ui/Table";
 import { invocationStatusOptions } from "./invocation-filters";
 
 defineProps<{

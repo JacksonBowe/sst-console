@@ -1,6 +1,7 @@
 <template>
 	<q-btn
 		v-if="hasFacets"
+		class="self-stretch"
 		label="Clear Filters"
 		flat
 		no-caps

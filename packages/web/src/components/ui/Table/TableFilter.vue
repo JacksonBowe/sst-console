@@ -1,5 +1,5 @@
 <template>
-	<div class="flex items-center">
+	<div class="flex items-stretch self-stretch">
 		<q-btn
 			class="table-filter__trigger"
 			:label="label"
