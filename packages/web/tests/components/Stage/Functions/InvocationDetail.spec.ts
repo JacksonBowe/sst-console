@@ -9,6 +9,10 @@ import type { LocalInvocation } from "@/composables/local";
 
 const clipboardWrite = vi.fn();
 const stubs = {
+	CodePreview: {
+		props: { code: String },
+		template: "<pre>{{ code }}</pre>"
+	},
 	QCard: { template: "<div><slot /></div>" },
 	QCardSection: { template: "<div><slot /></div>" },
 	QBadge: { template: "<span><slot /></span>" },

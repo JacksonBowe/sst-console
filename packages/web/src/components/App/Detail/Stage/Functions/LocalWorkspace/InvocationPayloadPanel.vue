@@ -2,7 +2,7 @@
 	<q-card
 		flat
 		bordered
-		class="column no-wrap full-height"
+		class="column no-wrap full-height overflow-hidden"
 		:aria-labelledby="titleId"
 	>
 		<q-card-section
@@ -28,9 +28,7 @@
 			v-if="hasValue"
 			class="col column no-wrap overflow-hidden q-pa-none"
 		>
-			<q-scroll-area class="col q-pa-sm">
-				<pre>{{ formattedValue }}</pre>
-			</q-scroll-area>
+			<CodePreview class="col" :code="formattedValue" language="json" />
 		</q-card-section>
 		<q-card-section v-else class="col q-pa-md text-secondary">
 			{{ emptyMessage }}
@@ -43,6 +41,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
+
+import CodePreview from "@/components/ui/CodePreview/CodePreview.vue";
 
 const props = defineProps<{
 	label: string;
@@ -67,15 +67,6 @@ async function copy() {
 </script>
 
 <style scoped lang="scss">
-pre {
-	margin: 0;
-	font-family: monospace;
-	font-size: 0.78rem;
-	line-height: 1.5;
-	white-space: pre-wrap;
-	word-break: break-word;
-}
-
 .sr-only {
 	clip: rect(0, 0, 0, 0);
 	clip-path: inset(50%);
