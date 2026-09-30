@@ -8,7 +8,62 @@ Development is moving quickly. Features, APIs, infrastructure, data models, and 
 
 ## Status
 
-This repository contains only the early foundations: SST infrastructure, a basic web application, Cognito setup, DynamoDB storage, and experimental account connection and state-ingestion work. It does not yet provide a usable Console.
+SST Console has early functionality for browsing apps, stages, and resource metadata from connected AWS accounts. It also augments a local `sst dev` session: when the Console is open on the matching app and stage, its Functions workspace shows live cross-function invocation activity, including input, output, logs, errors, and duration.
+
+This is not yet a complete Console. Function inspection for deployed stages, resource actions, and many operational workflows are incomplete.
+
+## Screenshots
+
+### Apps
+
+![SST Console apps screen](docs/images/home-screen.png)
+
+### Stage resources
+
+![SST Console stage resource detail](docs/images/app-stage-detail.png)
+
+### Local `sst dev` Function activity
+
+![Live local Function invocations from sst dev](docs/images/local-stage-workspace.png)
+
+## Self-hosting
+
+Deploy one Console installation in a dedicated AWS control account. It can then connect workload accounts in your AWS organization.
+
+### Prerequisites
+
+- [Bun](https://bun.sh/)
+- AWS credentials for control account, configured as an AWS CLI profile
+- AWS permissions to create SST, Cognito, Lambda, DynamoDB, EventBridge, S3, and IAM resources
+
+### Deploy
+
+1. Clone repository and install dependencies:
+
+   ```bash
+   bun install
+   ```
+
+2. Create local configuration and set AWS profile and deployment region:
+
+   ```bash
+   cp console.config.example.ts console.config.ts
+   ```
+
+   Edit `console.config.ts`. Set `profile` to AWS CLI profile for control account and `region` to desired AWS region. Configure Cognito password policy if required.
+
+3. Deploy Console:
+
+   ```bash
+   bun run deploy
+   ```
+
+4. Open `consoleUrl` from SST deployment output. Create initial user in deployed Cognito User Pool; see [authentication setup](docs/authentication.md).
+
+5. Connect each workload account through **Connect account** in Console. This opens AWS CloudFormation using deployment-specific connector template. Connected accounts publish SST state changes to control account, letting Console index their apps and stages.
+
+> **Warning**
+> Current connector creates `SSTConsoleRole` with `AdministratorAccess` in every connected workload account. Review template and its permissions before deployment. Project is early work; use isolated, non-production AWS accounts only.
 
 ## How this differs from SST's official Console
 
