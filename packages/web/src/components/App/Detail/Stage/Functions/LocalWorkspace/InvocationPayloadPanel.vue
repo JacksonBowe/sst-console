@@ -2,7 +2,7 @@
 	<q-card
 		flat
 		bordered
-		class="invocation-payload-panel"
+		class="column no-wrap full-height"
 		:aria-labelledby="titleId"
 	>
 		<q-card-section
@@ -26,11 +26,13 @@
 		<q-separator />
 		<q-card-section
 			v-if="hasValue"
-			class="invocation-payload-panel__scroll q-pa-sm"
+			class="col column no-wrap overflow-hidden q-pa-none"
 		>
-			<pre>{{ formattedValue }}</pre>
+			<q-scroll-area class="col q-pa-sm">
+				<pre>{{ formattedValue }}</pre>
+			</q-scroll-area>
 		</q-card-section>
-		<q-card-section v-else class="q-pa-md text-secondary">
+		<q-card-section v-else class="col q-pa-md text-secondary">
 			{{ emptyMessage }}
 		</q-card-section>
 		<span class="sr-only" aria-live="polite">{{
@@ -65,11 +67,6 @@ async function copy() {
 </script>
 
 <style scoped lang="scss">
-.invocation-payload-panel__scroll {
-	max-height: 18rem;
-	overflow: auto;
-}
-
 pre {
 	margin: 0;
 	font-family: monospace;

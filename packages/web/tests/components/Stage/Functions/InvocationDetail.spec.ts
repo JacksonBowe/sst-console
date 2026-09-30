@@ -18,6 +18,7 @@ const stubs = {
 			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>'
 	},
 	QIcon: true,
+	QScrollArea: { template: "<div><slot /></div>" },
 	QSeparator: true,
 	QTabs: {
 		emits: ["update:modelValue"],

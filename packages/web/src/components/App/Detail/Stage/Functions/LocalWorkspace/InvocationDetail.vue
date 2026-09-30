@@ -1,5 +1,5 @@
 <template>
-	<q-card v-if="invocation" flat bordered>
+	<q-card v-if="invocation" flat bordered class="column no-wrap full-height">
 		<q-card-section class="q-pa-sm bg-secondary-2">
 			<InvocationDetailHeader :invocation="invocation" />
 		</q-card-section>
@@ -26,43 +26,55 @@
 			</q-tabs>
 		</q-card-section>
 		<q-separator />
-		<q-card-section class="invocation-detail__panel">
-			<template v-if="activePanel === 'overview'">
-				<div class="row q-col-gutter-md">
-					<div class="col-12 col-sm-6">
+		<q-card-section class="col column no-wrap overflow-hidden">
+			<div v-if="activePanel === 'overview'" class="col column no-wrap">
+				<div class="row q-col-gutter-md col-7">
+					<div class="col-12 col-sm-6 column">
 						<InvocationPayloadPanel
+							class="col"
 							label="Input"
 							:value="invocation.input"
 							empty-message="No input captured."
 						/>
 					</div>
-					<div class="col-12 col-sm-6">
+					<div class="col-12 col-sm-6 column">
 						<InvocationPayloadPanel
+							class="col"
 							label="Output"
 							:value="invocation.output"
 							empty-message="No output captured."
 						/>
 					</div>
 				</div>
-				<InvocationLogPanel :logs="invocation.logs" class="q-mt-md" />
-			</template>
+				<InvocationLogPanel
+					:logs="invocation.logs"
+					class="col q-mt-md"
+				/>
+			</div>
 			<InvocationPayloadPanel
 				v-else-if="activePanel === 'input'"
+				class="col"
 				label="Input"
 				:value="invocation.input"
 				empty-message="No input captured."
 			/>
 			<InvocationPayloadPanel
 				v-else-if="activePanel === 'output'"
+				class="col"
 				label="Output"
 				:value="invocation.output"
 				empty-message="No output captured."
 			/>
 			<InvocationLogPanel
 				v-else-if="activePanel === 'logs'"
+				class="col"
 				:logs="invocation.logs"
 			/>
-			<InvocationErrorPanel v-else :errors="invocation.errors" />
+			<InvocationErrorPanel
+				v-else
+				class="col"
+				:errors="invocation.errors"
+			/>
 		</q-card-section>
 	</q-card>
 	<div
