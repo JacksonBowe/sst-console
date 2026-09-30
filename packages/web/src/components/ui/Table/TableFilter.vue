@@ -1,8 +1,7 @@
 <template>
 	<div class="flex items-center">
 		<q-btn
-			:color="$q.dark.isActive ? 'grey-10' : 'grey-3'"
-			:text-color="$q.dark.isActive ? 'grey-5' : 'grey-9'"
+			class="table-filter__trigger"
 			:label="label"
 			no-caps
 			icon-right="sym_r_keyboard_arrow_down"
@@ -11,13 +10,13 @@
 		>
 			<q-badge
 				v-if="modelValue?.length"
+				class="table-filter__badge"
 				floating
-				:text-color="$q.dark.isActive ? 'black' : 'white'"
 				>{{ modelValue?.length }}</q-badge
 			>
 
 			<q-menu
-				:class="menuClass"
+				class="table-filter__menu"
 				fit
 				anchor="bottom left"
 				self="top left"
@@ -30,7 +29,7 @@
 						v-model="filterTerm"
 						:placeholder="`Filter ${label}`"
 						clearable
-						:class="inputClass"
+						class="table-filter__input"
 					/>
 					<q-scroll-area class="col">
 						<q-option-group
@@ -51,7 +50,6 @@
 </template>
 
 <script setup lang="ts">
-import { Dark } from "quasar";
 import { computed, ref } from "vue";
 
 interface Option {
@@ -77,15 +75,33 @@ const filteredOptions = computed(() => {
 		o.label.toLowerCase().includes(filterTerm.value.toLowerCase())
 	);
 });
-
-const menuClass = computed(() => (Dark.isActive ? "bg-dark" : "bg-white"));
-const inputClass = computed(() =>
-	Dark.isActive ? "table-filter-input-dark" : ""
-);
 </script>
 
-<style scoped>
-.table-filter-input-dark2 :deep(.q-field__control) {
-	background-color: #2a2a2a;
+<style lang="scss" scoped>
+.table-filter__trigger {
+	background: var(--q-secondary-2);
+	color: var(--q-text-primary);
+}
+
+.table-filter__badge {
+	background: var(--q-primary);
+	color: var(--q-page);
+}
+
+.table-filter__menu {
+	background: var(--q-page);
+	color: var(--q-text-primary);
+}
+
+.table-filter__input {
+	:deep(.q-field__control) {
+		background: var(--q-secondary-3);
+	}
+
+	:deep(.q-field__native),
+	:deep(.q-field__prepend),
+	:deep(.q-field__append) {
+		color: var(--q-text-primary);
+	}
 }
 </style>
