@@ -1,11 +1,16 @@
 <template>
-	<q-scroll-area class="code-preview" :aria-label="label" role="region">
+	<q-scroll-area
+		class="code-preview"
+		:style="{ backgroundColor: codeBackground }"
+		:aria-label="label"
+		role="region"
+	>
 		<div v-html="highlightedCode" />
 	</q-scroll-area>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 
 import { useTheme } from "@/composables/theme";
 import {
@@ -23,6 +28,7 @@ const props = withDefaults(
 );
 
 const { dark } = useTheme();
+const codeBackground = computed(() => (dark.value ? "#0d1117" : "#ffffff"));
 const highlightedCode = ref(toPlainTextHtml(props.code));
 let requestId = 0;
 

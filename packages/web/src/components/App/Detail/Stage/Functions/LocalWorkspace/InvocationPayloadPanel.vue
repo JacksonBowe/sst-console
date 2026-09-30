@@ -44,7 +44,13 @@
 			v-if="hasValue"
 			class="col column no-wrap overflow-hidden q-pa-none"
 		>
-			<CodePreview class="col" :code="formattedValue" language="json" />
+			<CodePreview
+				class="col"
+				:code="formattedValue"
+				language="json"
+				:vertical-bar-style="{ width: '6px' }"
+				:vertical-thumb-style="{ width: '6px' }"
+			/>
 		</q-card-section>
 		<q-card-section v-else class="col q-pa-md text-secondary">
 			{{ emptyMessage }}
@@ -76,8 +82,8 @@ const formattedValue = computed(() =>
 	JSON.stringify(
 		redacted.value ? redactSensitiveData(props.value) : props.value,
 		null,
-		2
-	)
+		2,
+	),
 );
 
 async function copy() {
