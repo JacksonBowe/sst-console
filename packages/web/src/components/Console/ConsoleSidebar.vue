@@ -7,7 +7,11 @@
 	>
 		<template #brand>
 			<router-link :to="{ name: 'apps' }" class="console-sidebar__brand">
-				<q-icon name="sym_r_deployed_code" size="sm" />
+				<img
+					src="/icons/favicon-96x96.png"
+					alt=""
+					class="console-sidebar__brand-icon"
+				/>
 				<span>SST Console</span>
 			</router-link>
 		</template>
@@ -64,5 +68,10 @@ const navigation: DrawerNavItem[] = [
 	font-weight: 650;
 	letter-spacing: -0.01em;
 	text-decoration: none;
+}
+
+.console-sidebar__brand-icon {
+	width: 24px;
+	height: 24px;
 }
 </style>
