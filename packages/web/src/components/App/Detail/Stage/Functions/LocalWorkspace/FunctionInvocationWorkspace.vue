@@ -25,7 +25,7 @@ import { computed, ref, watch } from "vue";
 
 import type {
 	LocalConnectionStatus,
-	LocalInvocation,
+	LocalInvocation
 } from "@/composables/local";
 import InvocationDetail from "./InvocationDetail.vue";
 import InvocationList from "./InvocationList.vue";
@@ -37,22 +37,20 @@ const props = defineProps<{
 
 const selectedId = ref<string>();
 const selectedInvocation = computed(() =>
-	props.invocations.find((invocation) => invocation.id === selectedId.value),
+	props.invocations.find(invocation => invocation.id === selectedId.value)
 );
 
 watch(
 	() => props.invocations,
-	(invocations) => {
+	invocations => {
 		if (!selectedId.value && invocations[0])
 			selectedId.value = invocations[0].id;
 		if (
 			selectedId.value &&
-			!invocations.some(
-				(invocation) => invocation.id === selectedId.value,
-			)
+			!invocations.some(invocation => invocation.id === selectedId.value)
 		)
 			selectedId.value = invocations[0]?.id;
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 </script>

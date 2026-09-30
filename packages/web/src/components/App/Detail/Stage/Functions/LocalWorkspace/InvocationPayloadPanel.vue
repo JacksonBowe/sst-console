@@ -82,8 +82,8 @@ const formattedValue = computed(() =>
 	JSON.stringify(
 		redacted.value ? redactSensitiveData(props.value) : props.value,
 		null,
-		2,
-	),
+		2
+	)
 );
 
 async function copy() {

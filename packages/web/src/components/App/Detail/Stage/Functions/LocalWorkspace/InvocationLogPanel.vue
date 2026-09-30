@@ -1,6 +1,6 @@
 <template>
 	<section
-		class="invocation-log-panel bordered rounded-borders"
+		class="bordered rounded-borders"
 		aria-labelledby="invocation-logs-title"
 	>
 		<div class="q-px-md q-py-sm">

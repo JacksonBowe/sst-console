@@ -10,7 +10,9 @@
 			>
 				<div class="col-2" role="columnheader">Time</div>
 				<div class="col" role="columnheader">Function</div>
-				<div class="col-2 q-pr-md text-right" role="columnheader">Status</div>
+				<div class="col-2 q-pr-md text-right" role="columnheader"
+					>Status</div
+				>
 				<div class="col-1 text-right" role="columnheader">Duration</div>
 			</div>
 			<q-separator />
@@ -37,7 +39,7 @@
 <script setup lang="ts">
 import type {
 	LocalConnectionStatus,
-	LocalInvocation,
+	LocalInvocation
 } from "@/composables/local";
 import InvocationListEmptyState from "./InvocationListEmptyState.vue";
 import InvocationListRow from "./InvocationListRow.vue";

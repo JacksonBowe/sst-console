@@ -20,7 +20,9 @@
 			</span>
 		</div>
 		<div class="col-2 invocation-list-row__status">
-			<div class="row items-center no-wrap justify-end q-pr-md q-gutter-xs">
+			<div
+				class="row items-center no-wrap justify-end q-pr-md q-gutter-xs"
+			>
 				<span
 					class="invocation-list-row__status-dot"
 					:class="`bg-${statusColor}`"
@@ -46,7 +48,7 @@ const props = defineProps<{
 defineEmits<{ select: [id: string] }>();
 
 const sourceName = computed(
-	() => props.invocation.source?.split("::").at(-1) ?? "Unknown source",
+	() => props.invocation.source?.split("::").at(-1) ?? "Unknown source"
 );
 const httpLabel = computed(() => {
 	if (!props.invocation.http) return undefined;
@@ -56,30 +58,30 @@ const statusLabel = computed(
 	() =>
 		({ pending: "Running", success: "Success", error: "Error" })[
 			props.invocation.status
-		],
+		]
 );
 const statusColor = computed(
 	() =>
 		({ pending: "warning", success: "positive", error: "negative" })[
 			props.invocation.status
-		],
+		]
 );
 const durationLabel = computed(() =>
 	props.invocation.duration === undefined
 		? "—"
-		: `${props.invocation.duration}ms`,
+		: `${props.invocation.duration}ms`
 );
 const rowLabel = computed(() =>
 	[sourceName.value, httpLabel.value, statusLabel.value]
 		.filter(Boolean)
-		.join(", "),
+		.join(", ")
 );
 
 function formatTime(timestamp: number) {
 	return new Date(timestamp).toLocaleTimeString([], {
 		hour: "2-digit",
 		minute: "2-digit",
-		second: "2-digit",
+		second: "2-digit"
 	});
 }
 </script>
