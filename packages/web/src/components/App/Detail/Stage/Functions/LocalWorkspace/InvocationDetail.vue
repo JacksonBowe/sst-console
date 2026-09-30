@@ -1,24 +1,28 @@
 <template>
 	<q-card v-if="invocation" flat bordered>
-		<q-card-section class="q-pa-xs">
+		<q-card-section class="q-pa-sm bg-secondary-2">
 			<InvocationDetailHeader :invocation="invocation" />
 		</q-card-section>
 		<q-separator />
-		<q-card-section class="q-pa-xs">
+		<q-card-section class="q-pa-none">
 			<q-tabs
 				v-model="activePanel"
-				align="left"
-				dense
+				align="justify"
 				no-caps
 				active-color="primary"
 				indicator-color="primary"
-				class="q-px-sm"
+				class="full-width"
 			>
-				<q-tab name="overview" label="Overview" />
-				<q-tab name="input" label="Input" />
-				<q-tab name="output" label="Output" />
-				<q-tab name="logs" label="Logs" />
-				<q-tab v-if="hasErrors" name="errors" label="Error" />
+				<q-tab name="overview" label="Overview" :ripple="false" />
+				<q-tab name="input" label="Input" :ripple="false" />
+				<q-tab name="output" label="Output" :ripple="false" />
+				<q-tab name="logs" label="Logs" :ripple="false" />
+				<q-tab
+					v-if="hasErrors"
+					name="errors"
+					label="Error"
+					:ripple="false"
+				/>
 			</q-tabs>
 		</q-card-section>
 		<q-separator />
@@ -84,13 +88,14 @@ import InvocationPayloadPanel from "./InvocationPayloadPanel.vue";
 
 const props = defineProps<{ invocation?: LocalInvocation | undefined }>();
 
-const activePanel = ref("overview");
+type InvocationPanel = "overview" | "input" | "output" | "logs" | "errors";
+
+const activePanel = ref<InvocationPanel>("overview");
 const hasErrors = computed(() =>
 	props.invocation?.errors.some(
 		(error) => error.error || error.message || error.stack.length,
 	),
 );
-
 watch(
 	() => props.invocation?.id,
 	() => (activePanel.value = "overview"),
