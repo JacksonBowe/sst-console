@@ -48,7 +48,7 @@ import {
 	DashboardPage,
 	DashboardPageBreadcrumbs,
 	DashboardPageContent,
-	DashboardPageHeader,
+	DashboardPageHeader
 } from "@/components/ui/Dashboard";
 import { localSessionMatchesStage } from "@/composables/local";
 import { useLocalSessionStore } from "@/stores/local-session";
@@ -62,7 +62,7 @@ const hasMatchingSession = computed(() => {
 	if (!isContextual.value) return Boolean(localSession.identity);
 	return localSessionMatchesStage(localSession.identity, {
 		appName: appName.value,
-		stageName: stageName.value,
+		stageName: stageName.value
 	});
 });
 const subtitle = computed(() => {
@@ -75,16 +75,16 @@ const breadcrumbs = computed(() => [
 	{ label: "Apps", to: { name: "apps" } },
 	{
 		label: appName.value,
-		to: { name: "app-detail", params: { appName: appName.value } },
+		to: { name: "app-detail", params: { appName: appName.value } }
 	},
 	{
 		label: stageName.value,
 		to: {
 			name: "stage-detail",
-			params: { appName: appName.value, stageName: stageName.value },
-		},
+			params: { appName: appName.value, stageName: stageName.value }
+		}
 	},
-	{ label: "Local Workspace" },
+	{ label: "Local Workspace" }
 ]);
 </script>
 

@@ -18,6 +18,6 @@ const { dark, toggleTheme } = useTheme();
 
 const item = computed<DrawerNavItem>(() => ({
 	label: dark.value ? "Switch to light theme" : "Switch to dark theme",
-	icon: dark.value ? "sym_r_light_mode" : "sym_r_dark_mode",
+	icon: dark.value ? "sym_r_light_mode" : "sym_r_dark_mode"
 }));
 </script>

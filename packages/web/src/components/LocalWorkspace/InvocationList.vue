@@ -55,7 +55,7 @@ import { computed, nextTick } from "vue";
 import type { Filters } from "@/components/ui/Table";
 import type {
 	LocalConnectionStatus,
-	LocalInvocation,
+	LocalInvocation
 } from "@/composables/local";
 import InvocationListEmptyState from "./InvocationListEmptyState.vue";
 import InvocationListRow from "./InvocationListRow.vue";
@@ -70,15 +70,15 @@ const props = defineProps<{
 const emit = defineEmits<{ select: [id: string] }>();
 
 const filteredInvocations = computed(() =>
-	filterInvocations(props.invocations, props.filters),
+	filterInvocations(props.invocations, props.filters)
 );
 
 function selectAdjacent(
 	id: string,
-	direction: "next" | "previous" | "first" | "last",
+	direction: "next" | "previous" | "first" | "last"
 ) {
 	const index = filteredInvocations.value.findIndex(
-		(invocation) => invocation.id === id,
+		invocation => invocation.id === id
 	);
 	const target =
 		direction === "first"
@@ -92,7 +92,7 @@ function selectAdjacent(
 
 	emit("select", target.id);
 	void nextTick(() =>
-		document.getElementById(`invocation-${target.id}`)?.focus(),
+		document.getElementById(`invocation-${target.id}`)?.focus()
 	);
 }
 </script>

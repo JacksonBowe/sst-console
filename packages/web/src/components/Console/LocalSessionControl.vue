@@ -39,31 +39,31 @@ const enableLocalSessionsItem: DrawerNavItem = {
 	label: "Enable local sessions",
 	icon: "sym_r_lan",
 	badge: "",
-	badgeColor: "warning",
+	badgeColor: "warning"
 };
 const localSessionsBlockedItem: DrawerNavItem = {
 	label: "Local sessions blocked",
 	icon: "sym_r_error",
 	disabled: true,
 	badge: "",
-	badgeColor: "negative",
+	badgeColor: "negative"
 };
 const isCurrentLocalStage = computed(() =>
 	localSessionMatchesStage(localSession.identity, {
 		appName: String(route.params.appName ?? ""),
-		stageName: String(route.params.stageName ?? ""),
-	}),
+		stageName: String(route.params.stageName ?? "")
+	})
 );
 const workspacePath = computed(() => {
 	const identity = localSession.identity;
 	if (!identity) return "/local";
 
 	const stage = appsQuery.data.value
-		?.find((app) => app.appName === identity.app)
+		?.find(app => app.appName === identity.app)
 		?.stages.find(
-			(stage) =>
+			stage =>
 				stage.stageName === identity.stage &&
-				(!identity.region || identity.region === stage.region),
+				(!identity.region || identity.region === stage.region)
 		);
 	if (!stage) return "/local";
 
@@ -75,6 +75,6 @@ const workspaceItem = computed<DrawerNavItem>(() => ({
 	to: workspacePath.value,
 	exact: true,
 	badge: "",
-	badgeColor: localSession.status === "connected" ? "positive" : "warning",
+	badgeColor: localSession.status === "connected" ? "positive" : "warning"
 }));
 </script>

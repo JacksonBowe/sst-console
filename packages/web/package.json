@@ -15,8 +15,10 @@
 	"author": "JacksonBowe <jacksonbowe98@gmail.com>",
 	"type": "module",
 	"scripts": {
-		"lint": "oxfmt && oxlint --fix",
-		"lint:check": "oxfmt --check && oxlint",
+		"format": "oxfmt --config ../../oxfmt.config.ts",
+		"format:check": "oxfmt --check --config ../../oxfmt.config.ts",
+		"lint": "oxlint --fix",
+		"lint:check": "oxlint",
 		"dev": "quasar dev",
 		"build": "quasar build",
 		"test": "vitest",

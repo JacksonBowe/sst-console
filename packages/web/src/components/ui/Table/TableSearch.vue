@@ -18,6 +18,6 @@
 import SInput from "../Input/SInput.vue";
 
 defineProps({
-	modelValue: String,
+	modelValue: String
 });
 </script>

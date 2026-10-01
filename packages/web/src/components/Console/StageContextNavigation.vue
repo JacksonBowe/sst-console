@@ -73,36 +73,36 @@ const isStageRoute = computed(
 		route.name === "stage-detail" ||
 		route.name === "stage-functions" ||
 		route.name === "stage-local-workspace" ||
-		route.name === "stage-resource",
+		route.name === "stage-resource"
 );
 const stageQuery = useStage(appName, stageName);
 
 const appOptions = computed(() =>
-	(appsQuery.data.value ?? []).map((app) => ({
+	(appsQuery.data.value ?? []).map(app => ({
 		label: app.appName,
-		value: app.appName,
-	})),
+		value: app.appName
+	}))
 );
 const stageOptions = computed(() => {
 	const app = appsQuery.data.value?.find(
-		(app) => app.appName === appName.value,
+		app => app.appName === appName.value
 	);
-	return (app?.stages ?? []).map((stage) => ({
+	return (app?.stages ?? []).map(stage => ({
 		label: stage.stageName,
-		value: stage.stageName,
+		value: stage.stageName
 	}));
 });
 const overviewItem = computed<DrawerNavItem>(() => ({
 	label: "Overview",
 	icon: "sym_r_dashboard",
 	to: stageOverviewPath(),
-	exact: true,
+	exact: true
 }));
 const localWorkspaceItem = computed<DrawerNavItem | undefined>(() => {
 	if (
 		!localSessionMatchesStage(localSession.identity, {
 			appName: appName.value,
-			stageName: stageName.value,
+			stageName: stageName.value
 		})
 	)
 		return undefined;
@@ -113,20 +113,19 @@ const localWorkspaceItem = computed<DrawerNavItem | undefined>(() => {
 		to: `${stageOverviewPath()}/local`,
 		exact: true,
 		badge: "",
-		badgeColor:
-			localSession.status === "connected" ? "positive" : "warning",
+		badgeColor: localSession.status === "connected" ? "positive" : "warning"
 	};
 });
 const resourceItems = computed<DrawerNavItem[]>(() => {
 	const resources = stageQuery.data.value?.resources ?? [];
-	return stageResourceCategoriesFor(resources).map((category) => ({
+	return stageResourceCategoriesFor(resources).map(category => ({
 		label: category.label,
 		icon: category.icon,
 		to:
 			category.key === "functions"
 				? `${stageOverviewPath()}/functions`
 				: `${stageOverviewPath()}/resources/${category.key}`,
-		exact: true,
+		exact: true
 	}));
 });
 
@@ -143,7 +142,7 @@ function openStage(nextStageName: string | null): void {
 	if (!nextStageName || nextStageName === stageName.value) return;
 	void router.push({
 		name: "stage-detail",
-		params: { appName: appName.value, stageName: nextStageName },
+		params: { appName: appName.value, stageName: nextStageName }
 	});
 }
 </script>

@@ -12,7 +12,8 @@ export default defineConfig({
 		"**/src-capacitor/",
 		"**/quasar.config.*.temporary.compiled*",
 		"**/migrations/",
-		"**/src/router/typed-router.d.ts"
+		"**/src/router/typed-router.d.ts",
+		"**/sst-env.d.ts"
 	],
 
 	printWidth: 80,

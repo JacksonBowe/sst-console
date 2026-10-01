@@ -5,49 +5,49 @@
 /* biome-ignore-all lint: auto-generated */
 
 declare module "sst" {
-  export interface Resource {
-    "Api": {
-      "name": string
-      "type": "sst.aws.Function"
-      "url": string
-    }
-    "Bus": {
-      "arn": string
-      "name": string
-      "type": "sst.aws.Bus"
-    }
-    "ConnectorEvent": {
-      "name": string
-      "type": "sst.aws.Function"
-      "url": string
-    }
-    "ConnectorTemplates": {
-      "name": string
-      "type": "sst.aws.Bucket"
-    }
-    "ConsoleConnections": {
-      "name": string
-      "type": "sst.aws.Dynamo"
-    }
-    "ConsoleData": {
-      "name": string
-      "type": "sst.aws.Dynamo"
-    }
-    "SSTConsoleCognitoUserPool": {
-      "id": string
-      "type": "sst.aws.CognitoUserPool"
-    }
-    "SSTConsoleCognitoUserPoolClient": {
-      "id": string
-      "secret": string
-      "type": "sst.aws.CognitoUserPoolClient"
-    }
-    "Site": {
-      "type": "sst.aws.StaticSite"
-      "url": string
-    }
-  }
+	export interface Resource {
+		Api: {
+			name: string;
+			type: "sst.aws.Function";
+			url: string;
+		};
+		Bus: {
+			arn: string;
+			name: string;
+			type: "sst.aws.Bus";
+		};
+		ConnectorEvent: {
+			name: string;
+			type: "sst.aws.Function";
+			url: string;
+		};
+		ConnectorTemplates: {
+			name: string;
+			type: "sst.aws.Bucket";
+		};
+		ConsoleConnections: {
+			name: string;
+			type: "sst.aws.Dynamo";
+		};
+		ConsoleData: {
+			name: string;
+			type: "sst.aws.Dynamo";
+		};
+		SSTConsoleCognitoUserPool: {
+			id: string;
+			type: "sst.aws.CognitoUserPool";
+		};
+		SSTConsoleCognitoUserPoolClient: {
+			id: string;
+			secret: string;
+			type: "sst.aws.CognitoUserPoolClient";
+		};
+		Site: {
+			type: "sst.aws.StaticSite";
+			url: string;
+		};
+	}
 }
 
-import "sst"
-export {}
+import "sst";
+export {};

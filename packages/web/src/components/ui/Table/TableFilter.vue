@@ -106,8 +106,8 @@ const props = withDefaults(
 	}>(),
 	{
 		searchable: false,
-		menuWidth: "normal",
-	},
+		menuWidth: "normal"
+	}
 );
 
 const emit = defineEmits<{
@@ -118,8 +118,8 @@ const filterTerm = ref("");
 
 const filteredOptions = computed(() => {
 	if (!props.searchable || !filterTerm.value) return props.options;
-	return props.options.filter((o) =>
-		o.label.toLowerCase().includes(filterTerm.value.toLowerCase()),
+	return props.options.filter(o =>
+		o.label.toLowerCase().includes(filterTerm.value.toLowerCase())
 	);
 });
 

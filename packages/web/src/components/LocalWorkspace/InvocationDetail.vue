@@ -34,7 +34,7 @@
 		<q-card-section
 			:class="[
 				'col column no-wrap overflow-hidden',
-				activePanel === 'overview' ? 'q-pa-none' : 'q-pa-none',
+				activePanel === 'overview' ? 'q-pa-none' : 'q-pa-none'
 			]"
 		>
 			<div v-if="activePanel === 'overview'" class="col column no-wrap">
@@ -143,7 +143,7 @@ const output = computed(() => parseJsonBody(props.invocation?.output));
 const hasErrors = computed(
 	() =>
 		props.invocation?.status === "application_error" ||
-		props.invocation?.status === "platform_error",
+		props.invocation?.status === "platform_error"
 );
 const httpErrorLabel = computed(() => {
 	const status = localInvocationHttpStatus(props.invocation?.output);
@@ -160,7 +160,7 @@ watch(
 		activePanel.value =
 			current.status === "platform_error" ? "errors" : "overview";
 	},
-	{ immediate: true },
+	{ immediate: true }
 );
 
 function isErrorStatus(status: LocalInvocation["status"] | undefined) {

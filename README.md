@@ -40,23 +40,23 @@ Deploy one Console installation in a dedicated AWS control account. It can then 
 
 1. Clone repository and install dependencies:
 
-   ```bash
-   bun install
-   ```
+    ```bash
+    bun install
+    ```
 
 2. Create local configuration and set AWS profile and deployment region:
 
-   ```bash
-   cp console.config.example.ts console.config.ts
-   ```
+    ```bash
+    cp console.config.example.ts console.config.ts
+    ```
 
-   Edit `console.config.ts`. Set `profile` to AWS CLI profile for control account and `region` to desired AWS region. Configure Cognito password policy if required.
+    Edit `console.config.ts`. Set `profile` to AWS CLI profile for control account and `region` to desired AWS region. Configure Cognito password policy if required.
 
 3. Deploy Console:
 
-   ```bash
-   bun run deploy
-   ```
+    ```bash
+    bun run deploy
+    ```
 
 4. Open `consoleUrl` from SST deployment output. Create initial user in deployed Cognito User Pool; see [authentication setup](docs/authentication.md).
 

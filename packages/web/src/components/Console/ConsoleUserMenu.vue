@@ -20,7 +20,7 @@ const auth = useAuthStore();
 const router = useRouter();
 const signOutItem: DrawerNavItem = {
 	label: "Sign out",
-	icon: "sym_r_logout",
+	icon: "sym_r_logout"
 };
 
 async function signOut(): Promise<void> {
