@@ -11,6 +11,13 @@ import { localInvocationStatus } from "@/composables/local/invocation-status";
 const MAX_INVOCATIONS = 200;
 const RECONNECT_DELAY = 3_000;
 
+export type LocalSessionPermission =
+	| "checking"
+	| "prompt"
+	| "granted"
+	| "denied"
+	| "unsupported";
+
 type SocketInvocation = {
 	id?: string;
 	source?: string;
@@ -33,6 +40,7 @@ type SocketMessage = {
 };
 
 type LocalSessionState = {
+	permission: LocalSessionPermission;
 	status: LocalConnectionStatus;
 	isStreaming: boolean;
 	identity?: LocalIdentity | undefined;
@@ -44,9 +52,11 @@ type LocalSessionState = {
 let socket: WebSocket | undefined;
 let reconnectTimer: number | undefined;
 let started = false;
+let initializationVersion = 0;
 
 export const useLocalSessionStore = defineStore("local-session", {
 	state: (): LocalSessionState => ({
+		permission: "checking",
 		status: "disconnected",
 		isStreaming: true,
 		identity: undefined,
@@ -58,12 +68,30 @@ export const useLocalSessionStore = defineStore("local-session", {
 		isConnected: state => state.status === "connected"
 	},
 	actions: {
+		async initialize() {
+			const version = initializationVersion;
+			await this.refreshPermission();
+			if (version !== initializationVersion) return;
+			if (
+				this.permission === "granted" ||
+				this.permission === "unsupported"
+			)
+				this.start();
+		},
+		async refreshPermission() {
+			this.permission = await localSessionPermission();
+		},
+		enable() {
+			if (this.permission === "denied") return;
+			this.start();
+		},
 		start() {
 			if (started) return;
 			started = true;
 			this.connect();
 		},
 		stop() {
+			initializationVersion++;
 			started = false;
 			this.clearReconnectTimer();
 			socket?.close();
@@ -103,11 +131,16 @@ export const useLocalSessionStore = defineStore("local-session", {
 				candidate.onopen = () => {
 					if (socket !== candidate) return;
 					this.status = "connected";
+					if (this.permission !== "unsupported")
+						this.permission = "granted";
 				};
 				candidate.onmessage = event => this.receive(event.data);
 				candidate.onerror = () => {
 					if (socket !== candidate) return;
 					this.error = "Could not connect to local SST CLI";
+					void this.refreshPermission().then(() => {
+						if (this.permission === "denied") this.stop();
+					});
 				};
 				candidate.onclose = () => {
 					if (!started || socket !== candidate) return;
@@ -172,6 +205,19 @@ function localSocketUrls() {
 		"wss://localhost:13557/socket",
 		"wss://localhost:14557/socket"
 	];
+}
+
+async function localSessionPermission(): Promise<LocalSessionPermission> {
+	if (!navigator.permissions) return "unsupported";
+
+	try {
+		const result = await navigator.permissions.query({
+			name: "loopback-network"
+		} as unknown as PermissionDescriptor);
+		return result.state;
+	} catch {
+		return "unsupported";
+	}
 }
 
 function normalizeInvocation(item: SocketInvocation): LocalInvocation {

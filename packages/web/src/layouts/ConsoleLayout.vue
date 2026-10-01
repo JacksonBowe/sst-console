@@ -32,7 +32,7 @@ const drawerOpen = ref(false);
 const $q = useQuasar();
 const localSession = useLocalSessionStore();
 
-onMounted(() => localSession.start());
+onMounted(() => void localSession.initialize());
 onBeforeUnmount(() => localSession.stop());
 </script>
 
