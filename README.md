@@ -54,7 +54,7 @@ Deploy one Console installation in a dedicated AWS control account. It can then 
     cp console.config.example.ts console.config.ts
     ```
 
-    Edit `console.config.ts`. Set `profile` to AWS CLI profile for control account and `region` to desired AWS region. Configure Cognito password policy if required.
+    Edit `console.config.ts`. Set `profile` to AWS CLI profile for control account and `region` to desired AWS region. Configure Cognito password policy if required. To serve Console on custom domain, follow [custom-domain deployment](docs/deploy-to-custom-domain.md).
 
 4. Deploy Console:
 
