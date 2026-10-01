@@ -38,13 +38,17 @@ Deploy one Console installation in a dedicated AWS control account. It can then 
 
 ### Deploy
 
-1. Clone repository and install dependencies:
+1. Open [GitHub Releases](https://github.com/JacksonBowe/sst-console/releases) and choose a stable release tag. Do not deploy the moving `main` branch.
+
+2. Clone that release and install dependencies:
 
     ```bash
-    bun install
+    git clone --branch vX.Y.Z --depth 1 https://github.com/JacksonBowe/sst-console.git
+    cd sst-console
+    bun install --frozen-lockfile
     ```
 
-2. Create local configuration and set AWS profile and deployment region:
+3. Create local configuration and set AWS profile and deployment region:
 
     ```bash
     cp console.config.example.ts console.config.ts
@@ -52,18 +56,31 @@ Deploy one Console installation in a dedicated AWS control account. It can then 
 
     Edit `console.config.ts`. Set `profile` to AWS CLI profile for control account and `region` to desired AWS region. Configure Cognito password policy if required.
 
-3. Deploy Console:
+4. Deploy Console:
 
     ```bash
     bun run deploy
     ```
 
-4. Open `consoleUrl` from SST deployment output. Create initial user in deployed Cognito User Pool; see [authentication setup](docs/authentication.md).
+5. Open `consoleUrl` from SST deployment output. Create initial user in deployed Cognito User Pool; see [authentication setup](docs/authentication.md).
 
-5. Connect each workload account through **Connect account** in Console. This opens AWS CloudFormation using deployment-specific connector template. Connected accounts publish SST state changes to control account, letting Console index their apps and stages.
+6. Connect each workload account through **Connect account** in Console. This opens AWS CloudFormation using deployment-specific connector template. Connected accounts publish SST state changes to control account, letting Console index their apps and stages.
 
 > **Warning**
 > Current connector creates `SSTConsoleRole` with `AdministratorAccess` in every connected workload account. Review template and its permissions before deployment. Project is early work; use isolated, non-production AWS accounts only.
+
+### Update
+
+Read release notes before updating. Choose the next stable release from [GitHub Releases](https://github.com/JacksonBowe/sst-console/releases), then check out its tag and deploy it:
+
+```bash
+git fetch --tags
+git switch --detach vX.Y.Z
+bun install --frozen-lockfile
+bun run deploy
+```
+
+Deploy only release tags. Do not deploy `main` or use an older release tag as a rollback procedure.
 
 ## How this differs from SST's official Console
 

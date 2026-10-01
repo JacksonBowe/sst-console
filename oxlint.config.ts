@@ -8,6 +8,7 @@ export default defineConfig({
 		"**/dist/",
 		"**/.quasar/",
 		"**/.sst/",
+		"infra/",
 		"sst.config.ts",
 		"**/src-cordova/",
 		"**/src-capacitor/",
