@@ -1,10 +1,10 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 
-import FunctionInvocationWorkspace from "@/components/App/Detail/Stage/Functions/LocalWorkspace/FunctionInvocationWorkspace.vue";
-import LocalActivityToolbar from "@/components/App/Detail/Stage/Functions/LocalWorkspace/LocalActivityToolbar.vue";
+import LocalWorkspace from "@/components/LocalWorkspace/LocalWorkspace.vue";
+import LocalActivityToolbar from "@/components/LocalWorkspace/LocalActivityToolbar.vue";
 import type { LocalInvocation } from "@/composables/local";
-import { filterInvocations } from "@/components/App/Detail/Stage/Functions/LocalWorkspace/invocation-filters";
+import { filterInvocations } from "@/components/LocalWorkspace/invocation-filters";
 
 const latest: LocalInvocation = {
 	id: "latest",
@@ -39,7 +39,7 @@ const stubs = {
 	}
 };
 
-describe("FunctionInvocationWorkspace", () => {
+describe("LocalWorkspace", () => {
 	it("emits clear from activity toolbar", async () => {
 		const wrapper = mount(LocalActivityToolbar, {
 			props: { text: "", statuses: [] },
@@ -62,7 +62,7 @@ describe("FunctionInvocationWorkspace", () => {
 	});
 
 	it("preserves selected invocation through incoming activity", async () => {
-		const wrapper = mount(FunctionInvocationWorkspace, {
+		const wrapper = mount(LocalWorkspace, {
 			props: { invocations: [latest, older], status: "connected" },
 			global: { stubs }
 		});
@@ -79,7 +79,7 @@ describe("FunctionInvocationWorkspace", () => {
 	});
 
 	it("clears activity through the workspace toolbar", async () => {
-		const wrapper = mount(FunctionInvocationWorkspace, {
+		const wrapper = mount(LocalWorkspace, {
 			props: { invocations: [latest], status: "connected" },
 			global: {
 				stubs: {
@@ -98,7 +98,7 @@ describe("FunctionInvocationWorkspace", () => {
 	});
 
 	it("clears selection when filters hide every invocation", async () => {
-		const wrapper = mount(FunctionInvocationWorkspace, {
+		const wrapper = mount(LocalWorkspace, {
 			props: { invocations: [latest], status: "connected" },
 			global: {
 				stubs: {

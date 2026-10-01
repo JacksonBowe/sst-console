@@ -57,6 +57,7 @@
 			'app-drawer-item--dense': dense
 		}"
 		active-class="app-drawer-item--active"
+		@click="emit('click', $event)"
 	>
 		<q-item-section v-if="item.icon" side>
 			<q-icon :name="item.icon" :size="child ? 'xs' : 'sm'" />
@@ -92,6 +93,10 @@ const props = withDefaults(
 		dense: false
 	}
 );
+
+const emit = defineEmits<{
+	click: [event: Event];
+}>();
 
 const route = useRoute();
 const isExpanded = ref(false);

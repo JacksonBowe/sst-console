@@ -1,20 +1,9 @@
 <template>
 	<DashboardPage>
 		<DashboardPageBreadcrumbs :segments="breadcrumbs" class="q-mb-md" />
-		<StageDetailHeader
-			:stage="stage"
-			title="Functions"
-			icon="sym_r_functions"
-			:subtitle="
-				isLocalStage
-					? 'Live invocation activity from your local SST dev environment.'
-					: undefined
-			"
-		/>
+		<StageDetailHeader title="Functions" icon="sym_r_functions" />
 
-		<DashboardPageContent
-			:class="{ 'stage-function-page__content--local': isLocalStage }"
-		>
+		<DashboardPageContent>
 			<StageDetailLoadingState v-if="stageQuery.isPending.value" />
 			<StageDetailErrorState
 				v-else-if="stageQuery.isError.value"
@@ -22,16 +11,7 @@
 				@retry="stageQuery.refetch()"
 			/>
 			<template v-else-if="stage">
-				<FunctionInvocationWorkspace
-					v-if="isLocalStage"
-					:invocations="localSession.invocations"
-					:status="localSession.status"
-					:is-streaming="localSession.isStreaming"
-					class="col"
-					@clear="localSession.clear()"
-					@toggle-stream="localSession.toggleStreaming()"
-				/>
-				<FunctionNavigator v-else :functions="functionResources" />
+				<FunctionNavigator :functions="functionResources" />
 			</template>
 		</DashboardPageContent>
 	</DashboardPage>
@@ -43,7 +23,6 @@ import { computed } from "vue";
 import { useRoute } from "vue-router";
 
 import {
-	FunctionInvocationWorkspace,
 	FunctionNavigator,
 	StageDetailErrorState,
 	StageDetailHeader,
@@ -56,18 +35,12 @@ import {
 } from "@/components/ui/Dashboard";
 import { useStage } from "@/composables/apps";
 import { functionResourcesFor } from "@/composables/apps/stage-resources";
-import { localSessionMatchesStage } from "@/composables/local";
-import { useLocalSessionStore } from "@/stores/local-session";
 
 const route = useRoute();
 const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
 const stageQuery = useStage(appName, stageName);
 const stage = computed(() => stageQuery.data.value);
-const localSession = useLocalSessionStore();
-const isLocalStage = computed(() =>
-	localSessionMatchesStage(localSession.identity, stage.value)
-);
 const functionResources = computed(() =>
 	functionResourcesFor(stage.value?.resources ?? [])
 );
@@ -91,9 +64,3 @@ const isNotFound = computed(() => {
 	return error instanceof ApiError && error.code === "stage_not_found";
 });
 </script>
-
-<style scoped lang="scss">
-.stage-function-page__content--local {
-	height: 74vh;
-}
-</style>

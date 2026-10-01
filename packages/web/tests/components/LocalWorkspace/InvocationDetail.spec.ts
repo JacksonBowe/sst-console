@@ -1,11 +1,11 @@
 import { mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import InvocationDetail from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationDetail.vue";
-import InvocationErrorPanel from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationErrorPanel.vue";
-import InvocationLogPanel from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationLogPanel.vue";
-import InvocationListRow from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationListRow.vue";
-import InvocationPayloadPanel from "@/components/App/Detail/Stage/Functions/LocalWorkspace/InvocationPayloadPanel.vue";
+import InvocationDetail from "@/components/LocalWorkspace/InvocationDetail.vue";
+import InvocationErrorPanel from "@/components/LocalWorkspace/InvocationErrorPanel.vue";
+import InvocationLogPanel from "@/components/LocalWorkspace/InvocationLogPanel.vue";
+import InvocationListRow from "@/components/LocalWorkspace/InvocationListRow.vue";
+import InvocationPayloadPanel from "@/components/LocalWorkspace/InvocationPayloadPanel.vue";
 import type { LocalInvocation } from "@/composables/local";
 
 const clipboardWrite = vi.fn();

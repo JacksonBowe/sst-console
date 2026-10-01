@@ -2,7 +2,6 @@
 	<DashboardPage>
 		<DashboardPageBreadcrumbs :segments="breadcrumbs" class="q-mb-md" />
 		<StageDetailHeader
-			:stage="stage"
 			:title="stage?.stageName ?? stageName"
 			icon="sym_r_account_tree"
 		/>

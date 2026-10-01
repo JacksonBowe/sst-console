@@ -31,9 +31,19 @@ const routes: RouteRecordRaw[] = [
 				component: () => import("@/pages/Stage/StageFunctionsPage.vue")
 			},
 			{
+				path: "apps/:appName/stages/:stageName/local",
+				name: "stage-local-workspace",
+				component: () => import("@/pages/LocalWorkspacePage.vue")
+			},
+			{
 				path: "apps/:appName/stages/:stageName/resources/:category(dynamodb|s3|cognito)",
 				name: "stage-resource",
 				component: () => import("@/pages/Stage/StageDetailPage.vue")
+			},
+			{
+				path: "local",
+				name: "local-workspace",
+				component: () => import("@/pages/LocalWorkspacePage.vue")
 			},
 			{
 				path: "accounts",

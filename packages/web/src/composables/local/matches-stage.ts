@@ -3,7 +3,7 @@ import type { LocalConnectionStatus, LocalIdentity } from "./types";
 export type StageIdentity = {
 	appName: string;
 	stageName: string;
-	region: string;
+	region?: string;
 };
 
 export function localSessionMatchesStage(
@@ -15,7 +15,7 @@ export function localSessionMatchesStage(
 	return (
 		identity.app === stage.appName &&
 		identity.stage === stage.stageName &&
-		(!identity.region || identity.region === stage.region)
+		(!identity.region || !stage.region || identity.region === stage.region)
 	);
 }
 

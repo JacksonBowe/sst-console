@@ -27,10 +27,8 @@
 		<StageContextNavigation />
 
 		<template #footer>
-			<div class="row items-center justify-between q-px-sm q-py-xs">
-				<span class="text-caption text-secondary">Theme</span>
-				<ThemeToggle />
-			</div>
+			<LocalSessionControl class="q-mb-sm" />
+			<ThemeToggle />
 			<ConsoleUserMenu />
 		</template>
 	</AppDrawer>
@@ -44,6 +42,7 @@ import {
 } from "@/components/ui/Drawer";
 import { ThemeToggle } from "@/components/ui/theme";
 import ConsoleUserMenu from "./ConsoleUserMenu.vue";
+import LocalSessionControl from "./LocalSessionControl.vue";
 import StageContextNavigation from "./StageContextNavigation.vue";
 
 defineProps<{ modelValue: boolean }>();
