@@ -275,10 +275,3 @@ const connectorQuickCreateUrl = $resolve({
 		return `https://${region}.console.aws.amazon.com/cloudformation/home?region=${region}#/stacks/create/review?${query.toString()}`;
 	}
 );
-
-export const outputs = {
-	connectorEventUrl: connectorEvent.url,
-	externalId,
-	connectorTemplateUrl,
-	connectorQuickCreateUrl
-};
