@@ -71,16 +71,20 @@ Deploy one Console installation in a dedicated AWS control account. It can then 
 
 ### Update
 
-Read release notes before updating. Choose the next stable release from [GitHub Releases](https://github.com/JacksonBowe/sst-console/releases), then check out its tag and deploy it:
+1. Open [GitHub Releases](https://github.com/JacksonBowe/sst-console/releases) and select release marked **Latest**. Do not select a **Pre-release**.
 
-```bash
-git fetch --tags
-git switch --detach vX.Y.Z
-bun install --frozen-lockfile
-bun run deploy
-```
+2. Read its release notes, then copy its tag name. For example, `v0.1.1`.
 
-Deploy only release tags. Do not deploy `main` or use an older release tag as a rollback procedure.
+3. From existing Console checkout, fetch that release, check it out, and deploy it:
+
+    ```bash
+    git fetch --tags
+    git checkout v0.1.1
+    bun install --frozen-lockfile
+    bun run deploy
+    ```
+
+Deploy only release tags. Do not run `git pull`, deploy `main`, or use an older release tag as a rollback procedure.
 
 ## How this differs from SST's official Console
 
