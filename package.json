@@ -17,6 +17,7 @@
 		"lint": "oxlint --fix",
 		"lint:check": "oxlint",
 		"typecheck": "bunx tsc --noEmit --project packages/core/tsconfig.json && bunx tsc --noEmit --project packages/functions/tsconfig.json && bunx tsc --noEmit --project packages/sdk/tsconfig.json && bun run --cwd packages/web typecheck",
+		"test": "bun run --cwd packages/web test --run",
 		"check": "bun run format:check && bun run lint:check && bun run typecheck",
 		"tree": "mkdir -p .tmp-tree && git ls-tree -r --name-only HEAD   | sed 's|/[^/]*$||'   | sort -u   | xargs -I{} mkdir -p .tmp-tree/{} && tree -d .tmp-tree && rm -rf .tmp-tree"
 	},
