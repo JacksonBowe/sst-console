@@ -1,3 +1,4 @@
+import { consoleArtifacts } from "./artifacts.ts";
 import { bus } from "./bus.ts";
 import {
 	assumeAccountRolePermission,
@@ -12,10 +13,6 @@ const registrationHandler = readFileSync(
 	"./infra/assets/connector-callback.js",
 	"utf8"
 );
-const connectorTemplates = new sst.aws.Bucket("ConnectorTemplates", {
-	access: "public"
-});
-
 const connectorEvent = new sst.aws.Function("ConnectorEvent", {
 	handler: "packages/functions/src/events/connector.handler",
 	url: { authorization: "iam" },
@@ -47,7 +44,7 @@ new aws.lambda.Permission("ConnectorEventInvokePermission", {
 });
 
 new aws.s3.BucketObjectv2("ConnectorTemplate", {
-	bucket: connectorTemplates.name,
+	bucket: consoleArtifacts.name,
 	key: "connect/template.json",
 	contentType: "application/json",
 	content: $jsonStringify({
@@ -246,7 +243,7 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 	})
 });
 
-const connectorTemplateUrl = $interpolate`https://${connectorTemplates.nodes.bucket.bucketRegionalDomainName}/connect/template.json`;
+const connectorTemplateUrl = $interpolate`https://${consoleArtifacts.nodes.bucket.bucketRegionalDomainName}/connect/template.json`;
 export const connectorQuickCreateUrl = $resolve({
 	region,
 	templateUrl: connectorTemplateUrl,

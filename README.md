@@ -69,6 +69,12 @@ Deploy one Console installation in a dedicated AWS control account. It can then 
 > **Warning**
 > Current connector creates `SSTConsoleRole` with `AdministratorAccess` in every connected workload account. Review template and its permissions before deployment. Project is early work; use isolated, non-production AWS accounts only.
 
+### Public artifacts
+
+Console creates one public-read S3 bucket named `SSTConsoleArtifacts`. It distributes the workload-account connector CloudFormation template and issue-subscriber Lambda bundles from this bucket. Anyone can download its objects; do not treat their contents as private.
+
+This bucket must contain only public deployment artifacts. Console data, configuration, credentials, secrets, state, and user uploads must never be stored in it. Public access is required so CloudFormation and Lambda in connected workload accounts can retrieve their deployment artifacts.
+
 ### Update
 
 1. Open [GitHub Releases](https://github.com/JacksonBowe/sst-console/releases) and select release marked **Latest**. Do not select a **Pre-release**.
