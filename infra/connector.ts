@@ -247,7 +247,7 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 });
 
 const connectorTemplateUrl = $interpolate`https://${connectorTemplates.nodes.bucket.bucketRegionalDomainName}/connect/template.json`;
-const connectorQuickCreateUrl = $resolve({
+export const connectorQuickCreateUrl = $resolve({
 	region,
 	templateUrl: connectorTemplateUrl,
 	controlAccountId,
