@@ -21,6 +21,7 @@ import {
 import { fn } from "../util/fn";
 import * as Connector from "./connector";
 import * as Connection from "../connection";
+import { removeStageMonitoring, requestReconcile } from "../issue/ingress";
 import { includesStage } from "./policy";
 import {
 	partitionStageOwnership,
@@ -138,6 +139,12 @@ export const sync = fn(
 			now,
 			completeDiscovery: true
 		});
+		for (const write of writes)
+			if (write.kind === "deleteStage")
+				await removeStageMonitoring({
+					appName: write.appName,
+					stageName: write.stageName
+				});
 		// 4. Desired upserts precede stale deletes. Chunks stay under DynamoDB
 		// transaction limits; later syncs repair a partially completed run.
 		for (const chunk of chunkWrites(writes)) {
@@ -183,6 +190,11 @@ export const sync = fn(
 				"Unable to persist account sync result"
 			);
 		}
+		for (const projection of acceptedProjections)
+			await requestReconcile({
+				appName: projection.appName,
+				stageName: projection.stageName
+			});
 
 		return {
 			accountId,
@@ -303,6 +315,10 @@ export const syncStateObject = fn(
 				lastSyncConflicts: conflicts
 			})
 			.go({ response: "none" });
+		await requestReconcile({
+			appName: state.appName,
+			stageName: state.stageName
+		});
 
 		return {
 			accountId,
@@ -578,6 +594,7 @@ async function removeStateProjection(input: {
 		.get({ appName: input.appName, stageName: input.stageName })
 		.go({ consistent: true });
 	if (stage.data?.accountId !== input.accountId) return;
+	await removeStageMonitoring(input);
 
 	const resources = await db.entities.resource.query
 		.resource({ appName: input.appName, stageName: input.stageName })

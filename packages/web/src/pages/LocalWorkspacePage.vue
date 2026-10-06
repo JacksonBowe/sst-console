@@ -9,7 +9,43 @@
 			title="Local Workspace"
 			:subtitle="subtitle"
 			icon="sym_r_terminal"
-		/>
+		>
+			<template #actions>
+				<q-btn
+					flat
+					no-caps
+					label="Test query"
+					:loading="testing"
+					@click="testQuery"
+				/>
+				<q-btn
+					unelevated
+					no-caps
+					color="primary"
+					label="Connect"
+					:disable="!target"
+					:loading="connecting"
+					@click="connect"
+				/>
+				<q-btn
+					flat
+					no-caps
+					label="Retry"
+					:disable="!target"
+					:loading="connecting"
+					@click="connect"
+				/>
+				<q-btn
+					flat
+					no-caps
+					color="negative"
+					label="Disconnect"
+					:disable="!target"
+					:loading="disconnecting"
+					@click="disconnect"
+				/>
+			</template>
+		</DashboardPageHeader>
 
 		<DashboardPageContent class="local-workspace-page__content">
 			<LocalWorkspace
@@ -40,8 +76,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
+import { Notify } from "quasar";
 
 import { LocalWorkspace } from "@/components/LocalWorkspace";
 import {
@@ -51,6 +88,7 @@ import {
 	DashboardPageHeader
 } from "@/components/ui/Dashboard";
 import { localSessionMatchesStage } from "@/composables/local";
+import { api, handleApiError } from "@/boot/api-client";
 import { useLocalSessionStore } from "@/stores/local-session";
 
 const route = useRoute();
@@ -58,6 +96,66 @@ const localSession = useLocalSessionStore();
 const isContextual = computed(() => route.name === "stage-local-workspace");
 const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
+const connecting = ref(false);
+const disconnecting = ref(false);
+const testing = ref(false);
+const target = computed(() => {
+	const app = isContextual.value ? appName.value : localSession.identity?.app;
+	const stage = isContextual.value
+		? stageName.value
+		: localSession.identity?.stage;
+	return app && stage ? { app, stage } : undefined;
+});
+async function connect() {
+	if (!target.value) return;
+	connecting.value = true;
+	try {
+		await api.request({
+			method: "POST",
+			url: `issues/${encodeURIComponent(target.value.app)}/${encodeURIComponent(target.value.stage)}/connect`
+		});
+		Notify.create({
+			message: "Issue monitoring enabled; reconciliation queued",
+			color: "positive"
+		});
+	} catch (error) {
+		handleApiError(error);
+	} finally {
+		connecting.value = false;
+	}
+}
+async function disconnect() {
+	if (!target.value) return;
+	disconnecting.value = true;
+	try {
+		await api.request({
+			method: "POST",
+			url: `issues/${encodeURIComponent(target.value.app)}/${encodeURIComponent(target.value.stage)}/disconnect`
+		});
+		Notify.create({
+			message: "Issue monitoring disabled; filter removal queued",
+			color: "positive"
+		});
+	} catch (error) {
+		handleApiError(error);
+	} finally {
+		disconnecting.value = false;
+	}
+}
+async function testQuery() {
+	testing.value = true;
+	try {
+		await api.request({ method: "POST", url: "issues/test-query" });
+		Notify.create({
+			message: "Issue test route responded",
+			color: "positive"
+		});
+	} catch (error) {
+		handleApiError(error);
+	} finally {
+		testing.value = false;
+	}
+}
 const hasMatchingSession = computed(() => {
 	if (!isContextual.value) return Boolean(localSession.identity);
 	return localSessionMatchesStage(localSession.identity, {

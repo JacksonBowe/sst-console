@@ -1,0 +1,15 @@
+info:
+    name: Test query
+    type: http
+    seq: 2
+
+http:
+    method: POST
+    url: "{{ApiBase}}/issues/test-query"
+    auth: inherit
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5

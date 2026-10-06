@@ -1,0 +1,9 @@
+info:
+    name: Issues
+    type: folder
+    seq: 6
+
+request:
+    auth:
+        type: bearer
+        token: "{{AuthAccessToken}}"

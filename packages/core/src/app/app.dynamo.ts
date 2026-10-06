@@ -53,6 +53,7 @@ export const stageEntity = new Entity({
 		region: { type: "string", required: true },
 		appName: { type: "string", required: true },
 		stageName: { type: "string", required: true },
+		issueMonitoringEnabled: { type: "boolean", default: false },
 		createdAt: { type: "string", required: true },
 		updatedAt: { type: "string", required: true },
 		schemaVersion: { type: "string", default: "2" }

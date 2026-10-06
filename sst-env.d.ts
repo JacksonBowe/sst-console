@@ -21,10 +21,6 @@ declare module "sst" {
       "type": "sst.aws.Function"
       "url": string
     }
-    "ConnectorTemplates": {
-      "name": string
-      "type": "sst.aws.Bucket"
-    }
     "ConsoleConnections": {
       "name": string
       "type": "sst.aws.Dynamo"
@@ -32,6 +28,18 @@ declare module "sst" {
     "ConsoleData": {
       "name": string
       "type": "sst.aws.Dynamo"
+    }
+    "IssueIngressQueue": {
+      "type": "sst.aws.Queue"
+      "url": string
+    }
+    "IssueReconcileQueue": {
+      "type": "sst.aws.Queue"
+      "url": string
+    }
+    "SSTConsoleArtifacts": {
+      "name": string
+      "type": "sst.aws.Bucket"
     }
     "SSTConsoleCognitoUserPool": {
       "id": string

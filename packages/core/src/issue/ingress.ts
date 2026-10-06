@@ -1,0 +1,746 @@
+import {
+	CloudFormationClient,
+	CreateStackCommand,
+	DescribeStacksCommand,
+	UpdateStackCommand
+} from "@aws-sdk/client-cloudformation";
+import {
+	DeleteSubscriptionFilterCommand,
+	PutSubscriptionFilterCommand,
+	ResourceNotFoundException,
+	CloudWatchLogsClient
+} from "@aws-sdk/client-cloudwatch-logs";
+import {
+	GetFunctionConfigurationCommand,
+	LambdaClient
+} from "@aws-sdk/client-lambda";
+import {
+	SendMessageCommand,
+	SetQueueAttributesCommand,
+	SQSClient
+} from "@aws-sdk/client-sqs";
+
+import { db } from "../db";
+import { NotFoundError, ServerError } from "../error";
+import * as Connector from "../account/connector";
+import {
+	errorFilterPattern,
+	isIssueWorkerFunction,
+	lambdaFromResource,
+	subscriberStackName
+} from "./ingress-utils";
+import { subscriberCode } from "./subscriber";
+
+export {
+	errorFilterPattern,
+	isIssueWorkerFunction,
+	lambdaFromResource,
+	subscriberStackName
+};
+
+type IngressConfig = {
+	installationId: string;
+	queueArn: string;
+	queueRegion: string;
+	ingressQueueUrl: string;
+	reconcileQueueUrl: string;
+};
+
+/** Enables monitoring for a stage and schedules its initial setup. */
+export async function enableStage(input: {
+	appName: string;
+	stageName: string;
+}) {
+	await requireStage(input);
+	const now = new Date().toISOString();
+	await db.entities.stage
+		.patch(input)
+		.set({ issueMonitoringEnabled: true, updatedAt: now })
+		.go({ response: "none" });
+	await enqueueReconcile({ ...input, action: "reconcile", attempt: 0 });
+}
+
+/** Disables monitoring for a stage and schedules owned-filter removal. */
+export async function disableStage(input: {
+	appName: string;
+	stageName: string;
+}) {
+	await requireStage(input);
+	const now = new Date().toISOString();
+	await db.entities.stage
+		.patch(input)
+		.set({ issueMonitoringEnabled: false, updatedAt: now })
+		.go({ response: "none" });
+	await enqueueReconcile({ ...input, action: "disconnect", attempt: 0 });
+}
+
+/** Schedules reconciliation only when monitoring remains enabled for a stage. */
+export async function requestReconcile(input: {
+	appName: string;
+	stageName: string;
+}) {
+	const stage = await db.entities.stage.get(input).go({ consistent: true });
+	if (!stage.data?.issueMonitoringEnabled) return;
+	await enqueueReconcile({ ...input, action: "reconcile", attempt: 0 });
+}
+
+/** Returns stage monitoring, subscription, and Issue records for the API. */
+export async function getStageStatus(input: {
+	appName: string;
+	stageName: string;
+}) {
+	const stage = await requireStage(input);
+	const [subscriptions, issues] = await Promise.all([
+		db.entities.issueSubscription.query.stage(input).go({ pages: "all" }),
+		db.entities.issue.query.stage(input).go({ pages: "all" })
+	]);
+	return {
+		monitoring: { enabled: stage.issueMonitoringEnabled === true },
+		subscriptions: subscriptions.data,
+		issues: issues.data
+	};
+}
+
+/** Deletes every persisted Issue record without changing monitoring configuration. */
+export async function deleteAllIssues() {
+	const apps = await db.entities.app.query.byName({}).go({ pages: "all" });
+	for (const app of apps.data) {
+		const stages = await db.entities.stage.query
+			.stage({ appName: app.appName })
+			.go({ pages: "all" });
+		for (const stage of stages.data) {
+			const issues = await db.entities.issue.query
+				.stage({ appName: stage.appName, stageName: stage.stageName })
+				.go({ pages: "all" });
+			for (const issue of issues.data)
+				await db.entities.issue
+					.delete({
+						appName: issue.appName,
+						stageName: issue.stageName,
+						fingerprint: issue.fingerprint
+					})
+					.go({ response: "none" });
+		}
+	}
+}
+
+/** Removes one stage's remote filters and all local Issue operational data. */
+export async function removeStageMonitoring(input: {
+	appName: string;
+	stageName: string;
+}) {
+	const subscriptions = await db.entities.issueSubscription.query
+		.stage(input)
+		.go({ pages: "all" });
+	if (subscriptions.data.length > 0) {
+		const stage = await requireStage(input);
+		const account = await db.entities.account
+			.get({ accountId: stage.accountId })
+			.go({ consistent: true });
+		if (!account.data || account.data.status !== "connected")
+			throw new ServerError(
+				"issue_monitoring_cleanup_unavailable",
+				"Connected workload account is unavailable for Issue filter cleanup"
+			);
+		const connection = await Connector.assume({
+			roleArn: account.data.roleArn,
+			region: account.data.region
+		});
+		await removeSubscriptions({
+			input,
+			credentials: connection.credentials
+		});
+	}
+	await deleteStageIssueData(input);
+}
+
+/** Applies one queued setup or teardown action for a monitored stage. */
+export async function reconcileStage(input: {
+	appName: string;
+	stageName: string;
+	action: "reconcile" | "disconnect";
+	attempt: number;
+}) {
+	console.log("Reconciling Issue monitoring", input);
+	const config = ingressConfig();
+	const stage = await requireStage(input);
+	const account = await db.entities.account
+		.get({ accountId: stage.accountId })
+		.go({ consistent: true });
+	if (!account.data || account.data.status !== "connected") {
+		console.log("Skipping Issue reconciliation: account is not connected", {
+			accountId: stage.accountId,
+			status: account.data?.status
+		});
+		return;
+	}
+	const connection = await Connector.assume({
+		roleArn: account.data.roleArn,
+		region: account.data.region
+	});
+	await ensureIngressQueuePolicy(config);
+	const resources = await lambdaResources(
+		input.appName,
+		input.stageName,
+		connection.credentials
+	);
+	const existingSubscriptions = await db.entities.issueSubscription.query
+		.stage(input)
+		.go({ pages: "all" });
+	const desiredLogGroups = new Set(
+		resources.map(resource => resource.logGroup)
+	);
+	const staleSubscriptions = existingSubscriptions.data.filter(
+		subscription =>
+			subscription.status !== "removed" &&
+			!desiredLogGroups.has(subscription.logGroup)
+	);
+	if (input.action === "reconcile" && staleSubscriptions.length > 0) {
+		console.log("Removing stale Issue log subscriptions", {
+			appName: input.appName,
+			stageName: input.stageName,
+			count: staleSubscriptions.length
+		});
+		await removeSubscriptions({
+			input,
+			credentials: connection.credentials,
+			subscriptions: staleSubscriptions
+		});
+	}
+	console.log("Found Lambda resources for Issue monitoring", {
+		appName: input.appName,
+		stageName: input.stageName,
+		count: resources.length
+	});
+	if (input.action === "disconnect") {
+		await removeSubscriptions({
+			input,
+			credentials: connection.credentials
+		});
+		return;
+	}
+	for (const [region, regionalResources] of Map.groupBy(
+		resources,
+		item => item.region
+	)) {
+		if (!region || !regionalResources) continue;
+		console.log("Ensuring regional Issue subscriber", {
+			accountId: stage.accountId,
+			region,
+			resourceCount: regionalResources.length
+		});
+		const subscriber = await ensureSubscriber({
+			accountId: stage.accountId,
+			config,
+			credentials: connection.credentials,
+			region
+		});
+		if (!subscriber) {
+			console.log("Issue subscriber is still being created", {
+				accountId: stage.accountId,
+				region,
+				attempt: input.attempt
+			});
+			if (input.attempt < 8)
+				await enqueueReconcile(
+					{
+						...input,
+						action: "reconcile",
+						attempt: input.attempt + 1
+					},
+					60
+				);
+			continue;
+		}
+		const logs = new CloudWatchLogsClient({
+			credentials: connection.credentials,
+			region
+		});
+		for (const resource of regionalResources) {
+			const now = new Date().toISOString();
+			try {
+				await putSubscription({
+					input,
+					resource,
+					status: "pending",
+					updatedAt: now
+				});
+				await logs.send(
+					new PutSubscriptionFilterCommand({
+						destinationArn: subscriber,
+						filterName: subscriptionFilterName(input, resource),
+						filterPattern: errorFilterPattern,
+						logGroupName: resource.logGroup
+					})
+				);
+				await putSubscription({
+					input,
+					resource,
+					status: "attached",
+					updatedAt: now
+				});
+				console.log("Attached Issue log subscription", {
+					logGroup: resource.logGroup,
+					region
+				});
+			} catch (error) {
+				const pending = error instanceof ResourceNotFoundException;
+				await putSubscription({
+					input,
+					resource,
+					status: pending ? "pending" : "failed",
+					lastError: errorMessage(error),
+					updatedAt: now
+				});
+				console.log("Failed to attach Issue log subscription", {
+					logGroup: resource.logGroup,
+					region,
+					pending,
+					error: errorMessage(error)
+				});
+			}
+		}
+	}
+}
+
+/** Removes only subscriptions persisted as owned by this stage. */
+async function removeSubscriptions(input: {
+	input: { appName: string; stageName: string };
+	credentials: Awaited<ReturnType<typeof Connector.assume>>["credentials"];
+	subscriptions?: Array<{
+		appName: string;
+		stageName: string;
+		region: string;
+		logGroup: string;
+		filterName: string;
+	}>;
+}) {
+	const subscriptions =
+		input.subscriptions ??
+		(
+			await db.entities.issueSubscription.query
+				.stage(input.input)
+				.go({ pages: "all" })
+		).data;
+	for (const subscription of subscriptions) {
+		if (!subscription) continue;
+		const logs = new CloudWatchLogsClient({
+			credentials: input.credentials,
+			region: subscription.region
+		});
+		await logs
+			.send(
+				new DeleteSubscriptionFilterCommand({
+					filterName: subscription.filterName,
+					logGroupName: subscription.logGroup
+				})
+			)
+			.catch(error => {
+				if (error.name !== "ResourceNotFoundException") throw error;
+			});
+		await db.entities.issueSubscription
+			.patch({
+				appName: subscription.appName,
+				stageName: subscription.stageName,
+				region: subscription.region,
+				logGroup: subscription.logGroup
+			})
+			.set({
+				status: "removed",
+				updatedAt: new Date().toISOString(),
+				lastError: undefined
+			})
+			.go({ response: "none" });
+	}
+}
+
+/** Deletes all local Issue records after their remote filters are removed. */
+async function deleteStageIssueData(input: {
+	appName: string;
+	stageName: string;
+}) {
+	const [subscriptions, issues] = await Promise.all([
+		db.entities.issueSubscription.query.stage(input).go({ pages: "all" }),
+		db.entities.issue.query.stage(input).go({ pages: "all" })
+	]);
+	for (const subscription of subscriptions.data)
+		await db.entities.issueSubscription
+			.delete({
+				appName: subscription.appName,
+				stageName: subscription.stageName,
+				region: subscription.region,
+				logGroup: subscription.logGroup
+			})
+			.go({ response: "none" });
+	for (const issue of issues.data)
+		await db.entities.issue
+			.delete({
+				appName: issue.appName,
+				stageName: issue.stageName,
+				fingerprint: issue.fingerprint
+			})
+			.go({ response: "none" });
+}
+
+/** Reads configured log groups for current physical SST Lambda resources. */
+async function lambdaResources(
+	appName: string,
+	stageName: string,
+	credentials: Awaited<ReturnType<typeof Connector.assume>>["credentials"]
+) {
+	const resources = await db.entities.resource.query
+		.resource({ appName, stageName })
+		.go({ pages: "all" });
+	const lambdas = resources.data.flatMap(resource => {
+		const lambda = lambdaFromResource(resource);
+		return lambda && !isIssueWorkerFunction(lambda.functionName)
+			? [lambda]
+			: [];
+	});
+	return Promise.all(
+		lambdas.map(async lambda => {
+			const configuration = await new LambdaClient({
+				credentials,
+				region: lambda.region
+			}).send(
+				new GetFunctionConfigurationCommand({
+					FunctionName: lambda.functionArn
+				})
+			);
+			return {
+				...lambda,
+				logGroup:
+					configuration.LoggingConfig?.LogGroup ?? lambda.logGroup
+			};
+		})
+	);
+}
+
+/** Creates or reads the regional workload subscriber CloudFormation stack. */
+async function ensureSubscriber(input: {
+	accountId: string;
+	config: IngressConfig;
+	credentials: Awaited<ReturnType<typeof Connector.assume>>["credentials"];
+	region: string;
+}): Promise<string | undefined> {
+	const stackName = subscriberStackName(
+		input.config.installationId,
+		input.region
+	);
+	const cloudformation = new CloudFormationClient({
+		credentials: input.credentials,
+		region: input.region
+	});
+	const stack = await cloudformation
+		.send(new DescribeStacksCommand({ StackName: stackName }))
+		.then(result => result.Stacks?.[0])
+		.catch(error => {
+			if (error.name === "ValidationError") return undefined;
+			throw error;
+		});
+	if (!stack) {
+		console.log("Creating Issue subscriber stack", {
+			accountId: input.accountId,
+			region: input.region,
+			stackName
+		});
+		await cloudformation.send(
+			new CreateStackCommand({
+				StackName: stackName,
+				TemplateBody: subscriberTemplate(input.config, stackName),
+				Capabilities: ["CAPABILITY_NAMED_IAM"]
+			})
+		);
+		await putSubscriber({ ...input, stackName, status: "pending" });
+		return;
+	}
+	if (stack.StackStatus?.endsWith("_IN_PROGRESS")) {
+		console.log("Issue subscriber stack is in progress", {
+			accountId: input.accountId,
+			region: input.region,
+			stackName,
+			status: stack.StackStatus
+		});
+		await putSubscriber({ ...input, stackName, status: "pending" });
+		return;
+	}
+	const functionArn = stack.Outputs?.find(
+		output => output.OutputKey === "FunctionArn"
+	)?.OutputValue;
+	if (stack.StackStatus === "CREATE_COMPLETE" && functionArn) {
+		const updated = await cloudformation
+			.send(
+				new UpdateStackCommand({
+					StackName: stackName,
+					TemplateBody: subscriberTemplate(input.config, stackName),
+					Capabilities: ["CAPABILITY_NAMED_IAM"]
+				})
+			)
+			.then(() => true)
+			.catch(error => {
+				if (
+					error.name === "ValidationError" &&
+					/No updates/.test(error.message)
+				)
+					return false;
+				throw error;
+			});
+		if (updated) {
+			console.log("Updating Issue subscriber stack", {
+				accountId: input.accountId,
+				region: input.region,
+				stackName
+			});
+			await putSubscriber({ ...input, stackName, status: "pending" });
+			return;
+		}
+		console.log("Issue subscriber stack is ready", {
+			accountId: input.accountId,
+			region: input.region,
+			stackName,
+			functionArn
+		});
+		await putSubscriber({
+			...input,
+			stackName,
+			status: "ready",
+			functionArn
+		});
+		return functionArn;
+	}
+	await putSubscriber({
+		...input,
+		stackName,
+		status: "failed",
+		lastError: `CloudFormation stack is ${stack.StackStatus ?? "unknown"}`
+	});
+	console.log("Issue subscriber stack failed", {
+		accountId: input.accountId,
+		region: input.region,
+		stackName,
+		status: stack.StackStatus
+	});
+	throw new ServerError(
+		"issue_subscriber_failed",
+		`Issue subscriber stack is ${stack.StackStatus ?? "unknown"}`
+	);
+}
+
+/** Persists current regional subscriber stack state. */
+async function putSubscriber(input: {
+	accountId: string;
+	region: string;
+	stackName: string;
+	status: "pending" | "ready" | "failed";
+	functionArn?: string;
+	lastError?: string;
+}) {
+	await db.entities.issueSubscriber
+		.upsert({ ...input, updatedAt: new Date().toISOString() })
+		.go({ response: "none" });
+}
+
+/** Persists setup status for one Console-owned log subscription filter. */
+async function putSubscription(input: {
+	input: { appName: string; stageName: string };
+	resource: Awaited<ReturnType<typeof lambdaResources>>[number];
+	status: "pending" | "attached" | "failed";
+	lastError?: string;
+	updatedAt: string;
+}) {
+	if (!input.resource) return;
+	await db.entities.issueSubscription
+		.upsert({
+			appName: input.input.appName,
+			stageName: input.input.stageName,
+			accountId: input.resource.accountId,
+			region: input.resource.region,
+			logGroup: input.resource.logGroup,
+			filterName: subscriptionFilterName(input.input, input.resource),
+			functionArn: input.resource.functionArn,
+			status: input.status,
+			lastError: input.lastError,
+			updatedAt: input.updatedAt
+		})
+		.go({ response: "none" });
+}
+
+/** Names Console-owned filters with their source-stage identity. */
+function subscriptionFilterName(
+	stage: { appName: string; stageName: string },
+	resource: Awaited<ReturnType<typeof lambdaResources>>[number]
+) {
+	return `sst#${resource.region}#${resource.accountId}#${stage.appName}#${stage.stageName}`;
+}
+
+/** Queues a delayed, targeted monitoring setup or teardown action. */
+async function enqueueReconcile(
+	input: {
+		appName: string;
+		stageName: string;
+		action: "reconcile" | "disconnect";
+		attempt: number;
+	},
+	delaySeconds = 0
+) {
+	const config = ingressConfig();
+	await new SQSClient({ region: config.queueRegion }).send(
+		new SendMessageCommand({
+			QueueUrl: config.reconcileQueueUrl,
+			MessageBody: JSON.stringify(input),
+			DelaySeconds: delaySeconds
+		})
+	);
+}
+
+/** Grants connected workload subscriber roles access to central ingress SQS. */
+async function ensureIngressQueuePolicy(config: IngressConfig) {
+	const accounts = await db.entities.account.query
+		.byStatus({ status: "connected" })
+		.go({ pages: "all" });
+	const partition = config.queueArn.split(":")[1] ?? "aws";
+	const rolePattern = subscriberStackName(config.installationId, "*");
+	const accountIds = accounts.data.map(account => account.accountId);
+	await new SQSClient({ region: config.queueRegion }).send(
+		new SetQueueAttributesCommand({
+			QueueUrl: config.ingressQueueUrl,
+			Attributes: {
+				Policy: JSON.stringify({
+					Version: "2012-10-17",
+					Statement: accountIds.length
+						? [
+								{
+									Effect: "Allow",
+									Principal: {
+										AWS: accountIds.map(
+											accountId =>
+												`arn:${partition}:iam::${accountId}:root`
+										)
+									},
+									Action: "sqs:SendMessage",
+									Resource: config.queueArn,
+									Condition: {
+										ArnLike: {
+											"aws:PrincipalArn": accountIds.map(
+												accountId =>
+													`arn:${partition}:iam::${accountId}:role/${rolePattern}`
+											)
+										}
+									}
+								}
+							]
+						: []
+				})
+			}
+		})
+	);
+}
+
+/** Loads a stage or reports that its SST projection no longer exists. */
+async function requireStage(input: { appName: string; stageName: string }) {
+	const stage = await db.entities.stage.get(input).go({ consistent: true });
+	if (!stage.data)
+		throw new NotFoundError("stage_not_found", "SST stage was not found");
+	return stage.data;
+}
+
+/** Reads required central Issue transport configuration from Lambda environment. */
+function ingressConfig(): IngressConfig {
+	const config = {
+		installationId: process.env.SST_CONSOLE_ISSUE_INSTALLATION_ID,
+		queueArn: process.env.SST_CONSOLE_ISSUE_QUEUE_ARN,
+		queueRegion: process.env.SST_CONSOLE_ISSUE_QUEUE_REGION,
+		ingressQueueUrl: process.env.SST_CONSOLE_ISSUE_QUEUE_URL,
+		reconcileQueueUrl: process.env.SST_CONSOLE_ISSUE_RECONCILE_QUEUE_URL
+	};
+	if (Object.values(config).some(value => !value))
+		throw new ServerError(
+			"issue_ingress_not_configured",
+			"Issue ingress infrastructure is not configured"
+		);
+	return config as IngressConfig;
+}
+
+/** Generates regional subscriber CloudFormation resources and permissions. */
+function subscriberTemplate(config: IngressConfig, stackName: string) {
+	return JSON.stringify({
+		AWSTemplateFormatVersion: "2010-09-09",
+		Description: "Receive CloudWatch Lambda failures for SST Console",
+		Resources: {
+			SubscriberRole: {
+				Type: "AWS::IAM::Role",
+				Properties: {
+					RoleName: stackName,
+					AssumeRolePolicyDocument: {
+						Version: "2012-10-17",
+						Statement: [
+							{
+								Effect: "Allow",
+								Principal: { Service: "lambda.amazonaws.com" },
+								Action: "sts:AssumeRole"
+							}
+						]
+					},
+					ManagedPolicyArns: [
+						"arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+					],
+					Policies: [
+						{
+							PolicyName: "SendIssueIngress",
+							PolicyDocument: {
+								Version: "2012-10-17",
+								Statement: [
+									{
+										Effect: "Allow",
+										Action: "sqs:SendMessage",
+										Resource: config.queueArn
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			Subscriber: {
+				Type: "AWS::Lambda::Function",
+				Properties: {
+					FunctionName: stackName,
+					Code: { ZipFile: subscriberCode },
+					Environment: {
+						Variables: {
+							SST_CONSOLE_ISSUE_QUEUE_REGION: config.queueRegion,
+							SST_CONSOLE_ISSUE_QUEUE_URL: config.ingressQueueUrl
+						}
+					},
+					Handler: "index.handler",
+					MemorySize: 256,
+					Role: { "Fn::GetAtt": ["SubscriberRole", "Arn"] },
+					Runtime: "nodejs22.x",
+					Timeout: 30
+				}
+			},
+			SubscriberPermission: {
+				Type: "AWS::Lambda::Permission",
+				Properties: {
+					Action: "lambda:InvokeFunction",
+					FunctionName: { Ref: "Subscriber" },
+					Principal: "logs.amazonaws.com",
+					SourceArn: {
+						"Fn::Sub":
+							"arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+					}
+				}
+			}
+		},
+		Outputs: {
+			FunctionArn: { Value: { "Fn::GetAtt": ["Subscriber", "Arn"] } }
+		}
+	});
+}
+
+/** Converts an unknown AWS failure into bounded persisted status text. */
+function errorMessage(error: unknown) {
+	return error instanceof Error
+		? error.message.slice(0, 1_000)
+		: String(error).slice(0, 1_000);
+}

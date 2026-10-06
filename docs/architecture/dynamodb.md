@@ -80,6 +80,10 @@ GSI: usersById
   hash:  gsi5pk
   range: gsi5sk
 
+GSI: issueSubscriptionsBySource
+  hash:  gsi6pk
+  range: gsi6sk
+
 Table: ConsoleConnections
 Primary key: pk (string), sk (string)
 No secondary indexes
@@ -98,18 +102,21 @@ it. Core resolves names through `Resource.ConsoleData.name` and
 ElectroDB derives all keys. These layouts are contract, not values callers
 construct themselves.
 
-| Entity          | PK                                | SK                                         |
-| --------------- | --------------------------------- | ------------------------------------------ |
-| Account         | `ACCOUNT#{accountId}`             | `account`                                  |
-| App             | `APP#{appName}`                   | `APP`                                      |
-| Stage           | `APP#{appName}`                   | `STAGE#{stageName}`                        |
-| Resource        | `APP#{appName}#STAGE#{stageName}` | `RESOURCE#{resourceId}`                    |
-| StateSnapshot   | `APP#{appName}#STAGE#{stageName}` | `SNAPSHOT#{reverseTimestamp}#{snapshotId}` |
-| SyncRun         | `ACCOUNT#{accountId}`             | `SYNC#{reverseTimestamp}#{syncRunId}`      |
-| DiscoveredStage | `ACCOUNT#{accountId}`             | `DISCOVERY#{appName}#STAGE#{stageName}`    |
-| Connection      | `CONNECTIONS`                     | `ACCOUNT#{accountId}`                      |
-| User            | `USER#{id}`                       | `USER`                                     |
-| UserIdentity    | `COGNITO#{cognitoSub}`            | `USER`                                     |
+| Entity            | PK                                      | SK                                         |
+| ----------------- | --------------------------------------- | ------------------------------------------ |
+| Account           | `ACCOUNT#{accountId}`                   | `account`                                  |
+| App               | `APP#{appName}`                         | `APP`                                      |
+| Stage             | `APP#{appName}`                         | `STAGE#{stageName}`                        |
+| Resource          | `APP#{appName}#STAGE#{stageName}`       | `RESOURCE#{resourceId}`                    |
+| StateSnapshot     | `APP#{appName}#STAGE#{stageName}`       | `SNAPSHOT#{reverseTimestamp}#{snapshotId}` |
+| SyncRun           | `ACCOUNT#{accountId}`                   | `SYNC#{reverseTimestamp}#{syncRunId}`      |
+| DiscoveredStage   | `ACCOUNT#{accountId}`                   | `DISCOVERY#{appName}#STAGE#{stageName}`    |
+| Connection        | `CONNECTIONS`                           | `ACCOUNT#{accountId}`                      |
+| User              | `USER#{id}`                             | `USER`                                     |
+| UserIdentity      | `COGNITO#{cognitoSub}`                  | `USER`                                     |
+| IssueSubscription | `APP#{appName}#STAGE#{stageName}`       | `ISSUE_SUBSCRIPTION#{region}#{logGroup}`   |
+| Issue             | `APP#{appName}#STAGE#{stageName}`       | `ISSUE#{fingerprint}`                      |
+| IssueSubscriber   | `ISSUE_SUBSCRIBER#{accountId}#{region}` | `SUBSCRIBER`                               |
 
 `id` is a native Console ULID. `cognitoSub` remains external identity data;
 the UserIdentity record maps it to the native user ID and enforces one Cognito
@@ -122,6 +129,9 @@ Stage is globally identified by `appName + stageName` and has one owning
 `stage_account_conflict`. `region` on Stage identifies connector/bootstrap
 access only, not deployment placement. Resources may span regions within one
 Stage.
+
+`Stage.issueMonitoringEnabled` is Console configuration for whether its current
+Lambda log groups receive Issue monitoring. It defaults to `false`.
 
 `resourceId` is stable Console identity. `parentResourceId` models SST component
 nesting. SST URN and normalized AWS ARN are separate attributes; neither is
@@ -156,6 +166,12 @@ internal `*.dynamo.ts` field used to omit component groups from that GSI.
 | Provision invited user                       | Cognito custom-message trigger: Cognito `sub`         | conditional User + UserIdentity transaction create          | Implemented                         |
 | Confirm invited user                         | invite-confirm endpoint: native User `id`             | User primary-key patch                                      | Implemented                         |
 | List users                                   | authenticated API: ID descending, cursor-paginated    | `usersById` query                                           | Implemented                         |
+| Enable/disable stage monitoring              | authenticated issue API: app + stage                  | Stage primary-key get/patch                                 | Implemented                         |
+| Reconcile an enabled stage                   | worker: app + stage                                   | Stage, Resource, IssueSubscription primary-key queries      | Implemented                         |
+| Remove excluded stage Issue data             | sync worker: app + stage                              | IssueSubscription and Issue primary-key queries             | Implemented                         |
+| Verify issue ingress source                  | issue processor: account + region + log group         | `issueSubscriptionsBySource` query                          | Implemented                         |
+| List stage issue subscriptions and issues    | stage detail: app + stage                             | IssueSubscription / Issue primary-key query                 | Model ready                         |
+| Delete all persisted Issues                  | authenticated `DELETE /issues`                        | `appsByName`, then Stage / Issue primary-key queries        | Implemented                         |
 
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.
@@ -182,7 +198,8 @@ object metadata, and discovery time. Discovery reconciles this account partition
 after a complete S3 key listing. Sync persists discovery before policy evaluation,
 then downloads and parses only allowed state objects. As a result, ignored state
 is never read into Console processing or projections. Filtered reconciliation
-removes ignored account projections while retaining inventory for management UI.
+removes ignored account projections, their Issue records, and their Console-owned
+CloudWatch log filters while retaining inventory for management UI.
 
 ### User administration list
 
@@ -385,8 +402,8 @@ Then:
 
 Model these only after their access patterns are accepted:
 
-- Issue: fingerprint lookup, open-by-resource/status, occurrence timeline,
-  resolve/suppress state, notification deliveries.
+- Issue: open-by-resource/status, occurrence timeline, resolve/suppress state,
+  notification deliveries.
 - User/integration: global role, integration settings, notification preferences.
   User identity is persisted by Cognito subject. Store secret references only;
   secret values live in Secrets Manager.

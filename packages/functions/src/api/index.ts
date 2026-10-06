@@ -11,6 +11,7 @@ import { accountRoutes } from "./account";
 import { appRoutes } from "./app";
 import { authRoutes } from "./auth";
 import { authorize } from "./authorizer";
+import { issueRoutes } from "./issue";
 import { userRoutes } from "./user";
 
 type Bindings = {
@@ -30,6 +31,8 @@ const protectedRoutes = new Hono<{ Bindings: Bindings }>();
 protectedRoutes.use("*", authorize);
 protectedRoutes.route("/accounts", accountRoutes);
 protectedRoutes.route("/apps", appRoutes);
+
+protectedRoutes.route("/issues", issueRoutes);
 protectedRoutes.route("/users", userRoutes);
 app.route("/", protectedRoutes);
 

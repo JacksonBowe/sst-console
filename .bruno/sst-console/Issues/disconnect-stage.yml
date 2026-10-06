@@ -1,0 +1,22 @@
+info:
+    name: Disconnect stage
+    type: http
+    seq: 4
+
+http:
+    method: POST
+    url: "{{ApiBase}}/issues/:appName/:stageName/disconnect"
+    params:
+        - name: appName
+          value: "{{SSTApp}}"
+          type: path
+        - name: stageName
+          value: "{{SSTAppStage}}"
+          type: path
+    auth: inherit
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5

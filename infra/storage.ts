@@ -11,7 +11,9 @@ export const consoleData = new sst.aws.Dynamo("ConsoleData", {
 		gsi4pk: "string",
 		gsi4sk: "string",
 		gsi5pk: "string",
-		gsi5sk: "string"
+		gsi5sk: "string",
+		gsi6pk: "string",
+		gsi6sk: "string"
 	},
 	primaryIndex: {
 		hashKey: "pk",
@@ -37,6 +39,10 @@ export const consoleData = new sst.aws.Dynamo("ConsoleData", {
 		usersById: {
 			hashKey: "gsi5pk",
 			rangeKey: "gsi5sk"
+		},
+		issueSubscriptionsBySource: {
+			hashKey: "gsi6pk",
+			rangeKey: "gsi6sk"
 		}
 	}
 });
