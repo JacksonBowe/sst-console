@@ -21,8 +21,9 @@ import {
 } from "@aws-sdk/client-sqs";
 
 import { db } from "../db";
-import { NotFoundError, ServerError } from "../error";
+import { ServerError } from "../error";
 import * as Connector from "../account/connector";
+import { Stage } from "../app";
 import {
 	errorFilterPattern,
 	isIssueWorkerFunction,
@@ -53,12 +54,13 @@ export async function enableStage(input: {
 	appName: string;
 	stageName: string;
 }) {
-	await requireStage(input);
+	await Stage.get(input);
 	const now = new Date().toISOString();
-	await db.entities.stage
-		.patch(input)
-		.set({ issueMonitoringEnabled: true, updatedAt: now })
-		.go({ response: "none" });
+	await Stage.update({
+		...input,
+		issueMonitoringEnabled: true,
+		updatedAt: now
+	});
 	await enqueueReconcile({ ...input, action: "reconcile", attempt: 0 });
 }
 
@@ -67,12 +69,13 @@ export async function disableStage(input: {
 	appName: string;
 	stageName: string;
 }) {
-	await requireStage(input);
+	await Stage.get(input);
 	const now = new Date().toISOString();
-	await db.entities.stage
-		.patch(input)
-		.set({ issueMonitoringEnabled: false, updatedAt: now })
-		.go({ response: "none" });
+	await Stage.update({
+		...input,
+		issueMonitoringEnabled: false,
+		updatedAt: now
+	});
 	await enqueueReconcile({ ...input, action: "disconnect", attempt: 0 });
 }
 
@@ -81,8 +84,8 @@ export async function requestReconcile(input: {
 	appName: string;
 	stageName: string;
 }) {
-	const stage = await db.entities.stage.get(input).go({ consistent: true });
-	if (!stage.data?.issueMonitoringEnabled) return;
+	const stage = await Stage.get(input);
+	if (!stage?.issueMonitoringEnabled) return;
 	await enqueueReconcile({ ...input, action: "reconcile", attempt: 0 });
 }
 
@@ -91,7 +94,7 @@ export async function getStageStatus(input: {
 	appName: string;
 	stageName: string;
 }) {
-	const stage = await requireStage(input);
+	const stage = await Stage.get(input);
 	const [subscriptions, issues] = await Promise.all([
 		Subscription.list(input),
 		Issue.list(input)
@@ -110,7 +113,7 @@ export async function removeStageMonitoring(input: {
 }) {
 	const subscriptions = await Subscription.list(input);
 	if (subscriptions.length > 0) {
-		const stage = await requireStage(input);
+		const stage = await Stage.get(input);
 		const account = await db.entities.account
 			.get({ accountId: stage.accountId })
 			.go({ consistent: true });
@@ -140,7 +143,7 @@ export async function reconcileStage(input: {
 }) {
 	console.log("Reconciling Issue monitoring", input);
 	const config = ingressConfig();
-	const stage = await requireStage(input);
+	const stage = await Stage.get(input);
 	const account = await db.entities.account
 		.get({ accountId: stage.accountId })
 		.go({ consistent: true });
@@ -585,14 +588,6 @@ async function ensureIngressQueuePolicy(config: IngressConfig) {
 			}
 		})
 	);
-}
-
-/** Loads a stage or reports that its SST projection no longer exists. */
-async function requireStage(input: { appName: string; stageName: string }) {
-	const stage = await db.entities.stage.get(input).go({ consistent: true });
-	if (!stage.data)
-		throw new NotFoundError("stage_not_found", "SST stage was not found");
-	return stage.data;
 }
 
 /** Reads required central Issue transport configuration from Lambda environment. */

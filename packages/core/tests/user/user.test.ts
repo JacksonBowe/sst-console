@@ -67,6 +67,7 @@ const input = {
 const userId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const user = {
 	id: userId,
+	cognitoSub: input.cognitoSub,
 	email: input.email,
 	cognitoStatus: input.cognitoStatus,
 	cognitoEnabled: input.cognitoEnabled,
@@ -123,7 +124,7 @@ describe("user", () => {
 	});
 
 	it("deletes Cognito user and Console user records", async () => {
-		userGetGo.mockResolvedValue({ data: { ...input, id: userId } });
+		userGetGo.mockResolvedValue({ data: user });
 		transactionGo.mockResolvedValue({ canceled: false });
 
 		await remove({ id: userId });

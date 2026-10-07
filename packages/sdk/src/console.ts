@@ -68,7 +68,14 @@ export type App = {
 	appName: string;
 	createdAt: string;
 	updatedAt: string;
+};
+
+export type AppSummary = App & {
 	stages: AppStage[];
+};
+
+export type ListAppsOptions<Summaries extends boolean = boolean> = {
+	summaries?: Summaries;
 };
 
 export type Stage = {
@@ -182,8 +189,15 @@ export type InviteUserInput = { email: string };
 export type InviteUserResult = { id: string };
 
 export const consoleMethods = (request: RequestFn) => ({
-	listApps: (): Promise<App[]> => request({ method: "GET", url: "apps" }),
-	getApp: (appName: string): Promise<App> =>
+	listApps: <Summaries extends boolean = false>(
+		options: ListAppsOptions<Summaries> = {}
+	): Promise<Summaries extends true ? AppSummary[] : App[]> =>
+		request<Summaries extends true ? AppSummary[] : App[]>({
+			method: "GET",
+			url: "apps",
+			params: options
+		}),
+	getApp: (appName: string): Promise<AppSummary> =>
 		request({ method: "GET", url: `apps/${encodeURIComponent(appName)}` }),
 	getStage: (appName: string, stageName: string): Promise<Stage> =>
 		request({

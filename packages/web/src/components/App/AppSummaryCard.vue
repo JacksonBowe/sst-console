@@ -30,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import type { App } from "@sst-console/sdk";
+import type { AppSummary } from "@sst-console/sdk";
 import { computed } from "vue";
 
 import { formatDateTime } from "@/components/ui/format";
@@ -38,7 +38,7 @@ import { formatDateTime } from "@/components/ui/format";
 import AppStagePreviews from "./AppStagePreviews.vue";
 import AppSummaryMetrics from "./AppSummaryMetrics.vue";
 
-const props = defineProps<{ app: App }>();
+const props = defineProps<{ app: AppSummary }>();
 
 const appRoute = computed(() => ({
 	name: "app-detail",

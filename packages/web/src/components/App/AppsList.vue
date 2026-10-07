@@ -23,12 +23,12 @@
 </template>
 
 <script setup lang="ts">
-import type { App } from "@sst-console/sdk";
+import type { AppSummary } from "@sst-console/sdk";
 
 import AppSummaryCard from "./AppSummaryCard.vue";
 
 defineProps<{
-	apps: App[];
+	apps: AppSummary[];
 	loading: boolean;
 }>();
 </script>

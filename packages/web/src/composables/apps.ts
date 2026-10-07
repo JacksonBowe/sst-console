@@ -13,7 +13,7 @@ export const appQueryKeys = {
 export function useApps() {
 	return useQuery({
 		queryKey: appQueryKeys.all,
-		queryFn: () => api.listApps()
+		queryFn: () => api.listApps({ summaries: true })
 	});
 }
 

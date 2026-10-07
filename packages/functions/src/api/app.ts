@@ -1,15 +1,17 @@
 import { zValidator } from "@console/core/error";
 import * as App from "@console/core/app";
 import { Hono } from "hono";
-import { z } from "zod";
 
-const AppNameParamSchema = z.object({ appName: z.string().min(1) });
-const StageParamSchema = AppNameParamSchema.extend({
-	stageName: z.string().min(1)
-});
+import {
+	AppListQuerySchema,
+	AppNameParamSchema,
+	StageParamSchema
+} from "./schemas/app.schemas";
 
 export const appRoutes = new Hono()
-	.get("/", async c => c.json(await App.list()))
+	.get("/", zValidator("query", AppListQuerySchema), async c =>
+		c.json(await App.list(c.req.valid("query")))
+	)
 	.get(
 		"/:appName/stages/:stageName",
 		zValidator("param", StageParamSchema),

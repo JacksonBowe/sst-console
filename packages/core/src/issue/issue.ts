@@ -1,10 +1,11 @@
 import { z } from "zod";
 
-import { StageSchema } from "../app";
+import { StageKeySchema } from "../app";
 import { db } from "../db";
 import { fn } from "../util/fn";
+import { issueErrors } from "./errors";
 
-const IssueKeySchema = StageSchema.extend({
+const IssueKeySchema = StageKeySchema.extend({
 	fingerprint: z.string().min(1)
 });
 
@@ -27,14 +28,23 @@ export const create = fn(IssueSchema, async input => {
 	await db.entities.issue.create(input).go({ response: "none" });
 });
 
-/** Gets one Issue by stage and fingerprint. */
-export const get = fn(IssueKeySchema, async input => {
+async function getRecord(input: z.infer<typeof IssueKeySchema>) {
 	const result = await db.entities.issue.get(input).go({ consistent: true });
 	return result.data ? IssueSchema.parse(result.data) : null;
+}
+
+/** Finds one Issue by stage and fingerprint. */
+export const find = fn(IssueKeySchema, getRecord);
+
+/** Gets one Issue by stage and fingerprint or throws when it does not exist. */
+export const get = fn(IssueKeySchema, async input => {
+	const issue = await getRecord(input);
+	if (!issue) throw issueErrors.notFound();
+	return issue;
 });
 
 /** Lists every Issue recorded for one stage. */
-export const list = fn(StageSchema, async input => {
+export const list = fn(StageKeySchema, async input => {
 	const result = await db.entities.issue.query
 		.stage(input)
 		.go({ pages: "all" });

@@ -45,7 +45,7 @@ export async function processCandidate(input: IssueCandidate) {
 			stageName: subscription.stageName,
 			fingerprint
 		};
-		const existing = await Issue.get(key);
+		const existing = await Issue.find(key);
 		const now = new Date().toISOString();
 		if (!existing) {
 			await Issue.create({

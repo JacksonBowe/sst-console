@@ -1,4 +1,4 @@
-import { StageSchema } from "@console/core/app";
+import { StageKeySchema } from "@console/core/app";
 import { zValidator } from "@console/core/error";
 import * as Issue from "@console/core/issue";
 import { Hono } from "hono";
@@ -14,7 +14,7 @@ issueRoutes.delete("/", async c => {
 /** Returns monitoring state, subscription state, and current Issues for one stage. */
 issueRoutes.get(
 	"/:appName/:stageName",
-	zValidator("param", StageSchema),
+	zValidator("param", StageKeySchema),
 	async c =>
 		c.json(await Issue.Monitoring.getStageStatus(c.req.valid("param")))
 );
@@ -27,7 +27,7 @@ issueRoutes.post("/test-query", async c => {
 /** Enables stage monitoring and queues targeted reconciliation. */
 issueRoutes.post(
 	"/:appName/:stageName/connect",
-	zValidator("param", StageSchema),
+	zValidator("param", StageKeySchema),
 	async c => {
 		await Issue.Monitoring.enableStage(c.req.valid("param"));
 		return c.body(null, 204);
@@ -36,7 +36,7 @@ issueRoutes.post(
 /** Disables stage monitoring and queues owned-filter removal. */
 issueRoutes.post(
 	"/:appName/:stageName/disconnect",
-	zValidator("param", StageSchema),
+	zValidator("param", StageKeySchema),
 	async c => {
 		await Issue.Monitoring.disableStage(c.req.valid("param"));
 		return c.body(null, 204);

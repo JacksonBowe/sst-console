@@ -1,10 +1,11 @@
 import { z } from "zod";
 
-import { StageSchema } from "../app";
+import { StageKeySchema } from "../app";
 import { db } from "../db";
 import { fn } from "../util/fn";
+import { issueErrors } from "./errors";
 
-const SubscriptionKeySchema = StageSchema.extend({
+const SubscriptionKeySchema = StageKeySchema.extend({
 	region: z.string().min(1),
 	logGroup: z.string().min(1)
 });
@@ -41,16 +42,17 @@ export const create = fn(SubscriptionSchema, async input => {
 	await db.entities.issueSubscription.create(input).go({ response: "none" });
 });
 
-/** Gets one Console-owned CloudWatch Logs subscription record. */
+/** Gets one Console-owned CloudWatch Logs subscription record or throws when absent. */
 export const get = fn(SubscriptionKeySchema, async input => {
 	const result = await db.entities.issueSubscription
 		.get(input)
 		.go({ consistent: true });
-	return result.data ? SubscriptionSchema.parse(result.data) : null;
+	if (!result.data) throw issueErrors.subscriptionNotFound();
+	return SubscriptionSchema.parse(result.data);
 });
 
 /** Lists Console-owned CloudWatch Logs subscriptions for one stage. */
-export const list = fn(StageSchema, async input => {
+export const list = fn(StageKeySchema, async input => {
 	const result = await db.entities.issueSubscription.query
 		.stage(input)
 		.go({ pages: "all" });

@@ -22,6 +22,7 @@ const cognito = new CognitoIdentityProviderClient({});
 
 export const UserInfoSchema = z.object({
 	id: isULID(),
+	cognitoSub: z.string().min(1),
 	email: z.email(),
 	cognitoStatus: z.enum(CognitoStatus),
 	cognitoEnabled: z.boolean(),
@@ -30,11 +31,6 @@ export const UserInfoSchema = z.object({
 });
 
 export type UserInfo = z.infer<typeof UserInfoSchema>;
-
-async function getRecord({ id }: { id: string }) {
-	const result = await db.entities.user.get({ id }).go({ consistent: true });
-	return result.data ?? null;
-}
 
 /** Resolves a Cognito subject to its native Console user ID. */
 export const exchangeCognitoSub = fn(
@@ -139,8 +135,9 @@ export const update = fn(
 
 /** Gets user by native Console user ID. */
 export const get = fn(z.object({ id: isULID() }), async input => {
-	const user = await getRecord(input);
-	return user ? UserInfoSchema.parse(user) : null;
+	const result = await db.entities.user.get(input).go({ consistent: true });
+	if (!result.data) throw userErrors.notFound();
+	return UserInfoSchema.parse(result.data);
 });
 
 /** Lists users by descending ID with optional attribute filters. */
@@ -188,8 +185,7 @@ export const list = fn(
 
 /** Deletes Cognito account and associated Console user records. */
 export const remove = fn(z.object({ id: isULID() }), async ({ id }) => {
-	const user = await getRecord({ id });
-	if (!user) throw userErrors.notFound();
+	const user = await get({ id });
 	try {
 		await cognito.send(
 			new AdminDeleteUserCommand({
