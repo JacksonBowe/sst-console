@@ -28,8 +28,10 @@ import {
 	isIssueWorkerFunction,
 	lambdaFromResource,
 	subscriberStackName
-} from "./ingress-utils";
-import { subscriberCode } from "./subscriber";
+} from "./monitoring-utils";
+import { subscriberCode } from "./subscriber-code";
+import * as Issue from "./issue";
+import * as Subscription from "./issue.subscription";
 
 export {
 	errorFilterPattern,
@@ -91,37 +93,14 @@ export async function getStageStatus(input: {
 }) {
 	const stage = await requireStage(input);
 	const [subscriptions, issues] = await Promise.all([
-		db.entities.issueSubscription.query.stage(input).go({ pages: "all" }),
-		db.entities.issue.query.stage(input).go({ pages: "all" })
+		Subscription.list(input),
+		Issue.list(input)
 	]);
 	return {
 		monitoring: { enabled: stage.issueMonitoringEnabled === true },
-		subscriptions: subscriptions.data,
-		issues: issues.data
+		subscriptions,
+		issues
 	};
-}
-
-/** Deletes every persisted Issue record without changing monitoring configuration. */
-export async function deleteAllIssues() {
-	const apps = await db.entities.app.query.byName({}).go({ pages: "all" });
-	for (const app of apps.data) {
-		const stages = await db.entities.stage.query
-			.stage({ appName: app.appName })
-			.go({ pages: "all" });
-		for (const stage of stages.data) {
-			const issues = await db.entities.issue.query
-				.stage({ appName: stage.appName, stageName: stage.stageName })
-				.go({ pages: "all" });
-			for (const issue of issues.data)
-				await db.entities.issue
-					.delete({
-						appName: issue.appName,
-						stageName: issue.stageName,
-						fingerprint: issue.fingerprint
-					})
-					.go({ response: "none" });
-		}
-	}
 }
 
 /** Removes one stage's remote filters and all local Issue operational data. */
@@ -129,10 +108,8 @@ export async function removeStageMonitoring(input: {
 	appName: string;
 	stageName: string;
 }) {
-	const subscriptions = await db.entities.issueSubscription.query
-		.stage(input)
-		.go({ pages: "all" });
-	if (subscriptions.data.length > 0) {
+	const subscriptions = await Subscription.list(input);
+	if (subscriptions.length > 0) {
 		const stage = await requireStage(input);
 		const account = await db.entities.account
 			.get({ accountId: stage.accountId })
@@ -184,13 +161,11 @@ export async function reconcileStage(input: {
 		input.stageName,
 		connection.credentials
 	);
-	const existingSubscriptions = await db.entities.issueSubscription.query
-		.stage(input)
-		.go({ pages: "all" });
+	const existingSubscriptions = await Subscription.list(input);
 	const desiredLogGroups = new Set(
 		resources.map(resource => resource.logGroup)
 	);
-	const staleSubscriptions = existingSubscriptions.data.filter(
+	const staleSubscriptions = existingSubscriptions.filter(
 		subscription =>
 			subscription.status !== "removed" &&
 			!desiredLogGroups.has(subscription.logGroup)
@@ -316,12 +291,7 @@ async function removeSubscriptions(input: {
 	}>;
 }) {
 	const subscriptions =
-		input.subscriptions ??
-		(
-			await db.entities.issueSubscription.query
-				.stage(input.input)
-				.go({ pages: "all" })
-		).data;
+		input.subscriptions ?? (await Subscription.list(input.input));
 	for (const subscription of subscriptions) {
 		if (!subscription) continue;
 		const logs = new CloudWatchLogsClient({
@@ -338,19 +308,15 @@ async function removeSubscriptions(input: {
 			.catch(error => {
 				if (error.name !== "ResourceNotFoundException") throw error;
 			});
-		await db.entities.issueSubscription
-			.patch({
-				appName: subscription.appName,
-				stageName: subscription.stageName,
-				region: subscription.region,
-				logGroup: subscription.logGroup
-			})
-			.set({
-				status: "removed",
-				updatedAt: new Date().toISOString(),
-				lastError: undefined
-			})
-			.go({ response: "none" });
+		await Subscription.update({
+			appName: subscription.appName,
+			stageName: subscription.stageName,
+			region: subscription.region,
+			logGroup: subscription.logGroup,
+			status: "removed",
+			updatedAt: new Date().toISOString(),
+			lastError: null
+		});
 	}
 }
 
@@ -360,26 +326,12 @@ async function deleteStageIssueData(input: {
 	stageName: string;
 }) {
 	const [subscriptions, issues] = await Promise.all([
-		db.entities.issueSubscription.query.stage(input).go({ pages: "all" }),
-		db.entities.issue.query.stage(input).go({ pages: "all" })
+		Subscription.list(input),
+		Issue.list(input)
 	]);
-	for (const subscription of subscriptions.data)
-		await db.entities.issueSubscription
-			.delete({
-				appName: subscription.appName,
-				stageName: subscription.stageName,
-				region: subscription.region,
-				logGroup: subscription.logGroup
-			})
-			.go({ response: "none" });
-	for (const issue of issues.data)
-		await db.entities.issue
-			.delete({
-				appName: issue.appName,
-				stageName: issue.stageName,
-				fingerprint: issue.fingerprint
-			})
-			.go({ response: "none" });
+	for (const subscription of subscriptions)
+		await Subscription.remove(subscription);
+	for (const issue of issues) await Issue.remove(issue);
 }
 
 /** Reads configured log groups for current physical SST Lambda resources. */
@@ -535,9 +487,10 @@ async function putSubscriber(input: {
 	functionArn?: string;
 	lastError?: string;
 }) {
-	await db.entities.issueSubscriber
-		.upsert({ ...input, updatedAt: new Date().toISOString() })
-		.go({ response: "none" });
+	await Subscription.upsertSubscriber({
+		...input,
+		updatedAt: new Date().toISOString()
+	});
 }
 
 /** Persists setup status for one Console-owned log subscription filter. */
@@ -549,20 +502,18 @@ async function putSubscription(input: {
 	updatedAt: string;
 }) {
 	if (!input.resource) return;
-	await db.entities.issueSubscription
-		.upsert({
-			appName: input.input.appName,
-			stageName: input.input.stageName,
-			accountId: input.resource.accountId,
-			region: input.resource.region,
-			logGroup: input.resource.logGroup,
-			filterName: subscriptionFilterName(input.input, input.resource),
-			functionArn: input.resource.functionArn,
-			status: input.status,
-			lastError: input.lastError,
-			updatedAt: input.updatedAt
-		})
-		.go({ response: "none" });
+	await Subscription.upsert({
+		appName: input.input.appName,
+		stageName: input.input.stageName,
+		accountId: input.resource.accountId,
+		region: input.resource.region,
+		logGroup: input.resource.logGroup,
+		filterName: subscriptionFilterName(input.input, input.resource),
+		functionArn: input.resource.functionArn,
+		status: input.status,
+		lastError: input.lastError,
+		updatedAt: input.updatedAt
+	});
 }
 
 /** Names Console-owned filters with their source-stage identity. */

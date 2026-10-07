@@ -21,7 +21,7 @@ import {
 import { fn } from "../util/fn";
 import * as Connector from "./connector";
 import * as Connection from "../connection";
-import { removeStageMonitoring, requestReconcile } from "../issue/ingress";
+import { removeStageMonitoring, requestReconcile } from "../issue/monitoring";
 import { includesStage } from "./policy";
 import {
 	partitionStageOwnership,

@@ -3,9 +3,11 @@ import { z } from "zod";
 import { db } from "../db";
 import { InputError } from "../error";
 import { fn } from "../util/fn";
+import { StageSchema } from "./schema";
+
+export { StageSchema } from "./schema";
 
 const appInput = z.object({ appName: z.string().min(1) });
-const stageInput = appInput.extend({ stageName: z.string().min(1) });
 
 export const list = async () => {
 	const apps = await db.entities.app.query.byName({}).go({ pages: "all" });
@@ -20,7 +22,7 @@ export const inspect = fn(appInput, async ({ appName }) => {
 	return summary(app.data);
 });
 
-export const inspectStage = fn(stageInput, async ({ appName, stageName }) => {
+export const inspectStage = fn(StageSchema, async ({ appName, stageName }) => {
 	const stage = await db.entities.stage
 		.get({ appName, stageName })
 		.go({ consistent: true });

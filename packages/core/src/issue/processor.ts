@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 
-import { db } from "../db";
-import { isIssueWorkerFunction } from "./ingress-utils";
+import { isIssueWorkerFunction } from "./monitoring-utils";
+import * as Issue from "./issue";
+import * as Subscription from "./issue.subscription";
 import { parseError } from "./parser";
 
 export type IssueCandidate = {
@@ -17,16 +18,12 @@ export type IssueCandidate = {
 /** Validates an owned log source and records each detected error occurrence. */
 export async function processCandidate(input: IssueCandidate) {
 	if (isIssueWorkerFunction(input.source.logGroup)) return;
-	const subscriptions = await db.entities.issueSubscription.query
-		.bySource(input.source)
-		.go({ pages: "all" });
-	const subscription = subscriptions.data.find(
-		item => item.status === "attached"
-	);
+	const subscriptions = await Subscription.listBySource(input.source);
+	const subscription = subscriptions.find(item => item.status === "attached");
 	if (!subscription) {
 		if (
-			subscriptions.data.length === 0 ||
-			subscriptions.data.some(item => item.status === "pending")
+			subscriptions.length === 0 ||
+			subscriptions.some(item => item.status === "pending")
 		)
 			throw new Error("Issue subscription is not ready");
 		return;
@@ -43,42 +40,36 @@ export async function processCandidate(input: IssueCandidate) {
 				].join("\n")
 			)
 			.digest("hex");
-		const existing = await db.entities.issue
-			.get({
-				appName: subscription.appName,
-				stageName: subscription.stageName,
-				fingerprint
-			})
-			.go({ consistent: true });
+		const key = {
+			appName: subscription.appName,
+			stageName: subscription.stageName,
+			fingerprint
+		};
+		const existing = await Issue.get(key);
 		const now = new Date().toISOString();
-		if (!existing.data) {
-			await db.entities.issue
-				.create({
-					appName: subscription.appName,
-					stageName: subscription.stageName,
+		if (!existing) {
+			await Issue.create({
+				...key,
+				error: parsed.error,
+				message: parsed.message,
+				count: 1,
+				firstSeenAt: now,
+				lastSeenAt: now,
+				logGroup: input.source.logGroup,
+				logStream: input.source.logStream,
+				logTimestamp: event.timestamp
+			}).catch(async error => {
+				if (error.name !== "ConditionalCheckFailedException")
+					throw error;
+				await incrementIssue(
+					subscription,
 					fingerprint,
-					error: parsed.error,
-					message: parsed.message,
-					count: 1,
-					firstSeenAt: now,
-					lastSeenAt: now,
-					logGroup: input.source.logGroup,
-					logStream: input.source.logStream,
-					logTimestamp: event.timestamp
-				})
-				.go({ response: "none" })
-				.catch(async error => {
-					if (error.name !== "ConditionalCheckFailedException")
-						throw error;
-					await incrementIssue(
-						subscription,
-						fingerprint,
-						input.source,
-						event.timestamp,
-						parsed,
-						now
-					);
-				});
+					input.source,
+					event.timestamp,
+					parsed,
+					now
+				);
+			});
 			continue;
 		}
 		await incrementIssue(
@@ -101,21 +92,17 @@ async function incrementIssue(
 	parsed: ReturnType<typeof parseError> & {},
 	now: string
 ) {
-	await db.entities.issue
-		.patch({
-			appName: subscription.appName,
-			stageName: subscription.stageName,
-			fingerprint
-		})
-		.set({
-			error: parsed.error,
-			message: parsed.message,
-			lastSeenAt: now,
-			logGroup: source.logGroup,
-			logStream: source.logStream,
-			logTimestamp: timestamp,
-			resolvedAt: undefined
-		})
-		.add({ count: 1 })
-		.go({ response: "none" });
+	await Issue.update({
+		appName: subscription.appName,
+		stageName: subscription.stageName,
+		fingerprint,
+		error: parsed.error,
+		message: parsed.message,
+		countDelta: 1,
+		lastSeenAt: now,
+		logGroup: source.logGroup,
+		logStream: source.logStream,
+		logTimestamp: timestamp,
+		resolvedAt: null
+	});
 }

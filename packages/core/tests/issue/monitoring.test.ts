@@ -4,11 +4,11 @@ import {
 	errorFilterPattern,
 	lambdaFromResource,
 	subscriberStackName
-} from "../../src/issue/ingress-utils";
+} from "../../src/issue/monitoring-utils";
 import { issueSubscriptionEntity } from "../../src/issue/issue.dynamo";
-import { subscriberCode } from "../../src/issue/subscriber";
+import { subscriberCode } from "../../src/issue/subscriber-code";
 
-describe("Issue ingress", () => {
+describe("Issue monitoring", () => {
 	it("selects physical SST Lambda resources", () => {
 		expect(
 			lambdaFromResource({
