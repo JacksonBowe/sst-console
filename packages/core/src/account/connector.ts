@@ -8,25 +8,16 @@ import { bus } from "sst/aws/bus";
 import { z } from "zod";
 
 import * as Connection from "../connection";
-import { db } from "../db";
 import { InputError, ServerError } from "../error";
 import { defineEvent } from "../event";
 import { fn } from "../util/fn";
+import * as Account from "./account";
 import { removeAccountProjections } from "./projection";
+import { ConnectorCallbackSchema, ConnectorSchema } from "./schema";
 
 const sts = new STSClient({});
 const roleArn =
 	/^arn:(?:aws|aws-cn|aws-us-gov):iam::(?<accountId>\d{12}):role\/SSTConsoleRole$/;
-
-const ConnectionSchema = z.object({
-	region: z.string().min(1),
-	roleArn: z.string().regex(roleArn)
-});
-
-const CallbackSchema = ConnectionSchema.extend({
-	accountId: z.string().regex(/^\d{12}$/),
-	requestType: z.enum(["Create", "Update", "Delete"])
-});
 
 export const Events = {
 	Connected: defineEvent(
@@ -35,16 +26,9 @@ export const Events = {
 	)
 };
 
-export type RegisterInput = z.input<typeof CallbackSchema>;
+export type RegisterInput = z.input<typeof ConnectorCallbackSchema>;
 
-export type ConnectedAccount = {
-	accountId: string;
-	region: string;
-	roleArn: string;
-	status: string;
-};
-
-export const assume = fn(ConnectionSchema, async input => {
+export const assume = fn(ConnectorSchema, async input => {
 	const externalId = process.env.SST_CONSOLE_EXTERNAL_ID;
 	if (!externalId) {
 		throw new ServerError(
@@ -99,7 +83,7 @@ export const assume = fn(ConnectionSchema, async input => {
 	};
 });
 
-export const verify = fn(ConnectionSchema, async input => {
+export const verify = fn(ConnectorSchema, async input => {
 	const connection = await assume(input);
 
 	return {
@@ -110,7 +94,7 @@ export const verify = fn(ConnectionSchema, async input => {
 	};
 });
 
-export const register = fn(CallbackSchema, async input => {
+export const register = fn(ConnectorCallbackSchema, async input => {
 	const roleMatch = roleArn.exec(input.roleArn);
 	if (roleMatch?.groups?.accountId !== input.accountId) {
 		throw new InputError(
@@ -146,16 +130,14 @@ export const register = fn(CallbackSchema, async input => {
 	} else {
 		await removeAccountProjections(input.accountId);
 	}
-	await db.entities.account
-		.upsert({
-			accountId: input.accountId,
-			region: input.region,
-			roleArn: input.roleArn,
-			status,
-			updatedAt: now
-		})
-		.ifNotExists({ createdAt: now })
-		.go({ response: "none" });
+	await Account.create({
+		accountId: input.accountId,
+		region: input.region,
+		roleArn: input.roleArn,
+		status,
+		createdAt: now,
+		updatedAt: now
+	});
 
 	if (input.requestType !== "Delete") {
 		await bus.publish(Resource.Bus, Events.Connected, {
@@ -168,20 +150,3 @@ export const register = fn(CallbackSchema, async input => {
 		status
 	};
 });
-
-export async function list(): Promise<ConnectedAccount[]> {
-	const results = await Promise.all(
-		(["connected", "disconnected"] as const).map(status =>
-			db.entities.account.query.byStatus({ status }).go({ pages: "all" })
-		)
-	);
-
-	return results.flatMap(result =>
-		result.data.map(account => ({
-			accountId: account.accountId,
-			region: account.region,
-			roleArn: account.roleArn,
-			status: account.status
-		}))
-	);
-}

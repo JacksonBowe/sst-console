@@ -1,6 +1,7 @@
 import { zValidator } from "@console/core/error";
 import * as Account from "@console/core/account";
-import { AccountSyncPolicySchema } from "@console/core/account";
+import * as Connection from "@console/core/connection";
+import { AccountSyncPolicySchema } from "@console/core/connection";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -20,18 +21,20 @@ const AccountSyncPolicyJsonSchema = z.object({
 export const accountRoutes = new Hono()
 	.get("/", async c => c.json(await Account.list()))
 	.post("/backup-connections", async c =>
-		c.json(await Account.backupConnections({}))
+		c.json(await Connection.Recovery.backupConnections({}))
 	)
-	.post("/recover", async c => c.json(await Account.recover({})))
+	.post("/recover", async c => c.json(await Connection.Recovery.recover({})))
 	.get(
 		"/:accountId/manage-apps",
 		zValidator("param", AccountIdParamSchema),
-		async c => c.json(await Account.manageApps(c.req.valid("param")))
+		async c =>
+			c.json(await Account.Management.manageApps(c.req.valid("param")))
 	)
 	.post(
 		"/:accountId/discovery",
 		zValidator("param", AccountIdParamSchema),
-		async c => c.json(await Account.refreshDiscovery(c.req.valid("param")))
+		async c =>
+			c.json(await Account.Sync.refreshDiscovery(c.req.valid("param")))
 	)
 	.put(
 		"/:accountId/sync-policy",
@@ -39,7 +42,7 @@ export const accountRoutes = new Hono()
 		zValidator("json", AccountSyncPolicyJsonSchema),
 		async c =>
 			c.json(
-				await Account.updateSyncPolicy({
+				await Account.Management.updateSyncPolicy({
 					...c.req.valid("param"),
 					...c.req.valid("json")
 				})
@@ -51,7 +54,7 @@ export const accountRoutes = new Hono()
 		zValidator("json", AccountSyncPolicyJsonSchema),
 		async c =>
 			c.json(
-				await Account.applySyncPolicy({
+				await Account.Management.applySyncPolicy({
 					...c.req.valid("param"),
 					...c.req.valid("json")
 				})
@@ -63,10 +66,11 @@ export const accountRoutes = new Hono()
 	.get(
 		"/:accountId/state/:appName/:stageName/resources",
 		zValidator("param", StateResourcesParamSchema),
-		async c => c.json(await Account.inspectState(c.req.valid("param")))
+		async c =>
+			c.json(await Account.State.inspectState(c.req.valid("param")))
 	)
 	.post(
 		"/:accountId/sync",
 		zValidator("param", AccountIdParamSchema),
-		async c => c.json(await Account.sync(c.req.valid("param")))
+		async c => c.json(await Account.Sync.sync(c.req.valid("param")))
 	);

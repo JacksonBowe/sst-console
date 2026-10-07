@@ -2,14 +2,14 @@ import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
 import { z } from "zod";
 
-import { db } from "../db";
-import { InputError, ServerError } from "../error";
+import { ServerError } from "../error";
 import {
 	decodeSstStateBytes,
 	parseSstState,
 	redactSstState
 } from "../state/sst";
 import { fn } from "../util/fn";
+import * as Account from "./account";
 import * as Connector from "./connector";
 
 // Safe state inventory. It exposes structure required to diagnose
@@ -21,22 +21,14 @@ export const inspectState = fn(
 		stageName: z.string().min(1)
 	}),
 	async ({ accountId, appName, stageName }) => {
-		const account = await db.entities.account
-			.get({ accountId })
-			.go({ consistent: true });
-		if (!account.data) {
-			throw new InputError(
-				"account_not_found",
-				"Connected account was not found"
-			);
-		}
+		const account = await Account.get({ accountId });
 		const connection = await Connector.assume({
-			roleArn: account.data.roleArn,
-			region: account.data.region
+			roleArn: account.roleArn,
+			region: account.region
 		});
 		const ssm = new SSMClient({
 			credentials: connection.credentials,
-			region: account.data.region
+			region: account.region
 		});
 		const parameter = await ssm.send(
 			new GetParameterCommand({ Name: "/sst/bootstrap" })
@@ -57,7 +49,7 @@ export const inspectState = fn(
 		const key = `app/${appName}/${stageName}.json`;
 		const s3 = new S3Client({
 			credentials: connection.credentials,
-			region: account.data.region
+			region: account.region
 		});
 		const object = await s3.send(
 			new GetObjectCommand({ Bucket: bootstrap.data.state, Key: key })

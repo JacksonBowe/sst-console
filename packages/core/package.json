@@ -5,6 +5,7 @@
 	"module": "index.ts",
 	"exports": {
 		"./account": "./src/account/index.ts",
+		"./connection": "./src/connection/index.ts",
 		"./app": "./src/app/index.ts",
 		"./db": "./src/db/index.ts",
 		"./issue": "./src/issue/index.ts",

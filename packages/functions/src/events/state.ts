@@ -19,7 +19,7 @@ export async function handler(event: S3StateEvent): Promise<void> {
 	}
 
 	await withActor({ type: "system", properties: {} }, async () => {
-		const result = await Account.syncStateObject({
+		const result = await Account.Sync.syncStateObject({
 			accountId,
 			stateBucket,
 			stateKey

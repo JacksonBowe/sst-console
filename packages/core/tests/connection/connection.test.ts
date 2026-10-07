@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("sst", () => ({
 	Resource: {
-		ConsoleConnections: { name: "ConsoleConnections-test" }
+		ConsoleConnections: { name: "ConsoleConnections-test" },
+		ConsoleData: { name: "ConsoleData-test" }
 	}
 }));
 

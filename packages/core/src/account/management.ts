@@ -1,23 +1,13 @@
-import { z } from "zod";
-
 import * as Connection from "../connection";
 import { db } from "../db";
-import { InputError } from "../error";
 import { fn } from "../util/fn";
-import { AccountSyncPolicySchema } from "./policy";
+import * as Account from "./account";
+import { accountErrors } from "./errors";
+import { AccountKeySchema } from "./schema";
 import { sync } from "./sync";
 
-const accountId = z.string().regex(/^\d{12}$/);
-
-export const manageApps = fn(z.object({ accountId }), async ({ accountId }) => {
-	const account = await db.entities.account
-		.get({ accountId })
-		.go({ consistent: true });
-	if (!account.data)
-		throw new InputError(
-			"account_not_found",
-			"Connected account was not found"
-		);
+export const manageApps = fn(AccountKeySchema, async ({ accountId }) => {
+	await Account.get({ accountId });
 	const [policy, stages] = await Promise.all([
 		Connection.getSyncPolicy(accountId),
 		db.entities.discoveredStage.query
@@ -38,24 +28,20 @@ export const manageApps = fn(z.object({ accountId }), async ({ accountId }) => {
 });
 
 export const updateSyncPolicy = fn(
-	z.object({ accountId, policy: AccountSyncPolicySchema }),
+	AccountKeySchema.extend({ policy: Connection.AccountSyncPolicySchema }),
 	async ({ accountId, policy }) => {
 		const saved = await Connection.updateSyncPolicy({
 			accountId,
 			policy,
 			updatedAt: new Date().toISOString()
 		});
-		if (!saved)
-			throw new InputError(
-				"account_not_found",
-				"Connected account was not found"
-			);
+		if (!saved) throw accountErrors.notFound();
 		return saved;
 	}
 );
 
 export const applySyncPolicy = fn(
-	z.object({ accountId, policy: AccountSyncPolicySchema }),
+	AccountKeySchema.extend({ policy: Connection.AccountSyncPolicySchema }),
 	async input => {
 		await updateSyncPolicy(input);
 		return sync({ accountId: input.accountId });

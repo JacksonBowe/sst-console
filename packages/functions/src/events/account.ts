@@ -9,7 +9,7 @@ export const handler = bus.subscriber(
 				const { accountId } = event.properties;
 				console.log("Account connection sync started", { accountId });
 
-				const result = await Account.sync({ accountId });
+				const result = await Account.Sync.sync({ accountId });
 				console.log("Account connection sync complete", {
 					accountId,
 					stateCount: result.states.length
