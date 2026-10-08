@@ -32,16 +32,16 @@ export const userEntity = new Entity({
 			},
 			sk: { field: "sk", composite: [], template: "USER" }
 		},
-		byId: {
-			index: "usersById",
+		byType: {
+			index: "entitiesByType",
 			pk: {
-				field: "gsi5pk",
+				field: "entityType",
 				composite: [],
-				template: "USERS",
+				template: "USER",
 				casing: "none"
 			},
 			sk: {
-				field: "gsi5sk",
+				field: "entitySort",
 				composite: ["id"],
 				template: "USER#${id}",
 				casing: "none"
@@ -67,6 +67,21 @@ export const userIdentityEntity = new Entity({
 				casing: "none"
 			},
 			sk: { field: "sk", composite: [], template: "USER" }
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "USER_IDENTITY",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["cognitoSub"],
+				template: "COGNITO#${cognitoSub}",
+				casing: "none"
+			}
 		}
 	}
 });

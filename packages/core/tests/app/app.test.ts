@@ -4,8 +4,8 @@ const appCreate = vi.fn();
 const appCreateGo = vi.fn();
 const appGet = vi.fn();
 const appGetGo = vi.fn();
-const appByName = vi.fn();
-const appByNameGo = vi.fn();
+const appByType = vi.fn();
+const appByTypeGo = vi.fn();
 const appPatch = vi.fn();
 const appSet = vi.fn();
 const appUpdateGo = vi.fn();
@@ -32,7 +32,7 @@ vi.mock("../../src/db", () => ({
 				create: appCreate,
 				get: appGet,
 				patch: appPatch,
-				query: { byName: appByName }
+				query: { byType: appByType }
 			},
 			stage: {
 				create: stageCreate,
@@ -69,7 +69,7 @@ describe("App", () => {
 		vi.clearAllMocks();
 		appCreate.mockReturnValue({ go: appCreateGo });
 		appGet.mockReturnValue({ go: appGetGo });
-		appByName.mockReturnValue({ go: appByNameGo });
+		appByType.mockReturnValue({ go: appByTypeGo });
 		appPatch.mockReturnValue({ set: appSet });
 		appSet.mockReturnValue({ go: appUpdateGo });
 		stageCreate.mockReturnValue({ go: stageCreateGo });
@@ -84,7 +84,7 @@ describe("App", () => {
 
 	it("creates, updates, lists, and gets Apps", async () => {
 		appGetGo.mockResolvedValue({ data: app });
-		appByNameGo.mockResolvedValue({ data: [app] });
+		appByTypeGo.mockResolvedValue({ data: [app] });
 
 		await App.create(app);
 		await App.update({ appName: app.appName, updatedAt: app.updatedAt });

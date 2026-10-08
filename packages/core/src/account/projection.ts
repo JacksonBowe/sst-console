@@ -5,7 +5,9 @@ const maxTransactionActions = 90;
 
 export async function removeAccountProjections(accountId: string) {
 	const [stages, discoveredStages] = await Promise.all([
-		db.entities.stage.query.byAccount({ accountId }).go({ pages: "all" }),
+		db.entities.stage.query
+			.byAwsAccount({ accountId })
+			.go({ pages: "all" }),
 		db.entities.discoveredStage.query
 			.discovery({ accountId })
 			.go({ pages: "all" })

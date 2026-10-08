@@ -442,7 +442,7 @@ async function buildWrites(input: {
 }> {
 	const [existingStages, stageLookups] = await Promise.all([
 		db.entities.stage.query
-			.byAccount({ accountId: input.accountId })
+			.byAwsAccount({ accountId: input.accountId })
 			.go({ pages: "all" }),
 		Promise.all(
 			input.projections.map(
@@ -649,7 +649,6 @@ async function writeChunk(
 								resourceType: write.resource.resourceType,
 								urn: write.resource.urn,
 								normalizedArn: write.resource.normalizedArn,
-								arnIndex: write.resource.arnIndex,
 								name: write.resource.name,
 								summary: write.resource.summary,
 								updatedAt: write.now

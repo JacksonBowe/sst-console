@@ -60,29 +60,17 @@ Defined in `infra/storage.ts`:
 Table: ConsoleData
 Primary key: pk (string), sk (string)
 
-GSI: accountsByStatus
-  hash:  gsi1pk
-  range: gsi1sk
+GSI: entitiesByType
+  hash:  entityType
+  range: entitySort
 
-GSI: resourcesByArn
-  hash:  gsi2pk
-  range: gsi2sk
+GSI: entitiesByAwsAccount
+  hash:  accountPk
+  range: accountSk
 
-GSI: stagesByAccount
-  hash:  gsi3pk
-  range: gsi3sk
-
-GSI: appsByName
-  hash:  gsi4pk
-  range: gsi4sk
-
-GSI: usersById
-  hash:  gsi5pk
-  range: gsi5sk
-
-GSI: issueSubscriptionsBySource
-  hash:  gsi6pk
-  range: gsi6sk
+GSI: lookup
+  hash:  lookupPk
+  range: lookupSk
 
 Table: ConsoleConnections
 Primary key: pk (string), sk (string)
@@ -96,6 +84,11 @@ pattern: query the fixed `CONNECTIONS` partition and restore the ConsoleData
 account records. It has no GSI. SST links each table only to functions that need
 it. Core resolves names through `Resource.ConsoleData.name` and
 `Resource.ConsoleConnections.name`; never hardcode table names.
+
+Every `ConsoleData` entity writes `entityType` and `entitySort` through its
+ElectroDB definition. `entitiesByAwsAccount` is sparse and contains entities
+with an AWS `accountId`. `lookup` is sparse and reserved for alternate-key
+lookups such as a CloudWatch Logs source.
 
 ## Entity keys
 
@@ -135,43 +128,41 @@ Lambda log groups receive Issue monitoring. It defaults to `false`.
 
 `resourceId` is stable Console identity. `parentResourceId` models SST component
 nesting. SST URN and normalized AWS ARN are separate attributes; neither is
-inferred from key encoding. Component group rows have no ARN; only physical
-resources populate `normalizedArn` and `resourcesByArn`. `arnIndex` is an
-internal `*.dynamo.ts` field used to omit component groups from that GSI.
+inferred from key encoding. Component group rows have no ARN; only physical resources populate
+`normalizedArn`.
 
 ## Current indexes and access patterns
 
-| Access pattern                               | Entity/API                                            | Dynamo operation                                            | Status                              |
-| -------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------- |
-| Get one account                              | `db.entities.account.get({ accountId })`              | primary-key get                                             | Implemented                         |
-| List accounts by status                      | `db.entities.account.query.byStatus({ status })`      | `accountsByStatus` query                                    | Implemented                         |
-| Register/update connector                    | `db.entities.account.upsert(...)`                     | primary-key update                                          | Implemented                         |
-| Persist successful sync                      | Account patch + SyncRun create                        | `TransactWriteItems`                                        | Implemented                         |
-| Mark disconnected after remote access denial | `db.entities.account.patch({ accountId })`            | primary-key update                                          | Implemented                         |
-| Find resource from AWS event ARN             | `db.entities.resource.query.byArn({ normalizedArn })` | `resourcesByArn` query                                      | Model ready; no event ingestion yet |
-| Home → App list                              | name ascending                                        | `appsByName` query                                          | Implemented                         |
-| App detail                                   | app name                                              | App primary-key get                                         | Model ready                         |
-| App → stages                                 | app name, stage order                                 | Stage primary-key query                                     | Implemented                         |
-| Stage → resources                            | app and stage                                         | Resource primary-key query                                  | Implemented                         |
-| Reconcile account state projections          | worker: account ID                                    | `stagesByAccount`, then per-Stage resource queries          | Implemented                         |
-| Reconcile changed SST state object           | EventBridge worker: account ID + state key            | Account primary-key get; Stage/resource primary-key queries | Implemented                         |
-| Latest state snapshot                        | app and stage, descending, limit 1                    | StateSnapshot primary-key query                             | Implemented                         |
-| Account sync history                         | account partition, descending sync prefix             | primary-key query                                           | Planned                             |
-| Durable connection registry                  | `Connection.list()`                                   | `ConsoleConnections` primary-key query                      | Implemented                         |
-| Workload app management inventory            | authenticated `GET /accounts/{id}/manage-apps`        | DiscoveredStage account primary-key query                   | Implemented                         |
-| Refresh Workload discovery                   | authenticated `POST /accounts/{id}/discovery`         | S3 list, then DiscoveredStage account reconciliation        | Implemented                         |
-| Save/apply Workload sync policy              | authenticated sync-policy API                         | Connection primary-key get/patch; projection reconciliation | Implemented                         |
-| Recover ConsoleData accounts                 | authenticated `POST /accounts/recover`                | registry query, then account upserts                        | Implemented                         |
-| Resolve Cognito subject                      | `User.exchangeCognitoSub()`                           | UserIdentity primary-key get                                | Implemented                         |
-| Provision invited user                       | Cognito custom-message trigger: Cognito `sub`         | conditional User + UserIdentity transaction create          | Implemented                         |
-| Confirm invited user                         | invite-confirm endpoint: native User `id`             | User primary-key patch                                      | Implemented                         |
-| List users                                   | authenticated API: ID descending, cursor-paginated    | `usersById` query                                           | Implemented                         |
-| Enable/disable stage monitoring              | authenticated issue API: app + stage                  | Stage primary-key get/patch                                 | Implemented                         |
-| Reconcile an enabled stage                   | worker: app + stage                                   | Stage, Resource, IssueSubscription primary-key queries      | Implemented                         |
-| Remove excluded stage Issue data             | sync worker: app + stage                              | IssueSubscription and Issue primary-key queries             | Implemented                         |
-| Verify issue ingress source                  | issue processor: account + region + log group         | `issueSubscriptionsBySource` query                          | Implemented                         |
-| List stage issue subscriptions and issues    | stage detail: app + stage                             | IssueSubscription / Issue primary-key query                 | Model ready                         |
-| Delete all persisted Issues                  | authenticated `DELETE /issues`                        | `appsByName`, then Stage / Issue primary-key queries        | Implemented                         |
+| Access pattern                               | Entity/API                                         | Dynamo operation                                            | Status      |
+| -------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------- | ----------- |
+| Get one account                              | `db.entities.account.get({ accountId })`           | primary-key get                                             | Implemented |
+| List accounts                                | `db.entities.account.query.byType({})`             | `entitiesByType` query                                      | Implemented |
+| Register/update connector                    | `db.entities.account.upsert(...)`                  | primary-key update                                          | Implemented |
+| Persist successful sync                      | Account patch + SyncRun create                     | `TransactWriteItems`                                        | Implemented |
+| Mark disconnected after remote access denial | `db.entities.account.patch({ accountId })`         | primary-key update                                          | Implemented |
+| Home → App list                              | name ascending                                     | `entitiesByType` query                                      | Implemented |
+| App detail                                   | app name                                           | App primary-key get                                         | Model ready |
+| App → stages                                 | app name, stage order                              | Stage primary-key query                                     | Implemented |
+| Stage → resources                            | app and stage                                      | Resource primary-key query                                  | Implemented |
+| Reconcile account state projections          | worker: account ID                                 | `entitiesByAwsAccount`, then per-Stage resource queries     | Implemented |
+| Reconcile changed SST state object           | EventBridge worker: account ID + state key         | Account primary-key get; Stage/resource primary-key queries | Implemented |
+| Latest state snapshot                        | app and stage, descending, limit 1                 | StateSnapshot primary-key query                             | Implemented |
+| Account sync history                         | account partition, descending sync prefix          | primary-key query                                           | Planned     |
+| Durable connection registry                  | `Connection.list()`                                | `ConsoleConnections` primary-key query                      | Implemented |
+| Workload app management inventory            | authenticated `GET /accounts/{id}/manage-apps`     | DiscoveredStage account primary-key query                   | Implemented |
+| Refresh Workload discovery                   | authenticated `POST /accounts/{id}/discovery`      | S3 list, then DiscoveredStage account reconciliation        | Implemented |
+| Save/apply Workload sync policy              | authenticated sync-policy API                      | Connection primary-key get/patch; projection reconciliation | Implemented |
+| Recover ConsoleData accounts                 | authenticated `POST /accounts/recover`             | registry query, then account upserts                        | Implemented |
+| Resolve Cognito subject                      | `User.exchangeCognitoSub()`                        | UserIdentity primary-key get                                | Implemented |
+| Provision invited user                       | Cognito custom-message trigger: Cognito `sub`      | conditional User + UserIdentity transaction create          | Implemented |
+| Confirm invited user                         | invite-confirm endpoint: native User `id`          | User primary-key patch                                      | Implemented |
+| List users                                   | authenticated API: ID descending, cursor-paginated | `entitiesByType` query                                      | Implemented |
+| Enable/disable stage monitoring              | authenticated issue API: app + stage               | Stage primary-key get/patch                                 | Implemented |
+| Reconcile an enabled stage                   | worker: app + stage                                | Stage, Resource, IssueSubscription primary-key queries      | Implemented |
+| Remove excluded stage Issue data             | sync worker: app + stage                           | IssueSubscription and Issue primary-key queries             | Implemented |
+| Verify issue ingress source                  | issue processor: account + region + log group      | `lookup` query                                              | Implemented |
+| List stage issue subscriptions and issues    | stage detail: app + stage                          | IssueSubscription / Issue primary-key query                 | Model ready |
+| Delete all persisted Issues                  | authenticated `DELETE /issues`                     | `entitiesByType`, then Stage / Issue primary-key queries    | Implemented |
 
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.
@@ -205,11 +196,11 @@ CloudWatch log filters while retaining inventory for management UI.
 
 Authenticated `GET /users` lists Console users by descending ULID. It accepts a
 page limit of 1–100, an opaque cursor, and optional `email`, `cognitoStatus`,
-and `cognitoEnabled` filters. `User.list()` queries `usersById` using fixed
-partition `USERS` and returns DynamoDB's eventual-consistency result with
+and `cognitoEnabled` filters. `User.list()` queries `entitiesByType` using fixed
+partition `USER` and returns DynamoDB's eventual-consistency result with
 next-page cursor. User creation writes this projection automatically through
-`userEntity.byId`; a user delete removes it with its User item. `User` owns this
-access pattern.
+the User type index; a user delete removes it with its User item. `User` owns
+this access pattern.
 
 ### Connection recovery
 
@@ -277,9 +268,8 @@ manual repair path.
 ### App-first projection cutover
 
 This is an incompatible key-layout change from account-first projections. Deploy
-the `stagesByAccount` and `appsByName` indexes, then sync every connected account
-to populate App-first records. Old account-first projection records are not read
-or maintained.
+the current indexes, then sync every connected account to populate App-first
+records. Old account-first projection records are not read or maintained.
 
 ## ElectroDB usage
 
@@ -299,9 +289,7 @@ Use named entity access patterns. Do not construct expression strings or documen
 client parameter objects by hand.
 
 ```ts
-const result = await db.entities.account.query
-	.byStatus({ status: "connected" })
-	.go({ pages: "all" });
+const result = await db.entities.account.query.byType({}).go({ pages: "all" });
 ```
 
 Use `.params()` in unit tests to assert generated table name, key, index name, and

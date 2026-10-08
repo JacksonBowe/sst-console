@@ -156,21 +156,29 @@ export const list = fn(
 		cognitoStatus,
 		cognitoEnabled
 	}): Promise<Page<UserInfo>> => {
-		let query = db.entities.user.query
-			.byId({})
-			.where((attribute, operation) => operation.exists(attribute.id));
-		if (email)
-			query = query.where((attribute, operation) =>
-				operation.eq(attribute.email, email)
-			);
-		if (cognitoStatus)
-			query = query.where((attribute, operation) =>
-				operation.eq(attribute.cognitoStatus, cognitoStatus)
-			);
-		if (cognitoEnabled !== undefined)
-			query = query.where((attribute, operation) =>
-				operation.eq(attribute.cognitoEnabled, cognitoEnabled)
-			);
+		const query =
+			email || cognitoStatus || cognitoEnabled !== undefined
+				? db.entities.user.query
+						.byType({})
+						.where((attribute, operation) => {
+							const filters = [
+								email && operation.eq(attribute.email, email),
+								cognitoStatus &&
+									operation.eq(
+										attribute.cognitoStatus,
+										cognitoStatus
+									),
+								cognitoEnabled !== undefined &&
+									operation.eq(
+										attribute.cognitoEnabled,
+										cognitoEnabled
+									)
+							].filter((filter): filter is string =>
+								Boolean(filter)
+							);
+							return filters.join(" AND ");
+						})
+				: db.entities.user.query.byType({});
 		const result = await query.go({ limit, cursor, order: "desc" });
 		return {
 			items: result.data.map(user => UserInfoSchema.parse(user)),

@@ -24,7 +24,7 @@ vi.mock("../../src/db", () => ({
 			account: {
 				upsert: upsertAccount,
 				get: getAccount,
-				query: { byStatus: queryAccounts }
+				query: { byType: queryAccounts }
 			}
 		}
 	}
@@ -66,6 +66,7 @@ describe("account recovery", () => {
 							region: "us-east-1",
 							roleArn:
 								"arn:aws:iam::111111111111:role/SSTConsoleRole",
+							status: "connected",
 							createdAt: "2026-01-01T00:00:00.000Z",
 							updatedAt: "2026-01-02T00:00:00.000Z"
 						}

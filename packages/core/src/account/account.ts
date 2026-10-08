@@ -63,15 +63,10 @@ export const remove = fn(AccountKeySchema, async input => {
 	await db.entities.account.delete(input).go({ response: "none" });
 });
 
-/** Lists connected and disconnected Console accounts. */
+/** Lists every Console account. */
 export async function list(): Promise<Account[]> {
-	const results = await Promise.all(
-		(["connected", "disconnected"] as const).map(status =>
-			db.entities.account.query.byStatus({ status }).go({ pages: "all" })
-		)
-	);
-
-	return results.flatMap(result =>
-		result.data.map(account => AccountSchema.parse(account))
-	);
+	const result = await db.entities.account.query
+		.byType({})
+		.go({ pages: "all" });
+	return result.data.map(account => AccountSchema.parse(account));
 }

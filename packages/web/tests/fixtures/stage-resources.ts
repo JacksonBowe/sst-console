@@ -13,7 +13,6 @@ function resource(
 		resourceKind: "component",
 		resourceType,
 		urn: `urn:pulumi:dev::console::${resourceType}::${resourceId}`,
-		arnIndex: `component#${resourceId}`,
 		children,
 		createdAt: "2026-09-29T00:00:00.000Z",
 		updatedAt: "2026-09-29T00:00:00.000Z"

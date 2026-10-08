@@ -34,6 +34,36 @@ export const issueSubscriberEntity = new Entity({
 				template: "SUBSCRIBER",
 				casing: "none"
 			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "ISSUE_SUBSCRIBER",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["accountId", "region"],
+				template: "ACCOUNT#${accountId}#REGION#${region}",
+				casing: "none"
+			}
+		},
+		byAwsAccount: {
+			index: "entitiesByAwsAccount",
+			pk: {
+				field: "accountPk",
+				composite: ["accountId"],
+				template: "ACCOUNT#${accountId}",
+				casing: "none"
+			},
+			sk: {
+				field: "accountSk",
+				composite: ["region"],
+				template: "ISSUE_SUBSCRIBER#${region}",
+				casing: "none"
+			}
 		}
 	}
 });
@@ -72,17 +102,49 @@ export const issueSubscriptionEntity = new Entity({
 			}
 		},
 		bySource: {
-			index: "issueSubscriptionsBySource",
+			index: "lookup",
 			pk: {
-				field: "gsi6pk",
+				field: "lookupPk",
 				composite: ["accountId", "region", "logGroup"],
 				template: "ISSUE_SOURCE#${accountId}#${region}#${logGroup}",
 				casing: "none"
 			},
 			sk: {
-				field: "gsi6sk",
+				field: "lookupSk",
 				composite: ["appName", "stageName"],
 				template: "APP#${appName}#STAGE#${stageName}",
+				casing: "none"
+			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "ISSUE_SUBSCRIPTION",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["appName", "stageName", "region", "logGroup"],
+				template:
+					"APP#${appName}#STAGE#${stageName}#REGION#${region}#LOG_GROUP#${logGroup}",
+				casing: "none"
+			}
+		},
+		byAwsAccount: {
+			index: "entitiesByAwsAccount",
+			pk: {
+				field: "accountPk",
+				composite: ["accountId"],
+				template: "ACCOUNT#${accountId}",
+				casing: "none"
+			},
+			sk: {
+				field: "accountSk",
+				composite: ["appName", "stageName", "region", "logGroup"],
+				template:
+					"ISSUE_SUBSCRIPTION#${appName}#${stageName}#${region}#${logGroup}",
 				casing: "none"
 			}
 		}
@@ -118,6 +180,22 @@ export const issueEntity = new Entity({
 				field: "sk",
 				composite: ["fingerprint"],
 				template: "ISSUE#${fingerprint}",
+				casing: "none"
+			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "ISSUE",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["appName", "stageName", "fingerprint"],
+				template:
+					"APP#${appName}#STAGE#${stageName}#ISSUE#${fingerprint}",
 				casing: "none"
 			}
 		}

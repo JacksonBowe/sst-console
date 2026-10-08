@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-	queryStagesByAccount,
+	queryStagesByAwsAccount,
 	queryDiscoveredStages,
 	queryResources,
 	queryStagesByApp,
@@ -11,7 +11,7 @@ const {
 	deleteDiscoveredStage,
 	transactionWrite
 } = vi.hoisted(() => ({
-	queryStagesByAccount: vi.fn(),
+	queryStagesByAwsAccount: vi.fn(),
 	queryDiscoveredStages: vi.fn(),
 	queryResources: vi.fn(),
 	queryStagesByApp: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock("../../src/db", () => ({
 		entities: {
 			stage: {
 				query: {
-					byAccount: queryStagesByAccount,
+					byAwsAccount: queryStagesByAwsAccount,
 					stage: queryStagesByApp
 				},
 				delete: deleteStage
@@ -52,7 +52,7 @@ const { removeAccountProjections } =
 describe("account projection removal", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		queryStagesByAccount.mockReturnValue({
+		queryStagesByAwsAccount.mockReturnValue({
 			go: vi.fn().mockResolvedValue({
 				data: [
 					{ appName: "removed", stageName: "dev" },

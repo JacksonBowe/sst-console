@@ -12,8 +12,8 @@ const issueAdd = vi.fn();
 const issueUpdateGo = vi.fn();
 const issueDelete = vi.fn();
 const issueDeleteGo = vi.fn();
-const appByName = vi.fn();
-const appByNameGo = vi.fn();
+const appByType = vi.fn();
+const appByTypeGo = vi.fn();
 const stageByStage = vi.fn();
 const stageByStageGo = vi.fn();
 
@@ -27,7 +27,7 @@ vi.mock("../../src/db", () => ({
 				patch: issuePatch,
 				delete: issueDelete
 			},
-			app: { query: { byName: appByName } },
+			app: { query: { byType: appByType } },
 			stage: { query: { stage: stageByStage } }
 		}
 	}
@@ -60,7 +60,7 @@ describe("issue", () => {
 		issueAdd.mockReturnValue({ go: issueUpdateGo });
 		issuePatch.mockReturnValue({ set: issueSet });
 		issueDelete.mockReturnValue({ go: issueDeleteGo });
-		appByName.mockReturnValue({ go: appByNameGo });
+		appByType.mockReturnValue({ go: appByTypeGo });
 		stageByStage.mockReturnValue({ go: stageByStageGo });
 	});
 
@@ -109,7 +109,7 @@ describe("issue", () => {
 	});
 
 	it("purges every stage Issue", async () => {
-		appByNameGo.mockResolvedValue({ data: [{ appName: issue.appName }] });
+		appByTypeGo.mockResolvedValue({ data: [{ appName: issue.appName }] });
 		stageByStageGo.mockResolvedValue({
 			data: [{ appName: issue.appName, stageName: issue.stageName }]
 		});

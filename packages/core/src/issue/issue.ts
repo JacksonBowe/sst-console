@@ -114,7 +114,7 @@ export const remove = fn(IssueKeySchema, async input => {
 
 /** Deletes every persisted Issue without changing monitoring configuration. */
 export async function purge() {
-	const apps = await db.entities.app.query.byName({}).go({ pages: "all" });
+	const apps = await db.entities.app.query.byType({}).go({ pages: "all" });
 	for (const app of apps.data) {
 		const stages = await db.entities.stage.query
 			.stage({ appName: app.appName })

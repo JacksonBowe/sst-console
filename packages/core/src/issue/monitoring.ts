@@ -550,11 +550,13 @@ async function enqueueReconcile(
 /** Grants connected workload subscriber roles access to central ingress SQS. */
 async function ensureIngressQueuePolicy(config: IngressConfig) {
 	const accounts = await db.entities.account.query
-		.byStatus({ status: "connected" })
+		.byType({})
 		.go({ pages: "all" });
 	const partition = config.queueArn.split(":")[1] ?? "aws";
 	const rolePattern = subscriberStackName(config.installationId, "*");
-	const accountIds = accounts.data.map(account => account.accountId);
+	const accountIds = accounts.data
+		.filter(account => account.status === "connected")
+		.map(account => account.accountId);
 	await new SQSClient({ region: config.queueRegion }).send(
 		new SetQueueAttributesCommand({
 			QueueUrl: config.ingressQueueUrl,

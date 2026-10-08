@@ -28,16 +28,16 @@ export const appEntity = new Entity({
 				casing: "none"
 			}
 		},
-		byName: {
-			index: "appsByName",
+		byType: {
+			index: "entitiesByType",
 			pk: {
-				field: "gsi4pk",
+				field: "entityType",
 				composite: [],
-				template: "APPS",
+				template: "APP",
 				casing: "none"
 			},
 			sk: {
-				field: "gsi4sk",
+				field: "entitySort",
 				composite: ["appName"],
 				template: "APP#${appName}",
 				casing: "none"
@@ -73,18 +73,33 @@ export const stageEntity = new Entity({
 				casing: "none"
 			}
 		},
-		byAccount: {
-			index: "stagesByAccount",
+		byType: {
+			index: "entitiesByType",
 			pk: {
-				field: "gsi3pk",
+				field: "entityType",
+				composite: [],
+				template: "STAGE",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["appName", "stageName"],
+				template: "APP#${appName}#STAGE#${stageName}",
+				casing: "none"
+			}
+		},
+		byAwsAccount: {
+			index: "entitiesByAwsAccount",
+			pk: {
+				field: "accountPk",
 				composite: ["accountId"],
 				template: "ACCOUNT#${accountId}",
 				casing: "none"
 			},
 			sk: {
-				field: "gsi3sk",
+				field: "accountSk",
 				composite: ["appName", "stageName"],
-				template: "APP#${appName}#STAGE#${stageName}",
+				template: "STAGE#${appName}#${stageName}",
 				casing: "none"
 			}
 		}
@@ -106,7 +121,6 @@ export const resourceEntity = new Entity({
 		resourceType: { type: "string", required: true },
 		urn: { type: "string", required: true },
 		normalizedArn: { type: "string" },
-		arnIndex: { type: "string", required: true },
 		name: { type: "string" },
 		summary: { type: "any" },
 		createdAt: { type: "string", required: true },
@@ -128,22 +142,34 @@ export const resourceEntity = new Entity({
 				casing: "none"
 			}
 		},
-		byArn: {
-			index: "resourcesByArn",
-			// Group components have no physical ARN and must not share the empty
-			// ARN index key. Only physical resource projections enter this GSI.
-			condition: composite => composite.resourceKind === "physical",
+		byType: {
+			index: "entitiesByType",
 			pk: {
-				field: "gsi2pk",
-				composite: ["arnIndex"],
-				template: "RESOURCE_ARN#${arnIndex}",
+				field: "entityType",
+				composite: [],
+				template: "RESOURCE",
 				casing: "none"
 			},
 			sk: {
-				field: "gsi2sk",
+				field: "entitySort",
 				composite: ["accountId", "appName", "stageName", "resourceId"],
 				template:
 					"ACCOUNT#${accountId}#APP#${appName}#STAGE#${stageName}#RESOURCE#${resourceId}",
+				casing: "none"
+			}
+		},
+		byAwsAccount: {
+			index: "entitiesByAwsAccount",
+			pk: {
+				field: "accountPk",
+				composite: ["accountId"],
+				template: "ACCOUNT#${accountId}",
+				casing: "none"
+			},
+			sk: {
+				field: "accountSk",
+				composite: ["appName", "stageName", "resourceId"],
+				template: "RESOURCE#${appName}#${stageName}#${resourceId}",
 				casing: "none"
 			}
 		}

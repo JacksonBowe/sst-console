@@ -2,47 +2,29 @@ export const consoleData = new sst.aws.Dynamo("ConsoleData", {
 	fields: {
 		pk: "string",
 		sk: "string",
-		gsi1pk: "string",
-		gsi1sk: "string",
-		gsi2pk: "string",
-		gsi2sk: "string",
-		gsi3pk: "string",
-		gsi3sk: "string",
-		gsi4pk: "string",
-		gsi4sk: "string",
-		gsi5pk: "string",
-		gsi5sk: "string",
-		gsi6pk: "string",
-		gsi6sk: "string"
+		entityType: "string",
+		entitySort: "string",
+		accountPk: "string",
+		accountSk: "string",
+		lookupPk: "string",
+		lookupSk: "string"
 	},
 	primaryIndex: {
 		hashKey: "pk",
 		rangeKey: "sk"
 	},
 	globalIndexes: {
-		accountsByStatus: {
-			hashKey: "gsi1pk",
-			rangeKey: "gsi1sk"
+		entitiesByType: {
+			hashKey: "entityType",
+			rangeKey: "entitySort"
 		},
-		resourcesByArn: {
-			hashKey: "gsi2pk",
-			rangeKey: "gsi2sk"
+		entitiesByAwsAccount: {
+			hashKey: "accountPk",
+			rangeKey: "accountSk"
 		},
-		stagesByAccount: {
-			hashKey: "gsi3pk",
-			rangeKey: "gsi3sk"
-		},
-		appsByName: {
-			hashKey: "gsi4pk",
-			rangeKey: "gsi4sk"
-		},
-		usersById: {
-			hashKey: "gsi5pk",
-			rangeKey: "gsi5sk"
-		},
-		issueSubscriptionsBySource: {
-			hashKey: "gsi6pk",
-			rangeKey: "gsi6sk"
+		lookup: {
+			hashKey: "lookupPk",
+			rangeKey: "lookupSk"
 		}
 	}
 });

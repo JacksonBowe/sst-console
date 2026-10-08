@@ -34,6 +34,48 @@ export const stateSnapshotEntity = new Entity({
 				template: "SNAPSHOT#${reverseTimestamp}#${snapshotId}",
 				casing: "none"
 			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "STATE_SNAPSHOT",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: [
+					"appName",
+					"stageName",
+					"reverseTimestamp",
+					"snapshotId"
+				],
+				template:
+					"APP#${appName}#STAGE#${stageName}#SNAPSHOT#${reverseTimestamp}#${snapshotId}",
+				casing: "none"
+			}
+		},
+		byAwsAccount: {
+			index: "entitiesByAwsAccount",
+			pk: {
+				field: "accountPk",
+				composite: ["accountId"],
+				template: "ACCOUNT#${accountId}",
+				casing: "none"
+			},
+			sk: {
+				field: "accountSk",
+				composite: [
+					"appName",
+					"stageName",
+					"reverseTimestamp",
+					"snapshotId"
+				],
+				template:
+					"SNAPSHOT#${appName}#${stageName}#${reverseTimestamp}#${snapshotId}",
+				casing: "none"
+			}
 		}
 	}
 });
@@ -69,6 +111,37 @@ export const syncRunEntity = new Entity({
 				template: "SYNC#${reverseTimestamp}#${syncRunId}",
 				casing: "none"
 			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "SYNC_RUN",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["accountId", "reverseTimestamp", "syncRunId"],
+				template:
+					"ACCOUNT#${accountId}#SYNC#${reverseTimestamp}#${syncRunId}",
+				casing: "none"
+			}
+		},
+		byAwsAccount: {
+			index: "entitiesByAwsAccount",
+			pk: {
+				field: "accountPk",
+				composite: ["accountId"],
+				template: "ACCOUNT#${accountId}",
+				casing: "none"
+			},
+			sk: {
+				field: "accountSk",
+				composite: ["reverseTimestamp", "syncRunId"],
+				template: "SYNC#${reverseTimestamp}#${syncRunId}",
+				casing: "none"
+			}
 		}
 	}
 });
@@ -99,6 +172,37 @@ export const discoveredStageEntity = new Entity({
 				field: "sk",
 				composite: ["appName", "stageName"],
 				template: "DISCOVERY#${appName}#STAGE#${stageName}",
+				casing: "none"
+			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "DISCOVERED_STAGE",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["accountId", "appName", "stageName"],
+				template:
+					"ACCOUNT#${accountId}#APP#${appName}#STAGE#${stageName}",
+				casing: "none"
+			}
+		},
+		byAwsAccount: {
+			index: "entitiesByAwsAccount",
+			pk: {
+				field: "accountPk",
+				composite: ["accountId"],
+				template: "ACCOUNT#${accountId}",
+				casing: "none"
+			},
+			sk: {
+				field: "accountSk",
+				composite: ["appName", "stageName"],
+				template: "DISCOVERY#${appName}#${stageName}",
 				casing: "none"
 			}
 		}

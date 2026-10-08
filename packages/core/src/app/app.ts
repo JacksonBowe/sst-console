@@ -30,7 +30,7 @@ export const update = fn(
 
 /** Lists every App projection by name, optionally with Stage summaries. */
 export const list = fn(ListSchema, async ({ summaries }) => {
-	const result = await db.entities.app.query.byName({}).go({ pages: "all" });
+	const result = await db.entities.app.query.byType({}).go({ pages: "all" });
 	const apps = result.data.map(app => AppSchema.parse(app));
 	if (!summaries) return apps;
 	return Promise.all(apps.map(summary));

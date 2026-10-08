@@ -10,8 +10,8 @@ const accountSet = vi.fn();
 const accountUpdateGo = vi.fn();
 const accountDelete = vi.fn();
 const accountDeleteGo = vi.fn();
-const accountByStatus = vi.fn();
-const accountByStatusGo = vi.fn();
+const accountByType = vi.fn();
+const accountByTypeGo = vi.fn();
 
 vi.mock("../../src/db", () => ({
 	db: {
@@ -21,7 +21,7 @@ vi.mock("../../src/db", () => ({
 				get: accountGet,
 				patch: accountPatch,
 				delete: accountDelete,
-				query: { byStatus: accountByStatus }
+				query: { byType: accountByType }
 			}
 		}
 	}
@@ -47,12 +47,12 @@ describe("Account", () => {
 		accountPatch.mockReturnValue({ set: accountSet });
 		accountSet.mockReturnValue({ go: accountUpdateGo });
 		accountDelete.mockReturnValue({ go: accountDeleteGo });
-		accountByStatus.mockReturnValue({ go: accountByStatusGo });
+		accountByType.mockReturnValue({ go: accountByTypeGo });
 	});
 
 	it("creates, finds, updates, removes, and lists Accounts", async () => {
 		accountGetGo.mockResolvedValue({ data: account });
-		accountByStatusGo.mockResolvedValue({ data: [account] });
+		accountByTypeGo.mockResolvedValue({ data: [account] });
 
 		await Account.create(account);
 		await expect(
@@ -66,7 +66,7 @@ describe("Account", () => {
 			status: "disconnected"
 		});
 		await Account.remove({ accountId: account.accountId });
-		await expect(Account.list()).resolves.toEqual([account, account]);
+		await expect(Account.list()).resolves.toEqual([account]);
 
 		expect(accountUpsert).toHaveBeenCalledWith({
 			accountId: account.accountId,

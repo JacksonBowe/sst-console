@@ -85,7 +85,7 @@ describe("Issue monitoring", () => {
 				logGroup: "/aws/lambda/console-prod-api"
 			})
 			.params({ table: "ConsoleData" });
-		expect(params.IndexName).toBe("issueSubscriptionsBySource");
+		expect(params.IndexName).toBe("lookup");
 		expect(params.KeyConditionExpression).toContain("#pk");
 	});
 });

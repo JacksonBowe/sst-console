@@ -7,7 +7,7 @@ export const inspect = fn(AccountKeySchema, async ({ accountId }) => {
 	const account = await Account.get({ accountId });
 
 	const stages = await db.entities.stage.query
-		.byAccount({ accountId })
+		.byAwsAccount({ accountId })
 		.go({ pages: "all" });
 	const [apps, resourceResults] = await Promise.all([
 		Promise.all(

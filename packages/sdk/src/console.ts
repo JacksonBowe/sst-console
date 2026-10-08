@@ -45,7 +45,6 @@ export type Resource = {
 	resourceType: string;
 	urn: string;
 	normalizedArn?: string;
-	arnIndex: string;
 	name?: string;
 	summary?: unknown;
 	createdAt: string;
