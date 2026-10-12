@@ -5,71 +5,138 @@
 		:rows-per-page-options="[12, 24, 48]"
 		:loading="loading"
 		:filters="filters"
+		row-key="fingerprint"
+		:expanded="expanded"
 		empty-icon="sym_r_error"
 		empty-message="No Issues detected"
 		empty-filtered-message="No Issues match these filters"
 		:pagination="{ sortBy: 'lastSeenAt', descending: true }"
+		@update:expanded="setExpanded"
 	>
-		<template #body-cell-error="tableProps">
-			<q-td :props="tableProps">
-				<div class="text-weight-medium">
-					{{ tableProps.row.errorType }}
-				</div>
-				<div class="issues-table__message text-secondary">
-					{{ tableProps.row.errorMessage }}
-				</div>
-			</q-td>
-		</template>
+		<template #body="tableProps">
+			<q-tr :props="tableProps">
+				<q-td key="error" :props="tableProps">
+					<div class="row items-center no-wrap">
+						<q-btn
+							flat
+							round
+							dense
+							size="sm"
+							:icon="
+								tableProps.expand
+									? 'sym_r_expand_less'
+									: 'sym_r_expand_more'
+							"
+							:aria-label="
+								tableProps.expand
+									? 'Hide issue details'
+									: 'Show issue details'
+							"
+							@click.stop="tableProps.expand = !tableProps.expand"
+						/>
+						<div class="text-weight-medium">
+							{{ tableProps.row.errorType }}
+						</div>
+					</div>
+					<div class="issues-table__message text-secondary">
+						{{ tableProps.row.errorMessage }}
+					</div>
+				</q-td>
 
-		<template #body-cell-stage="tableProps">
-			<q-td :props="tableProps">
-				<router-link
-					class="issues-table__link"
-					:to="stageRoute(tableProps.row)"
+				<q-td key="stage" :props="tableProps">
+					<router-link
+						class="issues-table__link"
+						:to="stageRoute(tableProps.row)"
+					>
+						{{ tableProps.row.appName }}/{{
+							tableProps.row.stageName
+						}}
+					</router-link>
+				</q-td>
+
+				<q-td key="workload" :props="tableProps">
+					<span
+						class="issues-table__workload text-mono"
+						:title="workloadName(tableProps.row)"
+					>
+						{{ workloadName(tableProps.row) }}
+					</span>
+				</q-td>
+
+				<q-td key="count" :props="tableProps">
+					{{ tableProps.row.count }}
+				</q-td>
+
+				<q-td
+					key="lastSeenAt"
+					:props="tableProps"
+					:title="tableProps.row.lastSeenAt"
 				>
-					{{ tableProps.row.appName }}/{{ tableProps.row.stageName }}
-				</router-link>
-			</q-td>
-		</template>
+					{{ formatDateTime(tableProps.row.lastSeenAt) }}
+				</q-td>
 
-		<template #body-cell-workload="tableProps">
-			<q-td :props="tableProps">
-				<span
-					class="issues-table__workload text-mono"
-					:title="workloadName(tableProps.row)"
-				>
-					{{ workloadName(tableProps.row) }}
-				</span>
-			</q-td>
-		</template>
+				<q-td key="status" :props="tableProps">
+					<IssueStatusChip :status="tableProps.row.status" />
+				</q-td>
 
-		<template #body-cell-lastSeenAt="tableProps">
-			<q-td :props="tableProps" :title="tableProps.row.lastSeenAt">
-				{{ formatDateTime(tableProps.row.lastSeenAt) }}
-			</q-td>
-		</template>
+				<q-td key="actions" :props="tableProps" class="text-right">
+					<IssueStatusActions
+						:status="tableProps.row.status"
+						@status="$emit('status', tableProps.row, $event)"
+					/>
+				</q-td>
+			</q-tr>
 
-		<template #body-cell-status="tableProps">
-			<q-td :props="tableProps">
-				<IssueStatusChip :status="tableProps.row.status" />
-			</q-td>
-		</template>
+			<q-tr v-show="tableProps.expand" :props="tableProps">
+				<q-td :colspan="tableProps.cols.length">
+					<div class="issues-table__details q-pa-sm">
+						<div class="text-subtitle2 q-mb-xs">Error message</div>
+						<CodePreview
+							class="issues-table__code"
+							:code="tableProps.row.errorMessage"
+							label="Error message"
+						/>
 
-		<template #body-cell-actions="tableProps">
-			<q-td :props="tableProps" class="text-right">
-				<IssueStatusActions
-					:status="tableProps.row.status"
-					@status="$emit('status', tableProps.row, $event)"
-				/>
-			</q-td>
+						<template
+							v-if="
+								tableProps.row.stack &&
+								!includesStack(
+									tableProps.row.errorMessage,
+									tableProps.row.stack
+								)
+							"
+						>
+							<div class="text-subtitle2 q-mt-md q-mb-xs"
+								>Stack trace</div
+							>
+							<CodePreview
+								class="issues-table__code"
+								:code="tableProps.row.stack"
+								label="Stack trace"
+							/>
+						</template>
+
+						<div
+							class="issues-table__source text-caption text-secondary q-mt-md"
+						>
+							<div>Log group: {{ tableProps.row.logGroup }}</div>
+							<div
+								>Log stream: {{ tableProps.row.logStream }}</div
+							>
+						</div>
+					</div>
+				</q-td>
+			</q-tr>
 		</template>
 	</BaseTable>
 </template>
 
 <script setup lang="ts">
 import type { Issue, IssueStatus } from "@sst-console/sdk";
+import { ref } from "vue";
 
 import { formatDateTime } from "@/components/ui/format";
+import CodePreview from "@/components/ui/CodePreview/CodePreview.vue";
 import {
 	BaseTable,
 	type ExtendedQTableColumn,
@@ -141,6 +208,17 @@ const columns: ExtendedQTableColumn[] = [
 	}
 ];
 
+const expanded = ref<string[]>([]);
+
+function setExpanded(next: ReadonlyArray<string | number>) {
+	expanded.value =
+		next.length > expanded.value.length ? [String(next.at(-1))] : [];
+}
+
+function includesStack(errorMessage: string, stack: string) {
+	return errorMessage.includes(stack);
+}
+
 function workloadName(issue: Issue) {
 	return issue.functionName ?? issue.logGroup;
 }
@@ -170,6 +248,18 @@ function stageRoute(issue: Issue) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.issues-table__details {
+	max-width: 100%;
+}
+
+.issues-table__code {
+	height: min(20rem, 50vh);
+}
+
+.issues-table__source {
+	overflow-wrap: anywhere;
 }
 
 @media (max-width: 599px) {

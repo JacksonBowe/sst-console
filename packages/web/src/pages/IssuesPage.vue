@@ -69,6 +69,7 @@
 				:loading="issuesQuery.isPending.value"
 				:filters="tableFilters"
 				@status="setStatus"
+				class="col"
 			/>
 		</DashboardPageContent>
 	</DashboardPage>
@@ -81,12 +82,12 @@ import { computed, reactive, ref } from "vue";
 
 import { api, handleApiError } from "@/boot/api-client";
 import { IssuesListErrorState, IssuesTable } from "@/components/Issues";
-import { DialogConfirm } from "@/components/ui/Dialog";
 import {
 	DashboardPage,
 	DashboardPageContent,
 	DashboardPageHeader
 } from "@/components/ui/Dashboard";
+import { DialogConfirm } from "@/components/ui/Dialog";
 import {
 	TableClearFilters,
 	TableFilter,

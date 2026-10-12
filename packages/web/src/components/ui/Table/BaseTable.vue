@@ -5,14 +5,17 @@
 		bordered
 		:rows="rows"
 		:columns="columns"
+		:row-key="rowKey"
 		:visible-columns="computedVisibleColumns"
 		:rows-per-page-options="rowsPerPageOptions"
 		:loading="loading"
 		:filter="filters"
 		:filter-method="useCustomFilter"
 		:row-class="rowClass"
+		:expanded="expanded"
 		v-model:pagination="internalPagination"
 		@row-click="onRowClick"
+		@update:expanded="emit('update:expanded', [...$event])"
 	>
 		<!-- Loading slot -->
 		<template #loading>
@@ -44,6 +47,11 @@
 			<slot :name="`body-cell-${col.name}`" v-bind="props">
 				<q-td :props="props">{{ props.value }}</q-td>
 			</slot>
+		</template>
+
+		<!-- Pass through custom body rows -->
+		<template v-if="$slots.body" #body="props">
+			<slot name="body" v-bind="props" />
 		</template>
 
 		<!-- Pass through header slots -->
@@ -89,6 +97,8 @@ const props = withDefaults(
 		rows: TRow[];
 		/** Column definitions */
 		columns: ExtendedQTableColumn[];
+		/** Unique key for each row. */
+		rowKey?: string | ((row: TRow) => string) | undefined;
 		/** Columns to show (by name). If undefined, shows all columns. */
 		visibleColumns?: string[] | undefined;
 		/** Whether data is loading */
@@ -105,6 +115,8 @@ const props = withDefaults(
 		emptyFilteredMessage?: string | undefined;
 		/** Function to compute row class */
 		rowClass?: ((row: TRow) => string) | undefined;
+		/** Expanded row keys. */
+		expanded?: Array<string | number> | undefined;
 		/** Initial pagination state */
 		pagination?:
 			| {
@@ -127,6 +139,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	(e: "row-click", event: Event, row: TRow, index: number): void;
+	(e: "update:expanded", expanded: Array<string | number>): void;
 }>();
 
 // Compute whether filters are active
