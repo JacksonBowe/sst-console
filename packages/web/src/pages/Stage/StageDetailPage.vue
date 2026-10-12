@@ -7,37 +7,19 @@
 		>
 			<template #actions>
 				<q-btn
-					flat
-					no-caps
-					label="Test query"
-					:loading="testing"
-					@click="testQuery"
-				/>
-				<q-btn
 					unelevated
 					no-caps
-					color="primary"
-					label="Connect"
+					:color="
+						stage?.issueMonitoringEnabled ? 'negative' : 'primary'
+					"
+					:label="
+						stage?.issueMonitoringEnabled
+							? 'Disable Issue monitoring'
+							: 'Enable Issue monitoring'
+					"
 					:disable="!target"
-					:loading="connecting"
-					@click="connect"
-				/>
-				<q-btn
-					flat
-					no-caps
-					label="Retry"
-					:disable="!target"
-					:loading="connecting"
-					@click="connect"
-				/>
-				<q-btn
-					flat
-					no-caps
-					color="negative"
-					label="Disconnect"
-					:disable="!target"
-					:loading="disconnecting"
-					@click="disconnect"
+					:loading="updatingMonitoring"
+					@click="toggleMonitoring"
 				/>
 			</template>
 		</StageDetailHeader>
@@ -90,9 +72,7 @@ const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
 const stageQuery = useStage(appName, stageName);
 const stage = computed(() => stageQuery.data.value);
-const connecting = ref(false);
-const disconnecting = ref(false);
-const testing = ref(false);
+const updatingMonitoring = ref(false);
 const target = computed(() => {
 	const app = appName.value;
 	const stage = stageName.value;
@@ -125,56 +105,26 @@ const isNotFound = computed(() => {
 	return error instanceof ApiError && error.code === "stage_not_found";
 });
 
-async function connect() {
+async function toggleMonitoring() {
 	if (!target.value) return;
-	connecting.value = true;
+	updatingMonitoring.value = true;
 	try {
-		await api.request({
-			method: "POST",
-			url: `issues/${encodeURIComponent(target.value.app)}/${encodeURIComponent(target.value.stage)}/connect`
-		});
+		await api.setStageIssueMonitoring(
+			target.value.app,
+			target.value.stage,
+			!stage.value?.issueMonitoringEnabled
+		);
 		Notify.create({
-			message: "Issue monitoring enabled; reconciliation queued",
+			message: stage.value?.issueMonitoringEnabled
+				? "Issue monitoring disabled; filter removal queued"
+				: "Issue monitoring enabled; reconciliation queued",
 			color: "positive"
 		});
+		await stageQuery.refetch();
 	} catch (error) {
 		handleApiError(error);
 	} finally {
-		connecting.value = false;
-	}
-}
-
-async function disconnect() {
-	if (!target.value) return;
-	disconnecting.value = true;
-	try {
-		await api.request({
-			method: "POST",
-			url: `issues/${encodeURIComponent(target.value.app)}/${encodeURIComponent(target.value.stage)}/disconnect`
-		});
-		Notify.create({
-			message: "Issue monitoring disabled; filter removal queued",
-			color: "positive"
-		});
-	} catch (error) {
-		handleApiError(error);
-	} finally {
-		disconnecting.value = false;
-	}
-}
-
-async function testQuery() {
-	testing.value = true;
-	try {
-		await api.request({ method: "POST", url: "issues/test-query" });
-		Notify.create({
-			message: "Issue test route responded",
-			color: "positive"
-		});
-	} catch (error) {
-		handleApiError(error);
-	} finally {
-		testing.value = false;
+		updatingMonitoring.value = false;
 	}
 }
 </script>

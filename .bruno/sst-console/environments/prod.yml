@@ -9,6 +9,8 @@ variables:
     - secret: true
       name: SSTAppStage
     - secret: true
+      name: IssueFingerprint
+    - secret: true
       name: AuthEmail
     - secret: true
       name: AuthPassword

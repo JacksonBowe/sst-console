@@ -52,6 +52,21 @@
 				{{ formatTimestamp(props.row.updatedAt) }}
 			</q-td>
 		</template>
+
+		<template #body-cell-issueMonitoringEnabled="props">
+			<q-td :props="props">
+				<q-badge
+					:color="
+						props.row.issueMonitoringEnabled ? 'positive' : 'grey'
+					"
+					:label="
+						props.row.issueMonitoringEnabled
+							? 'Enabled'
+							: 'Disabled'
+					"
+				/>
+			</q-td>
+		</template>
 	</BaseTable>
 </template>
 
@@ -102,6 +117,13 @@ const columns: ExtendedQTableColumn[] = [
 		name: "latestSnapshot",
 		label: "Latest snapshot",
 		field: row => row.latestSnapshot?.createdAt ?? "",
+		align: "left",
+		sortable: true
+	},
+	{
+		name: "issueMonitoringEnabled",
+		label: "Issue monitoring",
+		field: "issueMonitoringEnabled",
 		align: "left",
 		sortable: true
 	},

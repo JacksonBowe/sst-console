@@ -79,6 +79,27 @@ export async function disableStage(input: {
 	await enqueueReconcile({ ...input, action: "disconnect", attempt: 0 });
 }
 
+/** Enables or disables monitoring for every current Stage in one App. */
+export async function setAppEnabled(input: {
+	appName: string;
+	enabled: boolean;
+}) {
+	const stages = await Stage.list({ appName: input.appName });
+	await Promise.all(
+		stages.map(stage =>
+			input.enabled
+				? enableStage({
+						appName: stage.appName,
+						stageName: stage.stageName
+					})
+				: disableStage({
+						appName: stage.appName,
+						stageName: stage.stageName
+					})
+		)
+	);
+}
+
 /** Schedules reconciliation only when monitoring remains enabled for a stage. */
 export async function requestReconcile(input: {
 	appName: string;

@@ -24,6 +24,7 @@ export const inspectStage = fn(StageKeySchema, async input => {
 		stageName: stage.stageName,
 		accountId: stage.accountId,
 		region: stage.region,
+		issueMonitoringEnabled: stage.issueMonitoringEnabled,
 		createdAt: stage.createdAt,
 		updatedAt: stage.updatedAt,
 		latestSnapshot: snapshot.data[0] ?? null,

@@ -9,19 +9,33 @@ const IssueKeySchema = StageKeySchema.extend({
 	fingerprint: z.string().min(1)
 });
 
+export const IssueStatusSchema = z.enum(["open", "resolved", "suppressed"]);
+
 export const IssueSchema = IssueKeySchema.extend({
-	error: z.string().min(1),
-	message: z.string().min(1),
+	accountId: z.string().min(1),
+	region: z.string().min(1),
+	functionArn: z.string().min(1).optional(),
+	functionName: z.string().min(1).optional(),
+	errorType: z.string().min(1),
+	errorMessage: z.string().min(1),
+	stack: z.string().min(1).optional(),
+	status: IssueStatusSchema,
+	statusUpdatedAt: z.iso.datetime(),
 	count: z.number().int().min(1),
 	firstSeenAt: z.iso.datetime(),
 	lastSeenAt: z.iso.datetime(),
 	logGroup: z.string().min(1),
 	logStream: z.string(),
-	logTimestamp: z.number().int(),
-	resolvedAt: z.iso.datetime().optional()
+	logTimestamp: z.number().int()
 });
 
 export type Issue = z.infer<typeof IssueSchema>;
+
+const ListSchema = z.object({
+	appName: z.string().min(1).optional(),
+	stageName: z.string().min(1).optional(),
+	status: IssueStatusSchema.optional()
+});
 
 /** Creates one grouped Issue record. */
 export const create = fn(IssueSchema, async input => {
@@ -43,40 +57,59 @@ export const get = fn(IssueKeySchema, async input => {
 	return issue;
 });
 
-/** Lists every Issue recorded for one stage. */
-export const list = fn(StageKeySchema, async input => {
-	const result = await db.entities.issue.query
-		.stage(input)
-		.go({ pages: "all" });
-	return result.data.map(issue => IssueSchema.parse(issue));
+/** Lists persisted Issues, optionally scoped to an App, Stage, or lifecycle state. */
+export const list = fn(ListSchema, async input => {
+	const result = input.appName
+		? await db.entities.issue.query
+				.byType({})
+				.begins({
+					appName: input.appName,
+					...(input.stageName ? { stageName: input.stageName } : {})
+				})
+				.go({ pages: "all", order: "desc" })
+		: await db.entities.issue.query.byType({}).go({ pages: "all" });
+	return result.data
+		.map(issue => IssueSchema.parse(issue))
+		.filter(
+			issue => !input.stageName || issue.stageName === input.stageName
+		)
+		.filter(issue => !input.status || issue.status === input.status);
 });
 
 /** Updates mutable Issue fields. Use `countDelta` for atomic occurrence counts. */
 export const update = fn(
 	IssueKeySchema.extend({
-		error: z.string().min(1).optional(),
-		message: z.string().min(1).optional(),
+		functionArn: z.string().min(1).nullable().optional(),
+		functionName: z.string().min(1).nullable().optional(),
+		errorType: z.string().min(1).optional(),
+		errorMessage: z.string().min(1).optional(),
+		stack: z.string().min(1).nullable().optional(),
+		status: IssueStatusSchema.optional(),
+		statusUpdatedAt: z.iso.datetime().optional(),
 		count: z.number().int().min(1).optional(),
 		countDelta: z.number().int().optional(),
 		firstSeenAt: z.iso.datetime().optional(),
 		lastSeenAt: z.iso.datetime().optional(),
 		logGroup: z.string().min(1).optional(),
 		logStream: z.string().optional(),
-		logTimestamp: z.number().int().optional(),
-		resolvedAt: z.iso.datetime().nullable().optional()
+		logTimestamp: z.number().int().optional()
 	})
 		.refine(
 			input =>
-				input.error !== undefined ||
-				input.message !== undefined ||
+				input.functionArn !== undefined ||
+				input.functionName !== undefined ||
+				input.errorType !== undefined ||
+				input.errorMessage !== undefined ||
+				input.stack !== undefined ||
+				input.status !== undefined ||
+				input.statusUpdatedAt !== undefined ||
 				input.count !== undefined ||
 				input.countDelta !== undefined ||
 				input.firstSeenAt !== undefined ||
 				input.lastSeenAt !== undefined ||
 				input.logGroup !== undefined ||
 				input.logStream !== undefined ||
-				input.logTimestamp !== undefined ||
-				input.resolvedAt !== undefined,
+				input.logTimestamp !== undefined,
 			"At least one Issue field must be updated"
 		)
 		.refine(
@@ -89,14 +122,20 @@ export const update = fn(
 		stageName,
 		fingerprint,
 		countDelta,
-		resolvedAt,
+		functionArn,
+		functionName,
+		stack,
 		...changes
 	}) => {
 		const fields = {
 			...changes,
-			...(resolvedAt === undefined
+			...(functionArn === undefined
 				? {}
-				: { resolvedAt: resolvedAt ?? undefined })
+				: { functionArn: functionArn ?? undefined }),
+			...(functionName === undefined
+				? {}
+				: { functionName: functionName ?? undefined }),
+			...(stack === undefined ? {} : { stack: stack ?? undefined })
 		};
 		let operation = db.entities.issue
 			.patch({ appName, stageName, fingerprint })
@@ -107,6 +146,20 @@ export const update = fn(
 	}
 );
 
+/** Changes Issue lifecycle state without changing its occurrence history. */
+export const setStatus = fn(
+	IssueKeySchema.extend({ status: IssueStatusSchema }),
+	async ({ appName, stageName, fingerprint, status }) => {
+		await update({
+			appName,
+			stageName,
+			fingerprint,
+			status,
+			statusUpdatedAt: new Date().toISOString()
+		});
+	}
+);
+
 /** Deletes one Issue by stage and fingerprint. */
 export const remove = fn(IssueKeySchema, async input => {
 	await db.entities.issue.delete(input).go({ response: "none" });
@@ -114,17 +167,6 @@ export const remove = fn(IssueKeySchema, async input => {
 
 /** Deletes every persisted Issue without changing monitoring configuration. */
 export async function purge() {
-	const apps = await db.entities.app.query.byType({}).go({ pages: "all" });
-	for (const app of apps.data) {
-		const stages = await db.entities.stage.query
-			.stage({ appName: app.appName })
-			.go({ pages: "all" });
-		for (const stage of stages.data) {
-			const issues = await list({
-				appName: stage.appName,
-				stageName: stage.stageName
-			});
-			for (const issue of issues) await remove(issue);
-		}
-	}
+	const issues = await list({});
+	for (const issue of issues) await remove(issue);
 }

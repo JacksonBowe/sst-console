@@ -12,8 +12,9 @@ describe("Issue processor", () => {
 		);
 
 		expect(first).toEqual({
-			error: "ConsoleError",
-			message: "This a test console.log error"
+			errorType: "ConsoleError",
+			errorMessage: "This a test console.log error",
+			stack: undefined
 		});
 		expect(second).toEqual(first);
 	});

@@ -1,6 +1,7 @@
 import type { RequestFn } from "./request";
 
 export type AccountStatus = "connected" | "disconnected";
+export type IssueStatus = "open" | "resolved" | "suppressed";
 
 export type StageSelector = { app: string; stage?: string };
 
@@ -57,6 +58,7 @@ export type AppStage = {
 	stageName: string;
 	accountId: string;
 	region: string;
+	issueMonitoringEnabled: boolean;
 	createdAt: string;
 	updatedAt: string;
 	latestSnapshot: StateSnapshot | null;
@@ -82,6 +84,7 @@ export type Stage = {
 	stageName: string;
 	accountId: string;
 	region: string;
+	issueMonitoringEnabled: boolean;
 	createdAt: string;
 	updatedAt: string;
 	latestSnapshot: StateSnapshot | null;
@@ -187,6 +190,33 @@ export type UsersPage = {
 export type InviteUserInput = { email: string };
 export type InviteUserResult = { id: string };
 
+export type Issue = {
+	appName: string;
+	stageName: string;
+	fingerprint: string;
+	accountId: string;
+	region: string;
+	functionArn?: string;
+	functionName?: string;
+	errorType: string;
+	errorMessage: string;
+	stack?: string;
+	status: IssueStatus;
+	statusUpdatedAt: string;
+	count: number;
+	firstSeenAt: string;
+	lastSeenAt: string;
+	logGroup: string;
+	logStream: string;
+	logTimestamp: number;
+};
+
+export type IssuesFilters = {
+	appName?: string;
+	stageName?: string;
+	status?: IssueStatus;
+};
+
 export const consoleMethods = (request: RequestFn) => ({
 	listApps: <Summaries extends boolean = false>(
 		options: ListAppsOptions<Summaries> = {}
@@ -251,6 +281,36 @@ export const consoleMethods = (request: RequestFn) => ({
 		request({ method: "POST", url: "accounts/recover" }),
 	backupConnections: (): Promise<BackupConnectionsResult> =>
 		request({ method: "POST", url: "accounts/backup-connections" }),
+	listIssues: (filters: IssuesFilters = {}): Promise<Issue[]> =>
+		request({ method: "GET", url: "issues", params: filters }),
+	setIssueStatus: (
+		issue: Pick<Issue, "appName" | "stageName" | "fingerprint">,
+		status: IssueStatus
+	): Promise<void> =>
+		request({
+			method: "POST",
+			url: `issues/${encodeURIComponent(issue.appName)}/${encodeURIComponent(issue.stageName)}/${encodeURIComponent(issue.fingerprint)}/status`,
+			data: { status }
+		}),
+	setAppIssueMonitoring: (appName: string, enabled: boolean): Promise<void> =>
+		request({
+			method: "POST",
+			url: `issues/apps/${encodeURIComponent(appName)}/monitoring`,
+			data: { enabled }
+		}),
+	setStageIssueMonitoring: (
+		appName: string,
+		stageName: string,
+		enabled: boolean
+	): Promise<void> =>
+		request({
+			method: "POST",
+			url: `issues/${encodeURIComponent(appName)}/${encodeURIComponent(stageName)}/${enabled ? "connect" : "disconnect"}`
+		}),
+	purgeIssues: (): Promise<void> =>
+		request({ method: "DELETE", url: "issues" }),
+	testIssueQuery: (): Promise<{ message: string }> =>
+		request({ method: "POST", url: "issues/test-query" }),
 	listUsers: (filters: UsersFilters = {}): Promise<UsersPage> =>
 		request({ method: "GET", url: "users", params: filters }),
 	inviteUser: (input: InviteUserInput): Promise<InviteUserResult> =>

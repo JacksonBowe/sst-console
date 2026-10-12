@@ -34,9 +34,12 @@ export async function processCandidate(input: IssueCandidate) {
 		const fingerprint = createHash("sha256")
 			.update(
 				[
+					input.source.accountId,
+					input.source.region,
 					subscription.functionArn ?? input.source.logGroup,
-					parsed.error,
-					parsed.message
+					parsed.errorType,
+					parsed.errorMessage,
+					parsed.stack ?? ""
 				].join("\n")
 			)
 			.digest("hex");
@@ -46,15 +49,22 @@ export async function processCandidate(input: IssueCandidate) {
 			fingerprint
 		};
 		const existing = await Issue.find(key);
-		const now = new Date().toISOString();
+		const occurredAt = new Date(event.timestamp).toISOString();
 		if (!existing) {
 			await Issue.create({
 				...key,
-				error: parsed.error,
-				message: parsed.message,
+				accountId: input.source.accountId,
+				region: input.source.region,
+				functionArn: subscription.functionArn,
+				functionName: functionName(subscription.functionArn),
+				errorType: parsed.errorType,
+				errorMessage: parsed.errorMessage,
+				stack: parsed.stack,
+				status: "open",
+				statusUpdatedAt: occurredAt,
 				count: 1,
-				firstSeenAt: now,
-				lastSeenAt: now,
+				firstSeenAt: occurredAt,
+				lastSeenAt: occurredAt,
 				logGroup: input.source.logGroup,
 				logStream: input.source.logStream,
 				logTimestamp: event.timestamp
@@ -67,7 +77,8 @@ export async function processCandidate(input: IssueCandidate) {
 					input.source,
 					event.timestamp,
 					parsed,
-					now
+					occurredAt,
+					existing
 				);
 			});
 			continue;
@@ -78,7 +89,8 @@ export async function processCandidate(input: IssueCandidate) {
 			input.source,
 			event.timestamp,
 			parsed,
-			now
+			occurredAt,
+			existing
 		);
 	}
 }
@@ -90,19 +102,33 @@ async function incrementIssue(
 	source: IssueCandidate["source"],
 	timestamp: number,
 	parsed: ReturnType<typeof parseError> & {},
-	now: string
+	occurredAt: string,
+	existing: Issue.Issue | null
 ) {
+	const latest = !existing || occurredAt >= existing.lastSeenAt;
+	const reopen = existing?.status === "resolved";
 	await Issue.update({
 		appName: subscription.appName,
 		stageName: subscription.stageName,
 		fingerprint,
-		error: parsed.error,
-		message: parsed.message,
+		errorType: parsed.errorType,
+		errorMessage: parsed.errorMessage,
+		stack: parsed.stack,
 		countDelta: 1,
-		lastSeenAt: now,
-		logGroup: source.logGroup,
-		logStream: source.logStream,
-		logTimestamp: timestamp,
-		resolvedAt: null
+		...(latest
+			? {
+					lastSeenAt: occurredAt,
+					logGroup: source.logGroup,
+					logStream: source.logStream,
+					logTimestamp: timestamp
+				}
+			: {}),
+		...(reopen
+			? { status: "open" as const, statusUpdatedAt: occurredAt }
+			: {})
 	});
+}
+
+function functionName(functionArn: string | undefined) {
+	return functionArn?.split(":function:")[1];
 }

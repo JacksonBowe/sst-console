@@ -161,7 +161,9 @@ inferred from key encoding. Component group rows have no ARN; only physical reso
 | Reconcile an enabled stage                   | worker: app + stage                                | Stage, Resource, IssueSubscription primary-key queries      | Implemented |
 | Remove excluded stage Issue data             | sync worker: app + stage                           | IssueSubscription and Issue primary-key queries             | Implemented |
 | Verify issue ingress source                  | issue processor: account + region + log group      | `lookup` query                                              | Implemented |
-| List stage issue subscriptions and issues    | stage detail: app + stage                          | IssueSubscription / Issue primary-key query                 | Model ready |
+| Find Issue for new occurrence                | issue worker: app + stage + fingerprint            | Issue primary-key get                                       | Implemented |
+| List Issues                                  | dashboard/API: global, App, or App/Stage scope     | `entitiesByType` query; status filters in process           | Implemented |
+| List stage issue subscriptions               | stage detail: app + stage                          | IssueSubscription primary-key query                         | Implemented |
 | Delete all persisted Issues                  | authenticated `DELETE /issues`                     | `entitiesByType`, then Stage / Issue primary-key queries    | Implemented |
 
 No first-release arbitrary cross-account resource search, type search, log search,
@@ -386,12 +388,28 @@ Then:
 4. Add `.params()` tests for generated request parameters.
 5. Update this document with final access pattern and implementation status.
 
+### Issue lifecycle and filtering
+
+`Issue` records use their primary key for a strongly consistent deduplication
+read during ingress. Their `entitiesByType` projection has fixed `ISSUE`
+partition and sorts by App, Stage, then `lastSeenAt`. `GET /issues` queries all
+Issues, one App, or one App/Stage directly from this index. Status filters run
+in process. The global Issues page sorts its bounded result by `lastSeenAt` in
+memory. Resolved records will be archived after 30 days in a future separate
+change. No Issue-specific GSI exists.
+
+The Issue worker maintains this projection whenever it creates an Issue or
+updates `lastSeenAt`. Lifecycle transitions (`open`, `resolved`, `suppressed`)
+patch the primary record only. A reoccurrence reopens a resolved Issue but leaves
+a suppressed Issue suppressed while continuing to update its occurrence count.
+This Issue shape is deployed only after the required ConsoleData purge for the
+GSI-overhaul cutover; no prior Issue shape is read or maintained.
+
 ## Deferred domains
 
 Model these only after their access patterns are accepted:
 
-- Issue: open-by-resource/status, occurrence timeline, resolve/suppress state,
-  notification deliveries.
+- Issue: resolved Issue archival, occurrence timeline, notification deliveries.
 - User/integration: global role, integration settings, notification preferences.
   User identity is persisted by Cognito subject. Store secret references only;
   secret values live in Secrets Manager.

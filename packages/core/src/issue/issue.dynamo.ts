@@ -157,15 +157,24 @@ export const issueEntity = new Entity({
 		appName: { type: "string", required: true },
 		stageName: { type: "string", required: true },
 		fingerprint: { type: "string", required: true },
-		error: { type: "string", required: true },
-		message: { type: "string", required: true },
+		accountId: { type: "string", required: true },
+		region: { type: "string", required: true },
+		functionArn: { type: "string" },
+		functionName: { type: "string" },
+		errorType: { type: "string", required: true },
+		errorMessage: { type: "string", required: true },
+		stack: { type: "string" },
+		status: {
+			type: ["open", "resolved", "suppressed"] as const,
+			required: true
+		},
+		statusUpdatedAt: { type: "string", required: true },
 		count: { type: "number", required: true },
 		firstSeenAt: { type: "string", required: true },
 		lastSeenAt: { type: "string", required: true },
 		logGroup: { type: "string", required: true },
 		logStream: { type: "string", required: true },
 		logTimestamp: { type: "number", required: true },
-		resolvedAt: { type: "string" },
 		schemaVersion: { type: "string", default: "1" }
 	},
 	indexes: {
@@ -193,9 +202,14 @@ export const issueEntity = new Entity({
 			},
 			sk: {
 				field: "entitySort",
-				composite: ["appName", "stageName", "fingerprint"],
+				composite: [
+					"appName",
+					"stageName",
+					"lastSeenAt",
+					"fingerprint"
+				],
 				template:
-					"APP#${appName}#STAGE#${stageName}#ISSUE#${fingerprint}",
+					"APP#${appName}#STAGE#${stageName}#LAST_SEEN#${lastSeenAt}#ISSUE#${fingerprint}",
 				casing: "none"
 			}
 		}

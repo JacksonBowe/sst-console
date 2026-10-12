@@ -69,6 +69,7 @@ export async function summary(stage: Stage) {
 		stageName: stage.stageName,
 		accountId: stage.accountId,
 		region: stage.region,
+		issueMonitoringEnabled: stage.issueMonitoringEnabled,
 		createdAt: stage.createdAt,
 		updatedAt: stage.updatedAt,
 		latestSnapshot: snapshot.data[0] ?? null,
