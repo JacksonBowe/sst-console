@@ -38,14 +38,14 @@ describe("local session permissions", () => {
 		});
 	});
 
-	it("waits for user action when loopback permission prompts", async () => {
+	it("starts polling when loopback permission prompts", async () => {
 		setPermission("prompt");
 		const localSession = useLocalSessionStore();
 
 		await localSession.initialize();
 
 		expect(localSession.permission).toBe("prompt");
-		expect(MockWebSocket.instances).toHaveLength(0);
+		expect(MockWebSocket.instances).toHaveLength(1);
 
 		localSession.enable();
 		expect(MockWebSocket.instances).toHaveLength(1);
