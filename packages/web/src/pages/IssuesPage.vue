@@ -77,6 +77,7 @@
 
 <script setup lang="ts">
 import type { Issue, IssueStatus } from "@sst-console/sdk";
+import { useQueryClient } from "@tanstack/vue-query";
 import { Dialog, Notify } from "quasar";
 import { computed, reactive, ref } from "vue";
 
@@ -98,6 +99,7 @@ import {
 import { useIssues } from "@/composables/issues";
 
 const testing = ref(false);
+const queryClient = useQueryClient();
 const issuesQuery = useIssues({});
 const issues = computed(() =>
 	[...(issuesQuery.data.value ?? [])].sort((left, right) =>
@@ -136,7 +138,7 @@ function filterOptions(issues: Issue[], field: "appName" | "stageName") {
 async function setStatus(issue: Issue, status: IssueStatus) {
 	try {
 		await api.setIssueStatus(issue, status);
-		await issuesQuery.refetch();
+		await queryClient.invalidateQueries({ queryKey: ["issues"] });
 	} catch (error) {
 		handleApiError(error);
 	}
@@ -168,7 +170,7 @@ function confirmPurge() {
 			confirmLabel: "Delete all",
 			perform: async () => {
 				await api.purgeIssues();
-				await issuesQuery.refetch();
+				await queryClient.invalidateQueries({ queryKey: ["issues"] });
 			}
 		}
 	});
