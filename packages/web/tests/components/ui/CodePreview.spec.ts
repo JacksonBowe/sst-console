@@ -43,4 +43,17 @@ describe("CodePreview", () => {
 		);
 		expect(wrapper.text()).toContain('"value"');
 	});
+
+	it("grows to content when using content mode", () => {
+		const wrapper = mount(CodePreview, {
+			props: {
+				code: "Error: failed",
+				mode: "content"
+			},
+			global: { stubs }
+		});
+
+		expect(wrapper.find(".code-preview--content").exists()).toBe(true);
+		expect(wrapper.attributes("style")).toContain("max-height: 20rem");
+	});
 });

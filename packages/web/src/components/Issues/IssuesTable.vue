@@ -95,6 +95,7 @@
 							class="issues-table__code"
 							:code="tableProps.row.errorMessage"
 							label="Error message"
+							mode="content"
 						/>
 
 						<template
@@ -113,6 +114,7 @@
 								class="issues-table__code"
 								:code="tableProps.row.stack"
 								label="Stack trace"
+								mode="content"
 							/>
 						</template>
 
@@ -252,10 +254,6 @@ function stageRoute(issue: Issue) {
 
 .issues-table__details {
 	max-width: 100%;
-}
-
-.issues-table__code {
-	height: min(20rem, 50vh);
 }
 
 .issues-table__source {
