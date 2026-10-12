@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const AccountIdSchema = z.string().regex(/^\d{12}$/);
+export const ConnectorRoleArnPattern =
+	/^arn:(?:aws|aws-cn|aws-us-gov):iam::(?<accountId>\d{12}):role\/SSTConsoleRole-\d{12}-[a-f0-9]{16}$/;
 
 export const AccountKeySchema = z.object({ accountId: AccountIdSchema });
 
@@ -37,11 +39,7 @@ export const AccountUpdateSchema = AccountKeySchema.extend({
 
 export const ConnectorSchema = z.object({
 	region: z.string().min(1),
-	roleArn: z
-		.string()
-		.regex(
-			/^arn:(?:aws|aws-cn|aws-us-gov):iam::\d{12}:role\/SSTConsoleRole$/
-		)
+	roleArn: z.string().regex(ConnectorRoleArnPattern)
 });
 
 export const ConnectorCallbackSchema = ConnectorSchema.extend({

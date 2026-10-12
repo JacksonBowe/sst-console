@@ -3,6 +3,9 @@
 	"private": true,
 	"type": "module",
 	"module": "index.ts",
+	"scripts": {
+		"test": "vitest"
+	},
 	"dependencies": {
 		"@aws-sdk/client-eventbridge": "^3.1141.0",
 		"@console/core": "workspace:*",

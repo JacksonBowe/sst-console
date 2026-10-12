@@ -60,11 +60,20 @@ export function lambdaFromResource(resource: {
 	};
 }
 
-/** Creates a stable regional CloudFormation stack name for an Issue subscriber. */
-export function subscriberStackName(installationId: string, region = "global") {
-	const suffix = createHash("sha256")
-		.update(installationId)
-		.digest("hex")
-		.slice(0, 12);
-	return `SSTConsoleIssueSubscriber-${suffix}-${region}`;
+/** Creates a stable CloudFormation stack name for an Issue subscriber. */
+export function subscriberStackName(controlAccountId: string, stage: string) {
+	return `SSTConsoleIssueSubscriber-${controlAccountId}-${stageHash(stage)}`;
+}
+
+/** Creates a stable regional IAM role name for an Issue subscriber. */
+export function subscriberRoleName(
+	controlAccountId: string,
+	stage: string,
+	region: string
+) {
+	return `SSTConsoleIssue-${controlAccountId}-${stageHash(stage)}-${region}`;
+}
+
+function stageHash(stage: string) {
+	return createHash("sha256").update(stage).digest("hex").slice(0, 16);
 }

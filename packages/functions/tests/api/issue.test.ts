@@ -6,7 +6,8 @@ const mocks = vi.hoisted(() => ({
 	accountList: vi.fn(),
 	appList: vi.fn(),
 	appSummary: vi.fn(),
-	issueCreate: vi.fn()
+	issueCreate: vi.fn(),
+	disableAllStages: vi.fn()
 }));
 
 vi.mock("@console/core/account", () => ({
@@ -24,7 +25,8 @@ vi.mock("@console/core/app", () => ({
 
 vi.mock("@console/core/issue", () => ({
 	IssueStatusSchema: z.enum(["open", "resolved", "suppressed"]),
-	create: mocks.issueCreate
+	create: mocks.issueCreate,
+	Monitoring: { disableAllStages: mocks.disableAllStages }
 }));
 
 import { issueRoutes } from "../../src/api/issue";
@@ -102,5 +104,20 @@ describe("issue seed API", () => {
 
 		expect(response.status).toBe(400);
 		expect(mocks.issueCreate).not.toHaveBeenCalled();
+	});
+});
+
+describe("Issue monitoring API", () => {
+	it("disables monitoring on every monitored Stage", async () => {
+		mocks.disableAllStages.mockResolvedValue({ disabled: 3 });
+
+		const app = new Hono().route("/issues", issueRoutes);
+		const response = await app.request("/issues/monitoring/disable", {
+			method: "POST"
+		});
+
+		expect(response.status).toBe(200);
+		await expect(response.json()).resolves.toEqual({ disabled: 3 });
+		expect(mocks.disableAllStages).toHaveBeenCalledOnce();
 	});
 });

@@ -23,11 +23,13 @@ import {
 import { db } from "../db";
 import { ServerError } from "../error";
 import * as Connector from "../account/connector";
+import * as App from "../app/app";
 import { Stage } from "../app";
 import {
 	errorFilterPattern,
 	isIssueWorkerFunction,
 	lambdaFromResource,
+	subscriberRoleName,
 	subscriberStackName
 } from "./monitoring-utils";
 import { subscriberCode } from "./subscriber-code";
@@ -38,11 +40,13 @@ export {
 	errorFilterPattern,
 	isIssueWorkerFunction,
 	lambdaFromResource,
+	subscriberRoleName,
 	subscriberStackName
 };
 
 type IngressConfig = {
-	installationId: string;
+	controlAccountId: string;
+	stage: string;
 	queueArn: string;
 	queueRegion: string;
 	ingressQueueUrl: string;
@@ -98,6 +102,24 @@ export async function setAppEnabled(input: {
 					})
 		)
 	);
+}
+
+/** Disables monitoring for every Stage where monitoring is currently enabled. */
+export async function disableAllStages() {
+	const apps = await App.list({ summaries: false });
+	const stages = (
+		await Promise.all(apps.map(app => Stage.list({ appName: app.appName })))
+	).flat();
+	const enabledStages = stages.filter(stage => stage.issueMonitoringEnabled);
+	await Promise.all(
+		enabledStages.map(stage =>
+			disableStage({
+				appName: stage.appName,
+				stageName: stage.stageName
+			})
+		)
+	);
+	return { disabled: enabledStages.length };
 }
 
 /** Schedules reconciliation only when monitoring remains enabled for a stage. */
@@ -259,6 +281,7 @@ export async function reconcileStage(input: {
 			const now = new Date().toISOString();
 			try {
 				await putSubscription({
+					config,
 					input,
 					resource,
 					status: "pending",
@@ -267,12 +290,13 @@ export async function reconcileStage(input: {
 				await logs.send(
 					new PutSubscriptionFilterCommand({
 						destinationArn: subscriber,
-						filterName: subscriptionFilterName(input, resource),
+						filterName: subscriptionFilterName(config),
 						filterPattern: errorFilterPattern,
 						logGroupName: resource.logGroup
 					})
 				);
 				await putSubscription({
+					config,
 					input,
 					resource,
 					status: "attached",
@@ -285,6 +309,7 @@ export async function reconcileStage(input: {
 			} catch (error) {
 				const pending = error instanceof ResourceNotFoundException;
 				await putSubscription({
+					config,
 					input,
 					resource,
 					status: pending ? "pending" : "failed",
@@ -400,7 +425,12 @@ async function ensureSubscriber(input: {
 	region: string;
 }): Promise<string | undefined> {
 	const stackName = subscriberStackName(
-		input.config.installationId,
+		input.config.controlAccountId,
+		input.config.stage
+	);
+	const roleName = subscriberRoleName(
+		input.config.controlAccountId,
+		input.config.stage,
 		input.region
 	);
 	const cloudformation = new CloudFormationClient({
@@ -423,7 +453,11 @@ async function ensureSubscriber(input: {
 		await cloudformation.send(
 			new CreateStackCommand({
 				StackName: stackName,
-				TemplateBody: subscriberTemplate(input.config, stackName),
+				TemplateBody: subscriberTemplate(
+					input.config,
+					stackName,
+					roleName
+				),
 				Capabilities: ["CAPABILITY_NAMED_IAM"]
 			})
 		);
@@ -448,7 +482,11 @@ async function ensureSubscriber(input: {
 			.send(
 				new UpdateStackCommand({
 					StackName: stackName,
-					TemplateBody: subscriberTemplate(input.config, stackName),
+					TemplateBody: subscriberTemplate(
+						input.config,
+						stackName,
+						roleName
+					),
 					Capabilities: ["CAPABILITY_NAMED_IAM"]
 				})
 			)
@@ -519,6 +557,7 @@ async function putSubscriber(input: {
 
 /** Persists setup status for one Console-owned log subscription filter. */
 async function putSubscription(input: {
+	config: IngressConfig;
 	input: { appName: string; stageName: string };
 	resource: Awaited<ReturnType<typeof lambdaResources>>[number];
 	status: "pending" | "attached" | "failed";
@@ -532,7 +571,7 @@ async function putSubscription(input: {
 		accountId: input.resource.accountId,
 		region: input.resource.region,
 		logGroup: input.resource.logGroup,
-		filterName: subscriptionFilterName(input.input, input.resource),
+		filterName: subscriptionFilterName(input.config),
 		functionArn: input.resource.functionArn,
 		status: input.status,
 		lastError: input.lastError,
@@ -540,12 +579,9 @@ async function putSubscription(input: {
 	});
 }
 
-/** Names Console-owned filters with their source-stage identity. */
-function subscriptionFilterName(
-	stage: { appName: string; stageName: string },
-	resource: Awaited<ReturnType<typeof lambdaResources>>[number]
-) {
-	return `sst#${resource.region}#${resource.accountId}#${stage.appName}#${stage.stageName}`;
+/** Names Console-owned filters with their owning Console installation. */
+function subscriptionFilterName(config: IngressConfig) {
+	return `sst-console#${config.controlAccountId}#${config.stage}`;
 }
 
 /** Queues a delayed, targeted monitoring setup or teardown action. */
@@ -574,7 +610,11 @@ async function ensureIngressQueuePolicy(config: IngressConfig) {
 		.byType({})
 		.go({ pages: "all" });
 	const partition = config.queueArn.split(":")[1] ?? "aws";
-	const rolePattern = subscriberStackName(config.installationId, "*");
+	const rolePattern = subscriberRoleName(
+		config.controlAccountId,
+		config.stage,
+		"*"
+	);
 	const accountIds = accounts.data
 		.filter(account => account.status === "connected")
 		.map(account => account.accountId);
@@ -616,7 +656,8 @@ async function ensureIngressQueuePolicy(config: IngressConfig) {
 /** Reads required central Issue transport configuration from Lambda environment. */
 function ingressConfig(): IngressConfig {
 	const config = {
-		installationId: process.env.SST_CONSOLE_ISSUE_INSTALLATION_ID,
+		controlAccountId: process.env.SST_CONSOLE_ISSUE_CONTROL_ACCOUNT_ID,
+		stage: process.env.SST_CONSOLE_ISSUE_STAGE,
 		queueArn: process.env.SST_CONSOLE_ISSUE_QUEUE_ARN,
 		queueRegion: process.env.SST_CONSOLE_ISSUE_QUEUE_REGION,
 		ingressQueueUrl: process.env.SST_CONSOLE_ISSUE_QUEUE_URL,
@@ -631,15 +672,20 @@ function ingressConfig(): IngressConfig {
 }
 
 /** Generates regional subscriber CloudFormation resources and permissions. */
-function subscriberTemplate(config: IngressConfig, stackName: string) {
+function subscriberTemplate(
+	config: IngressConfig,
+	stackName: string,
+	roleName: string
+) {
 	return JSON.stringify({
 		AWSTemplateFormatVersion: "2010-09-09",
-		Description: "Receive CloudWatch Lambda failures for SST Console",
+		Description: `Receive CloudWatch Lambda failures for SST Console hosted in AWS account "${config.controlAccountId}", stage "${config.stage}".`,
 		Resources: {
 			SubscriberRole: {
 				Type: "AWS::IAM::Role",
 				Properties: {
-					RoleName: stackName,
+					RoleName: roleName,
+					Description: `SST Console Issue subscriber role for Console hosted in AWS account "${config.controlAccountId}", stage "${config.stage}".`,
 					AssumeRolePolicyDocument: {
 						Version: "2012-10-17",
 						Statement: [

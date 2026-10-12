@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	errorFilterPattern,
 	lambdaFromResource,
+	subscriberRoleName,
 	subscriberStackName
 } from "../../src/issue/monitoring-utils";
 import { issueSubscriptionEntity } from "../../src/issue/issue.dynamo";
@@ -57,13 +58,19 @@ describe("Issue monitoring", () => {
 		).toBeUndefined();
 	});
 
-	it("uses stable owned subscription identifiers and OC-parity error signals", () => {
+	it("uses control-account and stage-hashed subscriber names", () => {
+		expect(subscriberStackName("123456789012", "dev")).toBe(
+			"SSTConsoleIssueSubscriber-123456789012-ef260e9aa3c673af"
+		);
 		expect(
-			subscriberStackName(
-				"sst-console:123456789012:dev",
-				"ap-southeast-2"
-			)
-		).toBe("SSTConsoleIssueSubscriber-35ae3cf9a2c1-ap-southeast-2");
+			subscriberRoleName("123456789012", "dev", "ap-southeast-2")
+		).toBe("SSTConsoleIssue-123456789012-ef260e9aa3c673af-ap-southeast-2");
+		expect(
+			subscriberRoleName("123456789012", "production", "ap-southeast-2")
+		).toHaveLength(60);
+	});
+
+	it("uses OC-parity error signals", () => {
 		expect(errorFilterPattern).toContain('"Task timed out after"');
 		expect(errorFilterPattern).toContain('"Error: Runtime exited"');
 		expect(errorFilterPattern).toContain('"ERROR\t"');

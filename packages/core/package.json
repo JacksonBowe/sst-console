@@ -12,6 +12,9 @@
 		"./*": "./src/*.ts",
 		"./user*": "./src/user/index.ts"
 	},
+	"scripts": {
+		"test": "vitest"
+	},
 	"dependencies": {
 		"@aws-sdk/client-cloudformation": "^3.1141.0",
 		"@aws-sdk/client-cloudwatch-logs": "^3.1141.0",

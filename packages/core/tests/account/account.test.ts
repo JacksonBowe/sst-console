@@ -32,7 +32,8 @@ const Account = await import("../../src/account/account");
 const account = {
 	accountId: "123456789012",
 	region: "ap-southeast-2",
-	roleArn: "arn:aws:iam::123456789012:role/SSTConsoleRole",
+	roleArn:
+		"arn:aws:iam::123456789012:role/SSTConsoleRole-123456789012-ef260e9aa3c673af",
 	status: "connected" as const,
 	createdAt: "2026-10-07T00:00:00.000Z",
 	updatedAt: "2026-10-07T00:00:00.000Z"

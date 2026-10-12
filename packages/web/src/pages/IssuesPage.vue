@@ -8,6 +8,13 @@
 				<q-btn
 					flat
 					no-caps
+					color="negative"
+					label="Disable monitoring"
+					@click="confirmDisableAllMonitoring"
+				/>
+				<q-btn
+					flat
+					no-caps
 					label="Test query"
 					:loading="testing"
 					@click="testQuery"
@@ -161,6 +168,27 @@ function confirmPurge() {
 			perform: async () => {
 				await api.purgeIssues();
 				await issuesQuery.refetch();
+			}
+		}
+	});
+}
+
+function confirmDisableAllMonitoring() {
+	Dialog.create({
+		component: DialogConfirm,
+		componentProps: {
+			title: "Disable Issue monitoring",
+			message:
+				"This disables Issue monitoring on every monitored Stage. Existing log subscriptions are removed asynchronously.",
+			validationString: "DISABLE",
+			variant: "negative",
+			confirmLabel: "Disable monitoring",
+			perform: async () => {
+				const { disabled } = await api.disableAllIssueMonitoring();
+				Notify.create({
+					message: `Monitoring disabled on ${disabled} ${disabled === 1 ? "Stage" : "Stages"}`,
+					color: "positive"
+				});
 			}
 		}
 	});

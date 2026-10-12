@@ -67,7 +67,10 @@ Deploy one Console installation in a dedicated AWS control account. It can then 
 6. Connect each workload account through **Connect account** in Console. This opens AWS CloudFormation using deployment-specific connector template. Connected accounts publish SST state changes to control account, letting Console index their apps and stages.
 
 > **Warning**
-> Current connector creates `SSTConsoleRole` with `AdministratorAccess` in every connected workload account. Review template and its permissions before deployment. Project is early work; use isolated, non-production AWS accounts only.
+> Current connector creates an installation-scoped `SSTConsoleRole-<control-account-id>-<stage-hash>` with `AdministratorAccess` in every connected workload account. Its IAM role description identifies the control account and Console stage. Review template and its permissions before deployment. Project is early work; use isolated, non-production AWS accounts only.
+
+> **Issue monitoring limitation**
+> Do not monitor same workload log groups from multiple Console installations. Each installation creates a CloudWatch Logs subscription filter; AWS allows at most two filters per log group. This can support an occasional production/live-dev comparison, but is not a supported operating model.
 
 ### Public artifacts
 

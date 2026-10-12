@@ -39,6 +39,11 @@ issueRoutes.delete("/", async c => {
 	return c.body(null, 204);
 });
 
+/** Disables Issue monitoring for every Stage with monitoring enabled. */
+issueRoutes.post("/monitoring/disable", async c =>
+	c.json(await Issue.Monitoring.disableAllStages())
+);
+
 /** Returns monitoring state, subscription state, and current Issues for one stage. */
 issueRoutes.get(
 	"/:appName/:stageName",
@@ -50,6 +55,7 @@ issueRoutes.get(
 /** Confirms temporary Issue API controls are reachable. */
 issueRoutes.post("/test-query", async c => {
 	console.error("SST Console Issue test query");
+	throw new Error("SST Console Issue test query error");
 	return c.json({ message: "Issue test route is working" });
 });
 

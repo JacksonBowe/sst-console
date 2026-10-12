@@ -79,7 +79,7 @@ No secondary indexes
 
 `ConsoleData` stores disposable Console projections and operational state.
 `ConsoleConnections` stores durable workload account connection configuration,
-written by the `SSTConsoleConnection` stack callback. Recovery is its sole read
+written by the installation-scoped `SSTConsoleConnection-<control-account-id>-<stage-hash>` stack callback. Its description identifies the control account and Console stage. Recovery is its sole read
 pattern: query the fixed `CONNECTIONS` partition and restore the ConsoleData
 account records. It has no GSI. SST links each table only to functions that need
 it. Core resolves names through `Resource.ConsoleData.name` and

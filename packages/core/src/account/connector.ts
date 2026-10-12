@@ -13,12 +13,13 @@ import { defineEvent } from "../event";
 import { fn } from "../util/fn";
 import * as Account from "./account";
 import { removeAccountProjections } from "./projection";
-import { ConnectorCallbackSchema, ConnectorSchema } from "./schema";
+import {
+	ConnectorCallbackSchema,
+	ConnectorRoleArnPattern,
+	ConnectorSchema
+} from "./schema";
 
 const sts = new STSClient({});
-const roleArn =
-	/^arn:(?:aws|aws-cn|aws-us-gov):iam::(?<accountId>\d{12}):role\/SSTConsoleRole$/;
-
 export const Events = {
 	Connected: defineEvent(
 		"account.connected",
@@ -95,7 +96,7 @@ export const verify = fn(ConnectorSchema, async input => {
 });
 
 export const register = fn(ConnectorCallbackSchema, async input => {
-	const roleMatch = roleArn.exec(input.roleArn);
+	const roleMatch = ConnectorRoleArnPattern.exec(input.roleArn);
 	if (roleMatch?.groups?.accountId !== input.accountId) {
 		throw new InputError(
 			"invalid_role_arn",

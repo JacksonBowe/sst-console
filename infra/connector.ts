@@ -1,7 +1,10 @@
 import { consoleArtifacts } from "./artifacts.ts";
 import { bus } from "./bus.ts";
+import { connectionStackName } from "./connection-name.ts";
 import {
 	assumeAccountRolePermission,
+	consoleInstallationDescription,
+	connectorRoleName,
 	controlAccountId,
 	externalId
 } from "./console";
@@ -49,8 +52,7 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 	contentType: "application/json",
 	content: $jsonStringify({
 		AWSTemplateFormatVersion: "2010-09-09",
-		Description:
-			"Connect this AWS account to a self-hosted SST Console installation.",
+		Description: $interpolate`Connect this AWS account to ${consoleInstallationDescription}`,
 		Parameters: {
 			ControlAccountId: {
 				Type: "String",
@@ -76,7 +78,8 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 			SSTConsoleRole: {
 				Type: "AWS::IAM::Role",
 				Properties: {
-					RoleName: "SSTConsoleRole",
+					RoleName: connectorRoleName,
+					Description: $interpolate`SST Console connector role for ${consoleInstallationDescription}`,
 					AssumeRolePolicyDocument: {
 						Version: "2012-10-17",
 						Statement: [
@@ -245,24 +248,26 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 
 const connectorTemplateUrl = $interpolate`https://${consoleArtifacts.nodes.bucket.bucketRegionalDomainName}/connect/template.json`;
 export const connectorQuickCreateUrl = $resolve({
+	externalId,
+	stage: $app.stage,
 	region,
 	templateUrl: connectorTemplateUrl,
 	controlAccountId,
 	callbackFunctionArn: connectorEvent.arn,
-	externalId,
 	consoleEventBusArn: bus.arn
 }).apply(
 	({
+		externalId,
+		stage,
 		region,
 		templateUrl,
 		controlAccountId,
 		callbackFunctionArn,
-		externalId,
 		consoleEventBusArn
 	}) => {
 		const query = new URLSearchParams({
 			templateURL: templateUrl,
-			stackName: "SSTConsoleConnection",
+			stackName: connectionStackName(controlAccountId, stage),
 			param_ControlAccountId: controlAccountId,
 			param_CallbackFunctionArn: callbackFunctionArn,
 			param_ExternalId: externalId,

@@ -1,4 +1,8 @@
-import { assumeAccountRolePermission, externalId } from "./console";
+import {
+	assumeAccountRolePermission,
+	controlAccountId,
+	externalId
+} from "./console";
 import { consoleConnections, consoleData } from "./storage";
 
 const region = aws.getRegionOutput().region;
@@ -16,7 +20,8 @@ issueReconcileQueue.subscribe({
 	],
 	environment: {
 		SST_CONSOLE_EXTERNAL_ID: externalId,
-		SST_CONSOLE_ISSUE_INSTALLATION_ID: externalId,
+		SST_CONSOLE_ISSUE_CONTROL_ACCOUNT_ID: controlAccountId,
+		SST_CONSOLE_ISSUE_STAGE: $app.stage,
 		SST_CONSOLE_ISSUE_QUEUE_ARN: issueIngressQueue.arn,
 		SST_CONSOLE_ISSUE_QUEUE_REGION: region,
 		SST_CONSOLE_ISSUE_QUEUE_URL: issueIngressQueue.url,
@@ -37,7 +42,8 @@ issueIngressQueue.subscribe({
 });
 
 export const issueEnvironment = {
-	SST_CONSOLE_ISSUE_INSTALLATION_ID: externalId,
+	SST_CONSOLE_ISSUE_CONTROL_ACCOUNT_ID: controlAccountId,
+	SST_CONSOLE_ISSUE_STAGE: $app.stage,
 	SST_CONSOLE_ISSUE_QUEUE_ARN: issueIngressQueue.arn,
 	SST_CONSOLE_ISSUE_QUEUE_REGION: region,
 	SST_CONSOLE_ISSUE_QUEUE_URL: issueIngressQueue.url,

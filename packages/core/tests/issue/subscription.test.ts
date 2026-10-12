@@ -88,7 +88,8 @@ describe("Issue subscription", () => {
 		const subscriber = {
 			accountId: subscription.accountId,
 			region: subscription.region,
-			stackName: "SSTConsoleIssueSubscriber-example",
+			stackName:
+				"SSTConsoleIssueSubscriber-123456789012-ef260e9aa3c673af",
 			status: "ready" as const,
 			updatedAt: subscription.updatedAt
 		};

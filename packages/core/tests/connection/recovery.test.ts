@@ -43,7 +43,7 @@ describe("account recovery", () => {
 				data: {
 					accountId,
 					region: "us-east-1",
-					roleArn: `arn:aws:iam::${accountId}:role/SSTConsoleRole`,
+					roleArn: `arn:aws:iam::${accountId}:role/SSTConsoleRole-123456789012-ef260e9aa3c673af`,
 					status: "connected",
 					createdAt: "2026-01-01T00:00:00.000Z",
 					updatedAt: "2026-01-01T00:00:00.000Z"
@@ -65,7 +65,7 @@ describe("account recovery", () => {
 							accountId: "111111111111",
 							region: "us-east-1",
 							roleArn:
-								"arn:aws:iam::111111111111:role/SSTConsoleRole",
+								"arn:aws:iam::111111111111:role/SSTConsoleRole-123456789012-ef260e9aa3c673af",
 							status: "connected",
 							createdAt: "2026-01-01T00:00:00.000Z",
 							updatedAt: "2026-01-02T00:00:00.000Z"
@@ -81,7 +81,8 @@ describe("account recovery", () => {
 		expect(upsertConnection).toHaveBeenCalledWith({
 			accountId: "111111111111",
 			region: "us-east-1",
-			roleArn: "arn:aws:iam::111111111111:role/SSTConsoleRole",
+			roleArn:
+				"arn:aws:iam::111111111111:role/SSTConsoleRole-123456789012-ef260e9aa3c673af",
 			createdAt: "2026-01-01T00:00:00.000Z",
 			updatedAt: "2026-01-02T00:00:00.000Z"
 		});
@@ -92,12 +93,14 @@ describe("account recovery", () => {
 			{
 				accountId: "111111111111",
 				region: "us-east-1",
-				roleArn: "arn:aws:iam::111111111111:role/SSTConsoleRole"
+				roleArn:
+					"arn:aws:iam::111111111111:role/SSTConsoleRole-123456789012-ef260e9aa3c673af"
 			},
 			{
 				accountId: "222222222222",
 				region: "us-west-2",
-				roleArn: "arn:aws:iam::222222222222:role/SSTConsoleRole"
+				roleArn:
+					"arn:aws:iam::222222222222:role/SSTConsoleRole-123456789012-ef260e9aa3c673af"
 			}
 		]);
 		const result = await recover({});
