@@ -292,12 +292,6 @@ export const consoleMethods = (request: RequestFn) => ({
 			url: `issues/${encodeURIComponent(issue.appName)}/${encodeURIComponent(issue.stageName)}/${encodeURIComponent(issue.fingerprint)}/status`,
 			data: { status }
 		}),
-	setAppIssueMonitoring: (appName: string, enabled: boolean): Promise<void> =>
-		request({
-			method: "POST",
-			url: `issues/apps/${encodeURIComponent(appName)}/monitoring`,
-			data: { enabled }
-		}),
 	disableAllIssueMonitoring: (): Promise<{ disabled: number }> =>
 		request({ method: "POST", url: "issues/monitoring/disable" }),
 	setStageIssueMonitoring: (

@@ -17,7 +17,6 @@ const IssueListSchema = z.object({
 	status: Issue.IssueStatusSchema.optional()
 });
 const IssueStatusSchema = z.object({ status: Issue.IssueStatusSchema });
-const MonitoringSchema = z.object({ enabled: z.boolean() });
 const IssueSeedSchema = z.object({
 	count: z.coerce.number().int().min(1).max(100).default(25)
 });
@@ -113,20 +112,6 @@ issueRoutes.post("/test-seed", zValidator("json", IssueSeedSchema), async c => {
 	await Promise.all(issues.map(issue => Issue.create(issue)));
 	return c.json({ issues });
 });
-
-/** Enables or disables monitoring for every current Stage in one App. */
-issueRoutes.post(
-	"/apps/:appName/monitoring",
-	zValidator("param", StageKeySchema.pick({ appName: true })),
-	zValidator("json", MonitoringSchema),
-	async c => {
-		await Issue.Monitoring.setAppEnabled({
-			appName: c.req.valid("param").appName,
-			enabled: c.req.valid("json").enabled
-		});
-		return c.body(null, 204);
-	}
-);
 
 /** Changes one Issue lifecycle state. */
 issueRoutes.post(
