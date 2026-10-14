@@ -3,6 +3,8 @@ import type { Issue } from "../issue";
 const webhookPattern =
 	/^https:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/api\/webhooks\//;
 
+const maxErrorMessageLength = 3_900;
+
 /** Validates a Discord webhook URL without logging its credential-bearing path. */
 export function isDiscordWebhookUrl(value: string) {
 	return webhookPattern.test(value);
@@ -19,8 +21,10 @@ export async function sendDiscordIssueAlert(input: {
 		body: JSON.stringify({
 			embeds: [
 				{
-					title: `New Issue: ${input.issue.errorType}`,
-					description: input.issue.errorMessage,
+					title: `🚨 ${input.issue.errorType}`,
+					description: `\`\`\`\n${input.issue.errorMessage
+						.slice(0, maxErrorMessageLength)
+						.replaceAll("```", "``\u200b`")}\n\`\`\``,
 					color: 0xed3b3b,
 					fields: [
 						{
