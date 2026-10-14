@@ -4,6 +4,7 @@ import {
 	externalId
 } from "./console";
 import { consoleConnections, consoleData } from "./storage";
+import { bus } from "./event-bus";
 
 const region = aws.getRegionOutput().region;
 
@@ -38,7 +39,7 @@ issueReconcileQueue.subscribe({
 
 issueIngressQueue.subscribe({
 	handler: "packages/functions/src/events/issue-ingress.handler",
-	link: [consoleData, issueIngressQueue]
+	link: [bus, consoleData, issueIngressQueue]
 });
 
 export const issueEnvironment = {

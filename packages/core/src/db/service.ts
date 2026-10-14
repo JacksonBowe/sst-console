@@ -14,6 +14,8 @@ import {
 	issueSubscriberEntity,
 	issueSubscriptionEntity
 } from "../issue/issue.dynamo";
+import { alertEntity } from "../alert/alert.dynamo";
+import { alertTargetEntity } from "../alert-target/alert-target.dynamo";
 import { dynamo } from "./client";
 
 export const db = new Service(
@@ -29,7 +31,9 @@ export const db = new Service(
 		userIdentity: userIdentityEntity,
 		issue: issueEntity,
 		issueSubscriber: issueSubscriberEntity,
-		issueSubscription: issueSubscriptionEntity
+		issueSubscription: issueSubscriptionEntity,
+		alert: alertEntity,
+		alertTarget: alertTargetEntity
 	},
 	{ client: dynamo, table: Resource.ConsoleData.name }
 );

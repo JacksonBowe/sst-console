@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { Resource } from "sst";
+import { bus } from "sst/aws/bus";
 
 import { isIssueWorkerFunction } from "./monitoring-utils";
 import * as Issue from "./issue";
@@ -51,16 +53,20 @@ export async function processCandidate(input: IssueCandidate) {
 		const existing = await Issue.find(key);
 		const occurredAt = new Date(event.timestamp).toISOString();
 		if (!existing) {
-			await Issue.create({
+			const issue = {
 				...key,
 				accountId: input.source.accountId,
 				region: input.source.region,
-				functionArn: subscription.functionArn,
-				functionName: functionName(subscription.functionArn),
+				...(subscription.functionArn
+					? {
+							functionArn: subscription.functionArn,
+							functionName: functionName(subscription.functionArn)
+						}
+					: {}),
 				errorType: parsed.errorType,
 				errorMessage: parsed.errorMessage,
-				stack: parsed.stack,
-				status: "open",
+				...(parsed.stack ? { stack: parsed.stack } : {}),
+				status: "open" as const,
 				statusUpdatedAt: occurredAt,
 				count: 1,
 				firstSeenAt: occurredAt,
@@ -68,10 +74,16 @@ export async function processCandidate(input: IssueCandidate) {
 				logGroup: input.source.logGroup,
 				logStream: input.source.logStream,
 				logTimestamp: event.timestamp
-			}).catch(async error => {
-				if (error.name !== "ConditionalCheckFailedException")
+			};
+			try {
+				await Issue.create(issue);
+			} catch (error) {
+				if (
+					!(error instanceof Error) ||
+					error.name !== "ConditionalCheckFailedException"
+				)
 					throw error;
-				await incrementIssue(
+				const updated = await incrementIssue(
 					subscription,
 					fingerprint,
 					input.source,
@@ -80,10 +92,15 @@ export async function processCandidate(input: IssueCandidate) {
 					occurredAt,
 					existing
 				);
-			});
+				await bus.publish(Resource.Bus, Issue.Events.Updated, {
+					issue: updated
+				});
+				continue;
+			}
+			await bus.publish(Resource.Bus, Issue.Events.Created, { issue });
 			continue;
 		}
-		await incrementIssue(
+		const updated = await incrementIssue(
 			subscription,
 			fingerprint,
 			input.source,
@@ -92,6 +109,9 @@ export async function processCandidate(input: IssueCandidate) {
 			occurredAt,
 			existing
 		);
+		await bus.publish(Resource.Bus, Issue.Events.Updated, {
+			issue: updated
+		});
 	}
 }
 
@@ -126,6 +146,11 @@ async function incrementIssue(
 		...(reopen
 			? { status: "open" as const, statusUpdatedAt: occurredAt }
 			: {})
+	});
+	return Issue.get({
+		appName: subscription.appName,
+		stageName: subscription.stageName,
+		fingerprint
 	});
 }
 

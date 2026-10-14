@@ -2,6 +2,40 @@ import type { RequestFn } from "./request";
 
 export type AccountStatus = "connected" | "disconnected";
 export type IssueStatus = "open" | "resolved" | "suppressed";
+export type AlertChannel = "discord";
+export type AlertType = "issue";
+
+export type Alert = {
+	id: string;
+	type: AlertType;
+	appName?: string;
+	stageName?: string;
+	targetIds: string[];
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type AlertInput = {
+	type: AlertType;
+	appName?: string;
+	stageName?: string;
+	targetIds: string[];
+};
+
+export type AlertTarget = {
+	id: string;
+	name: string;
+	channel: AlertChannel;
+	configured: true;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type AlertTargetInput = {
+	name: string;
+	channel: AlertChannel;
+	channelConfig: { webhookUrl: string };
+};
 
 export type StageSelector = { app: string; stage?: string };
 
@@ -218,6 +252,41 @@ export type IssuesFilters = {
 };
 
 export const consoleMethods = (request: RequestFn) => ({
+	listAlertTargets: (): Promise<AlertTarget[]> =>
+		request({ method: "GET", url: "alert-targets" }),
+	createAlertTarget: (input: AlertTargetInput): Promise<AlertTarget> =>
+		request({ method: "POST", url: "alert-targets", data: input }),
+	updateAlertTarget: (
+		id: string,
+		input: AlertTargetInput
+	): Promise<AlertTarget> =>
+		request({
+			method: "PUT",
+			url: `alert-targets/${encodeURIComponent(id)}`,
+			data: input
+		}),
+	removeAlertTarget: (id: string): Promise<void> =>
+		request({
+			method: "DELETE",
+			url: `alert-targets/${encodeURIComponent(id)}`
+		}),
+	testAlertTarget: (id: string): Promise<void> =>
+		request({
+			method: "POST",
+			url: `alert-targets/${encodeURIComponent(id)}/test`
+		}),
+	listAlerts: (): Promise<Alert[]> =>
+		request({ method: "GET", url: "alerts" }),
+	createAlert: (input: AlertInput): Promise<Alert> =>
+		request({ method: "POST", url: "alerts", data: input }),
+	updateAlert: (id: string, input: AlertInput): Promise<Alert> =>
+		request({
+			method: "PUT",
+			url: `alerts/${encodeURIComponent(id)}`,
+			data: input
+		}),
+	removeAlert: (id: string): Promise<void> =>
+		request({ method: "DELETE", url: `alerts/${encodeURIComponent(id)}` }),
 	listApps: <Summaries extends boolean = false>(
 		options: ListAppsOptions<Summaries> = {}
 	): Promise<Summaries extends true ? AppSummary[] : App[]> =>

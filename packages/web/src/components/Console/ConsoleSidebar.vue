@@ -65,6 +65,7 @@ const navigation = computed<DrawerNavItem[]>(() => {
 				? { badge: openIssueCount, badgeColor: "negative" }
 				: {})
 		},
+		{ label: "Alerts", icon: "sym_r_notifications", to: "/alerts" },
 		{ label: "Accounts", icon: "sym_r_account_balance", to: "/accounts" },
 		{ label: "Users", icon: "sym_r_group", to: "/users" },
 		{ label: "Operations", icon: "sym_r_build", to: "/operations" }

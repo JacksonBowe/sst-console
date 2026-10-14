@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { defineEvent } from "../event";
 
 import { StageKeySchema } from "../app";
 import { db } from "../db";
@@ -30,6 +31,11 @@ export const IssueSchema = IssueKeySchema.extend({
 });
 
 export type Issue = z.infer<typeof IssueSchema>;
+
+export const Events = {
+	Created: defineEvent("issue.created", z.object({ issue: IssueSchema })),
+	Updated: defineEvent("issue.updated", z.object({ issue: IssueSchema }))
+};
 
 const ListSchema = z.object({
 	appName: z.string().min(1).optional(),

@@ -52,10 +52,9 @@ issueRoutes.get(
 );
 
 /** Confirms temporary Issue API controls are reachable. */
-issueRoutes.post("/test-query", async c => {
+issueRoutes.post("/test-query", async _c => {
 	console.error("SST Console Issue test query");
 	throw new Error("SST Console Issue test query error");
-	return c.json({ message: "Issue test route is working" });
 });
 
 /** Seeds test Issues across connected Stages for frontend development. */

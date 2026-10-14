@@ -1,8 +1,20 @@
 import { assumeAccountRolePermission, externalId } from "./console";
-import { consoleConnections, consoleData } from "./storage";
+import { bus } from "./event-bus";
 import { issueEnvironment, issueReconcileQueue } from "./issue";
+import { consoleConnections, consoleData } from "./storage";
 
-export const bus = new sst.aws.Bus("Bus");
+export { bus } from "./event-bus";
+
+bus.subscribe(
+	"AlertEvents",
+	{
+		handler: "packages/functions/src/events/alert.handler",
+		link: [consoleData, consoleConnections]
+	},
+	{
+		pattern: { detailType: [{ prefix: "issue." }] }
+	}
+);
 
 bus.subscribe(
 	"AccountEvents",

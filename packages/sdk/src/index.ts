@@ -10,6 +10,12 @@ export type {
 export type { AuthChallenge, AuthMethods, AuthResult } from "./auth";
 export type {
 	Account,
+	Alert,
+	AlertChannel,
+	AlertInput,
+	AlertTarget,
+	AlertTargetInput,
+	AlertType,
 	AccountSyncPolicy,
 	AccountApp,
 	AccountDetail,

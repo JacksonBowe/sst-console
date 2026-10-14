@@ -8,6 +8,8 @@ import { HTTPException } from "hono/http-exception";
 import { Resource } from "sst";
 
 import { accountRoutes } from "./account";
+import { alertRoutes } from "./alert";
+import { alertTargetRoutes } from "./alert-target";
 import { appRoutes } from "./app";
 import { authRoutes } from "./auth";
 import { authorize } from "./authorizer";
@@ -30,6 +32,8 @@ app.route("/noauth", authRoutes);
 const protectedRoutes = new Hono<{ Bindings: Bindings }>();
 protectedRoutes.use("*", authorize);
 protectedRoutes.route("/accounts", accountRoutes);
+protectedRoutes.route("/alerts", alertRoutes);
+protectedRoutes.route("/alert-targets", alertTargetRoutes);
 protectedRoutes.route("/apps", appRoutes);
 
 protectedRoutes.route("/issues", issueRoutes);
