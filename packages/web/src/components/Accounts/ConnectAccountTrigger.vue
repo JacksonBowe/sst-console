@@ -1,9 +1,10 @@
 <template>
-	<DialogTrigger>
-		<template #trigger="{ open }">
-			<slot name="trigger" :open="open" />
-		</template>
-
+	<DialogTrigger
+		unelevated
+		color="primary"
+		icon="sym_r_add"
+		label="Connect account"
+	>
 		<ConnectAccountDialog :quick-create-url="quickCreateUrl" />
 	</DialogTrigger>
 </template>

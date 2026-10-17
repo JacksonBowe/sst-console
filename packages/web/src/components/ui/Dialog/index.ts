@@ -1,5 +1,6 @@
 // packages/web/src/components/ui/dialog/index.ts
 export { default as DialogConfirm } from "./DialogConfirm.vue";
+export { default as DialogBase } from "./DialogBase.vue";
 export { default as DialogForm } from "./DialogForm.vue";
 export { default as DialogTrigger } from "./DialogTrigger.vue";
 
