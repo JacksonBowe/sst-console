@@ -3,7 +3,7 @@
 		<q-form @submit.prevent="save">
 			<q-card-section>
 				<div class="text-h6">
-					{{ alert ? "Edit alert" : "Create alert" }}
+					{{ alert ? "Edit alert rule" : "Create alert rule" }}
 				</div>
 			</q-card-section>
 			<q-card-section class="q-gutter-md">
@@ -34,8 +34,8 @@
 					map-options
 				/>
 				<SSelect
-					v-model="form.targetIds"
-					label="Targets"
+					v-model="form.notificationDestinationIds"
+					label="Notification destinations"
 					:options="targetOptions"
 					option-label="label"
 					option-value="value"
@@ -49,7 +49,7 @@
 					v-if="!targetOptions.length"
 					class="text-caption text-warning"
 				>
-					Create an Alert target before creating an Alert.
+					Add a notification channel before creating an alert rule.
 				</div>
 			</q-card-section>
 			<q-card-actions align="right">
@@ -67,7 +67,11 @@
 					label="Save"
 					type="submit"
 					:loading="saving"
-					:disable="!dirty || saving || !form.targetIds.length"
+					:disable="
+						!dirty ||
+						saving ||
+						!form.notificationDestinationIds.length
+					"
 				/>
 			</q-card-actions>
 		</q-form>
@@ -75,32 +79,34 @@
 </template>
 
 <script setup lang="ts">
-import type { Alert, AlertInput } from "@sst-console/sdk";
+import type { AlertRule, AlertRuleInput } from "@sst-console/sdk";
 import { computed, ref } from "vue";
 
 import { api, handleApiError } from "@/boot/api-client";
-import { useAlertTargets } from "@/composables/alert-targets";
-import { useAlerts } from "@/composables/alerts";
+import { useNotificationDestinations } from "@/composables/notification-destinations";
+import { useAlertRules } from "@/composables/alert-rules";
 import { useApps } from "@/composables/apps";
 import { rules, useForm } from "@/components/ui/form";
 import { SSelect } from "@/components/ui/Select";
 
-type AlertFormState = Omit<AlertInput, "appName" | "stageName"> & {
+type AlertRuleFormState = Omit<AlertRuleInput, "appName" | "stageName"> & {
 	appName: string | null;
 	stageName: string | null;
 };
 
-const props = defineProps<{ alert?: Alert }>();
+const props = defineProps<{ alert?: AlertRule }>();
 const emit = defineEmits<{ success: [] }>();
-const alertsQuery = useAlerts();
-const targetsQuery = useAlertTargets();
+const alertsQuery = useAlertRules();
+const targetsQuery = useNotificationDestinations();
 const appsQuery = useApps();
 const saving = ref(false);
-const { form, dirty } = useForm<AlertFormState>({
+const { form, dirty } = useForm<AlertRuleFormState>({
 	type: props.alert?.type ?? "issue",
 	appName: props.alert?.appName ?? null,
 	stageName: props.alert?.stageName ?? null,
-	targetIds: props.alert ? [...props.alert.targetIds] : []
+	notificationDestinationIds: props.alert
+		? [...props.alert.notificationDestinationIds]
+		: []
 });
 const targetOptions = computed(() =>
 	(targetsQuery.data.value ?? []).map(target => ({
@@ -136,14 +142,14 @@ function selectApp(appName: string | null) {
 async function save() {
 	saving.value = true;
 	try {
-		const input: AlertInput = {
+		const input: AlertRuleInput = {
 			type: form.type,
-			targetIds: form.targetIds,
+			notificationDestinationIds: form.notificationDestinationIds,
 			...(form.appName ? { appName: form.appName } : {}),
 			...(form.stageName ? { stageName: form.stageName } : {})
 		};
-		if (props.alert) await api.updateAlert(props.alert.id, input);
-		else await api.createAlert(input);
+		if (props.alert) await api.updateAlertRule(props.alert.id, input);
+		else await api.createAlertRule(input);
 		await alertsQuery.refetch();
 		emit("success");
 	} catch (error) {

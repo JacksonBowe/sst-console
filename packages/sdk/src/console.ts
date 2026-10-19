@@ -2,38 +2,38 @@ import type { RequestFn } from "./request";
 
 export type AccountStatus = "connected" | "disconnected";
 export type IssueStatus = "open" | "resolved" | "suppressed";
-export type AlertChannel = "discord";
-export type AlertType = "issue";
+export type NotificationChannel = "discord";
+export type AlertRuleType = "issue";
 
-export type Alert = {
+export type AlertRule = {
 	id: string;
-	type: AlertType;
+	type: AlertRuleType;
 	appName?: string;
 	stageName?: string;
-	targetIds: string[];
+	notificationDestinationIds: string[];
 	createdAt: string;
 	updatedAt: string;
 };
 
-export type AlertInput = {
-	type: AlertType;
+export type AlertRuleInput = {
+	type: AlertRuleType;
 	appName?: string;
 	stageName?: string;
-	targetIds: string[];
+	notificationDestinationIds: string[];
 };
 
-export type AlertTarget = {
+export type NotificationDestination = {
 	id: string;
 	name: string;
-	channel: AlertChannel;
+	channel: NotificationChannel;
 	configured: true;
 	createdAt: string;
 	updatedAt: string;
 };
 
-export type AlertTargetInput = {
+export type NotificationDestinationInput = {
 	name: string;
-	channel: AlertChannel;
+	channel: NotificationChannel;
 	channelConfig: { webhookUrl: string };
 };
 
@@ -252,41 +252,50 @@ export type IssuesFilters = {
 };
 
 export const consoleMethods = (request: RequestFn) => ({
-	listAlertTargets: (): Promise<AlertTarget[]> =>
-		request({ method: "GET", url: "alert-targets" }),
-	createAlertTarget: (input: AlertTargetInput): Promise<AlertTarget> =>
-		request({ method: "POST", url: "alert-targets", data: input }),
-	updateAlertTarget: (
-		id: string,
-		input: AlertTargetInput
-	): Promise<AlertTarget> =>
-		request({
-			method: "PUT",
-			url: `alert-targets/${encodeURIComponent(id)}`,
-			data: input
-		}),
-	removeAlertTarget: (id: string): Promise<void> =>
-		request({
-			method: "DELETE",
-			url: `alert-targets/${encodeURIComponent(id)}`
-		}),
-	testAlertTarget: (id: string): Promise<void> =>
+	listNotificationDestinations: (): Promise<NotificationDestination[]> =>
+		request({ method: "GET", url: "notification-destinations" }),
+	createNotificationDestination: (
+		input: NotificationDestinationInput
+	): Promise<NotificationDestination> =>
 		request({
 			method: "POST",
-			url: `alert-targets/${encodeURIComponent(id)}/test`
-		}),
-	listAlerts: (): Promise<Alert[]> =>
-		request({ method: "GET", url: "alerts" }),
-	createAlert: (input: AlertInput): Promise<Alert> =>
-		request({ method: "POST", url: "alerts", data: input }),
-	updateAlert: (id: string, input: AlertInput): Promise<Alert> =>
-		request({
-			method: "PUT",
-			url: `alerts/${encodeURIComponent(id)}`,
+			url: "notification-destinations",
 			data: input
 		}),
-	removeAlert: (id: string): Promise<void> =>
-		request({ method: "DELETE", url: `alerts/${encodeURIComponent(id)}` }),
+	updateNotificationDestination: (
+		id: string,
+		input: NotificationDestinationInput
+	): Promise<NotificationDestination> =>
+		request({
+			method: "PUT",
+			url: `notification-destinations/${encodeURIComponent(id)}`,
+			data: input
+		}),
+	removeNotificationDestination: (id: string): Promise<void> =>
+		request({
+			method: "DELETE",
+			url: `notification-destinations/${encodeURIComponent(id)}`
+		}),
+	testNotificationDestination: (id: string): Promise<void> =>
+		request({
+			method: "POST",
+			url: `notification-destinations/${encodeURIComponent(id)}/test`
+		}),
+	listAlertRules: (): Promise<AlertRule[]> =>
+		request({ method: "GET", url: "alert-rules" }),
+	createAlertRule: (input: AlertRuleInput): Promise<AlertRule> =>
+		request({ method: "POST", url: "alert-rules", data: input }),
+	updateAlertRule: (id: string, input: AlertRuleInput): Promise<AlertRule> =>
+		request({
+			method: "PUT",
+			url: `alert-rules/${encodeURIComponent(id)}`,
+			data: input
+		}),
+	removeAlertRule: (id: string): Promise<void> =>
+		request({
+			method: "DELETE",
+			url: `alert-rules/${encodeURIComponent(id)}`
+		}),
 	listApps: <Summaries extends boolean = false>(
 		options: ListAppsOptions<Summaries> = {}
 	): Promise<Summaries extends true ? AppSummary[] : App[]> =>

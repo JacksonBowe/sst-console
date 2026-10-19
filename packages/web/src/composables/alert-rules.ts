@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/vue-query";
 
 import { api } from "@/boot/api-client";
 
-export function useAlertTargets() {
+export function useAlertRules() {
 	return useQuery({
-		queryKey: ["alert-targets"],
-		queryFn: () => api.listAlertTargets()
+		queryKey: ["alert-rules"],
+		queryFn: () => api.listAlertRules()
 	});
 }

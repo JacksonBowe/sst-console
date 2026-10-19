@@ -3,10 +3,14 @@
 		<q-form @submit.prevent="save">
 			<q-card-section>
 				<div class="text-h6">
-					{{ target ? "Edit alert target" : "Create alert target" }}
+					{{
+						target
+							? "Edit notification destination"
+							: "Add notification destination"
+					}}
 				</div>
 				<div class="text-body2 text-muted q-mt-xs">
-					Choose where Console should deliver alerts.
+					Choose where Console should deliver issue notifications.
 				</div>
 			</q-card-section>
 			<q-separator />
@@ -86,9 +90,9 @@
 					</q-banner>
 					<SInput
 						v-model.trim="form.name"
-						label="Target name"
-						hint="Use a name that identifies this Discord channel."
-						:rules="rules.required('Target name is required')"
+						label="Destination name"
+						hint="Use a name that identifies this Discord destination."
+						:rules="rules.required('Destination name is required')"
 						placeholder="My Server #general"
 					/>
 					<SInput
@@ -119,7 +123,7 @@
 					unelevated
 					no-caps
 					color="primary"
-					label="Save target"
+					label="Save destination"
 					type="submit"
 					:loading="saving"
 					:disable="!dirty || saving"
@@ -130,17 +134,20 @@
 </template>
 
 <script setup lang="ts">
-import type { AlertTarget, AlertTargetInput } from "@sst-console/sdk";
+import type {
+	NotificationDestination,
+	NotificationDestinationInput
+} from "@sst-console/sdk";
 import { ref } from "vue";
 
 import { api, handleApiError } from "@/boot/api-client";
-import { useAlertTargets } from "@/composables/alert-targets";
+import { useNotificationDestinations } from "@/composables/notification-destinations";
 import { rules, useForm } from "@/components/ui/form";
 import { SInput } from "@/components/ui/Input";
 
-const props = defineProps<{ target?: AlertTarget }>();
+const props = defineProps<{ target?: NotificationDestination }>();
 const emit = defineEmits<{ success: [] }>();
-const targetsQuery = useAlertTargets();
+const targetsQuery = useNotificationDestinations();
 const saving = ref(false);
 const { form, dirty } = useForm({
 	name: props.target?.name ?? "",
@@ -150,13 +157,14 @@ const { form, dirty } = useForm({
 async function save() {
 	saving.value = true;
 	try {
-		const input: AlertTargetInput = {
+		const input: NotificationDestinationInput = {
 			name: form.name,
 			channel: "discord",
 			channelConfig: { webhookUrl: form.webhookUrl }
 		};
-		if (props.target) await api.updateAlertTarget(props.target.id, input);
-		else await api.createAlertTarget(input);
+		if (props.target)
+			await api.updateNotificationDestination(props.target.id, input);
+		else await api.createNotificationDestination(input);
 		await targetsQuery.refetch();
 		emit("success");
 	} catch (error) {

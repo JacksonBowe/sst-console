@@ -8,7 +8,7 @@ export { bus } from "./event-bus";
 bus.subscribe(
 	"AlertEvents",
 	{
-		handler: "packages/functions/src/events/alert.handler",
+		handler: "packages/functions/src/events/alert-rule.handler",
 		link: [consoleData, consoleConnections]
 	},
 	{

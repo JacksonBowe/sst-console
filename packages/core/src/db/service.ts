@@ -14,8 +14,8 @@ import {
 	issueSubscriberEntity,
 	issueSubscriptionEntity
 } from "../issue/issue.dynamo";
-import { alertEntity } from "../alert/alert.dynamo";
-import { alertTargetEntity } from "../alert-target/alert-target.dynamo";
+import { alertRuleEntity } from "../alert-rule/alert-rule.dynamo";
+import { notificationDestinationEntity } from "../notification-destination/notification-destination.dynamo";
 import { dynamo } from "./client";
 
 export const db = new Service(
@@ -32,8 +32,8 @@ export const db = new Service(
 		issue: issueEntity,
 		issueSubscriber: issueSubscriberEntity,
 		issueSubscription: issueSubscriptionEntity,
-		alert: alertEntity,
-		alertTarget: alertTargetEntity
+		alertRule: alertRuleEntity,
+		notificationDestination: notificationDestinationEntity
 	},
 	{ client: dynamo, table: Resource.ConsoleData.name }
 );

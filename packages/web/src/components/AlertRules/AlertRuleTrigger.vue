@@ -4,16 +4,16 @@
 			<slot name="trigger" :open="open" />
 		</template>
 
-		<AlertForm v-bind="alert ? { alert } : {}" />
+		<AlertRuleForm v-bind="alert ? { alert } : {}" />
 	</DialogTrigger>
 </template>
 
 <script setup lang="ts">
-import type { Alert } from "@sst-console/sdk";
+import type { AlertRule } from "@sst-console/sdk";
 
 import { DialogTrigger } from "@/components/ui/Dialog";
 
-import AlertForm from "./AlertForm.vue";
+import AlertRuleForm from "./AlertRuleForm.vue";
 
-defineProps<{ alert?: Alert }>();
+defineProps<{ alert?: AlertRule }>();
 </script>

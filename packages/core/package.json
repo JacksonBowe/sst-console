@@ -9,8 +9,9 @@
 		"./app": "./src/app/index.ts",
 		"./db": "./src/db/index.ts",
 		"./issue": "./src/issue/index.ts",
-		"./alert": "./src/alert/index.ts",
-		"./alert-target": "./src/alert-target/index.ts",
+		"./alert-rule": "./src/alert-rule/index.ts",
+		"./notification": "./src/notification/index.ts",
+		"./notification-destination": "./src/notification-destination/index.ts",
 		"./*": "./src/*.ts",
 		"./user*": "./src/user/index.ts"
 	},

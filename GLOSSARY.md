@@ -54,13 +54,17 @@ _Avoid_: Error, exception, incident
 Stage-level Console configuration that observes eligible Lambda log groups and produces Issues.
 _Avoid_: Logging, alerting
 
-**Alert**:
-Routing configuration that selects Issue events by App or Stage and sends them to Alert Targets.
-_Avoid_: Notification, rule
+**Alert Rule**:
+Routing configuration that selects Issue events by App or Stage and sends Notifications to Notification Destinations.
+_Avoid_: Alert, notification rule
 
-**Alert Target**:
-Reusable configured destination for Alert delivery.
-_Avoid_: Webhook, channel, integration
+**Notification Destination**:
+Reusable configured destination for Notification delivery. Its channel identifies delivery mechanism, such as Discord.
+_Avoid_: Alert Target, recipient
+
+**Notification**:
+Message for delivery through a Notification Destination.
+_Avoid_: Alert
 
 **Console User**:
 A person authorized to use SST Console, represented separately from their Cognito identity.
@@ -74,5 +78,5 @@ _Avoid_: Account, Cognito user
 - A **Stage** contains **Resources** and has **State Snapshots**.
 - A **Sync Run** reconciles selected **SST State** into App, Stage, Resource, and State Snapshot projections.
 - **Issue Monitoring** on a **Stage** produces **Issues**.
-- An **Alert** matches **Issues** and routes them to one or more **Alert Targets**.
+- An **Alert Rule** matches **Issues** and routes Notifications to one or more **Notification Destinations**.
 - A **Console User** is authenticated through one Cognito identity.

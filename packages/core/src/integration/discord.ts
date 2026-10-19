@@ -1,72 +1,35 @@
-import type { Issue } from "../issue";
+import type { Notification } from "../notification";
 
 const webhookPattern =
 	/^https:\/\/(?:canary\.|ptb\.)?discord(?:app)?\.com\/api\/webhooks\//;
 
-const maxErrorMessageLength = 3_900;
+const maxBodyLength = 3_900;
 
 /** Validates a Discord webhook URL without logging its credential-bearing path. */
 export function isDiscordWebhookUrl(value: string) {
 	return webhookPattern.test(value);
 }
 
-/** Delivers an Issue-created Alert through a Discord webhook. */
-export async function sendDiscordIssueAlert(input: {
+/** Delivers a generic notification through a Discord webhook. */
+export async function send(input: {
 	webhookUrl: string;
-	issue: Issue;
+	notification: Notification;
 }) {
+	const { notification } = input;
 	const response = await fetch(input.webhookUrl, {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({
 			embeds: [
 				{
-					title: `🚨 ${input.issue.errorType}`,
-					description: `\`\`\`\n${input.issue.errorMessage
-						.slice(0, maxErrorMessageLength)
+					title: notification.title,
+					description: `\`\`\`\n${notification.body
+						.slice(0, maxBodyLength)
 						.replaceAll("```", "``\u200b`")}\n\`\`\``,
-					color: 0xed3b3b,
-					fields: [
-						{
-							name: "App",
-							value: input.issue.appName,
-							inline: true
-						},
-						{
-							name: "Stage",
-							value: input.issue.stageName,
-							inline: true
-						},
-						{
-							name: "Function",
-							value:
-								input.issue.functionName ??
-								input.issue.logGroup,
-							inline: false
-						}
-					],
-					timestamp: input.issue.firstSeenAt
-				}
-			]
-		})
-	});
-	if (!response.ok)
-		throw new Error(`Discord webhook returned HTTP ${response.status}`);
-}
-
-/** Delivers a proof-of-connection message through a Discord webhook. */
-export async function sendDiscordTestAlert(webhookUrl: string) {
-	const response = await fetch(webhookUrl, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
-			embeds: [
-				{
-					title: "SST Console test alert",
-					description:
-						"This message confirms SST Console can deliver alerts to this target.",
-					color: 0x1976d2,
-					timestamp: new Date().toISOString()
+					color:
+						notification.severity === "error" ? 0xed3b3b : 0x1976d2,
+					fields: notification.fields,
+					timestamp: notification.occurredAt
 				}
 			]
 		})

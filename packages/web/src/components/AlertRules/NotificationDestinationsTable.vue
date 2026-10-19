@@ -4,7 +4,7 @@
 		:columns="columns"
 		:loading="loading"
 		row-key="id"
-		empty-message="No alert targets configured"
+		empty-message="No notification destinations configured"
 	>
 		<template #body-cell-actions="tableProps">
 			<q-td :props="tableProps">
@@ -19,9 +19,9 @@
 						:disable="testingTargetId !== undefined"
 						@click="$emit('test', tableProps.row)"
 					>
-						<q-tooltip>Send a test alert</q-tooltip>
+						<q-tooltip>Send a test notification</q-tooltip>
 					</q-btn>
-					<AlertTargetTrigger :target="tableProps.row">
+					<NotificationDestinationTrigger :target="tableProps.row">
 						<template #trigger="{ open }">
 							<q-btn
 								flat
@@ -30,10 +30,10 @@
 								icon="sym_r_edit"
 								@click="open"
 							>
-								<q-tooltip>Edit target</q-tooltip>
+								<q-tooltip>Edit channel</q-tooltip>
 							</q-btn>
 						</template>
-					</AlertTargetTrigger>
+					</NotificationDestinationTrigger>
 					<q-btn
 						flat
 						dense
@@ -42,35 +42,48 @@
 						icon="sym_r_delete"
 						@click="$emit('remove', tableProps.row)"
 					>
-						<q-tooltip>Delete target</q-tooltip>
+						<q-tooltip>Delete channel</q-tooltip>
 					</q-btn>
 				</div>
 			</q-td>
+		</template>
+
+		<template #body-cell-usage="tableProps">
+			<q-td :props="tableProps">{{ ruleUsage(tableProps.row.id) }}</q-td>
 		</template>
 	</BaseTable>
 </template>
 
 <script setup lang="ts">
-import type { AlertTarget } from "@sst-console/sdk";
+import type { AlertRule, NotificationDestination } from "@sst-console/sdk";
 
 import { BaseTable, type ExtendedQTableColumn } from "@/components/ui/Table";
 
-import AlertTargetTrigger from "./AlertTargetTrigger.vue";
+import NotificationDestinationTrigger from "./NotificationDestinationTrigger.vue";
 
-defineProps<{
-	targets: AlertTarget[];
+const props = defineProps<{
+	targets: NotificationDestination[];
+	alerts: AlertRule[];
 	loading?: boolean;
 	testingTargetId?: string | undefined;
 }>();
 
 defineEmits<{
-	test: [target: AlertTarget];
-	remove: [target: AlertTarget];
+	test: [target: NotificationDestination];
+	remove: [target: NotificationDestination];
 }>();
 
 const columns: ExtendedQTableColumn[] = [
 	{ name: "name", label: "Name", field: "name", align: "left" },
-	{ name: "channel", label: "Channel", field: "channel", align: "left" },
+	{ name: "channel", label: "Provider", field: "channel", align: "left" },
+	{ name: "usage", label: "Rule usage", field: "id", align: "left" },
 	{ name: "actions", label: "", field: "id", align: "right" }
 ];
+
+function ruleUsage(targetId: string) {
+	const count = props.alerts.filter(alert =>
+		alert.notificationDestinationIds.includes(targetId)
+	).length;
+	return `${count} ${count === 1 ? "rule" : "rules"}`;
+}
 </script>
