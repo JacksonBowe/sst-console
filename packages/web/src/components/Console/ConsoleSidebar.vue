@@ -58,14 +58,13 @@ const navigation = computed<DrawerNavItem[]>(() => {
 	return [
 		{ label: "Apps", icon: "sym_r_deployed_code", to: "/apps" },
 		{
-			label: "Issues",
+			label: "Monitoring",
 			icon: "sym_r_error",
-			to: "/issues",
+			to: "/monitoring",
 			...(openIssueCount > 0
 				? { badge: openIssueCount, badgeColor: "negative" }
 				: {})
 		},
-		{ label: "Alerts", icon: "sym_r_notifications", to: "/alerts" },
 		{ label: "Accounts", icon: "sym_r_account_balance", to: "/accounts" },
 		{ label: "Users", icon: "sym_r_group", to: "/users" },
 		{ label: "Operations", icon: "sym_r_build", to: "/operations" }

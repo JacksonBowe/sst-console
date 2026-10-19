@@ -24,4 +24,13 @@ describe("stage routes", () => {
 			stageRoutes.find(route => route.name === "local-workspace")?.path
 		).toBe("local");
 	});
+
+	it("uses Monitoring route for issues", () => {
+		const routesByName = routes[0]?.children ?? [];
+		const monitoringRoute = routesByName.find(
+			route => route.name === "monitoring"
+		);
+
+		expect(monitoringRoute?.path).toBe("monitoring");
+	});
 });
