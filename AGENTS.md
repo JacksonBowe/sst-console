@@ -48,4 +48,4 @@ Load the relevant skill before work in these areas:
 
 - `github-issue`: creating, filing, checking-out, or refining GitHub issues.
 - `sst-infra`: AWS resources, SST bindings, IAM, queues, schedules, or deployment configuration.
-- `quasar`: Quasar/Vue frontend work.
+- `frontend` and `quasar`: every change in `packages/web`.

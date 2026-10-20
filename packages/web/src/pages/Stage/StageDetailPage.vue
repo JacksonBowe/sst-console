@@ -7,16 +7,10 @@
 		>
 			<template #actions>
 				<q-btn
-					unelevated
+					outline
 					no-caps
-					:color="
-						stage?.issueMonitoringEnabled ? 'negative' : 'primary'
-					"
-					:label="
-						stage?.issueMonitoringEnabled
-							? 'Disable Issue monitoring'
-							: 'Enable Issue monitoring'
-					"
+					color="primary"
+					label="Manage monitoring"
 					:disable="!target"
 					:loading="updatingMonitoring"
 					@click="toggleMonitoring"
@@ -33,6 +27,25 @@
 			/>
 			<template v-else-if="stage">
 				<StageMetadata :stage="stage" />
+				<q-card flat bordered>
+					<q-card-section class="row items-center q-gutter-md">
+						<div class="col">
+							<div class="text-subtitle2">Open issues</div>
+							<div class="text-body2 text-secondary"
+								>{{ stageOpenIssues.length }} open issues for
+								this stage</div
+							>
+						</div>
+						<q-btn
+							flat
+							dense
+							no-caps
+							color="primary"
+							label="View all issues"
+							:to="issuesRoute"
+						/>
+					</q-card-section>
+				</q-card>
 				<StageDetailEmptyResources v-if="!visibleResources.length" />
 				<ResourceExplorer v-else :resources="visibleResources" />
 			</template>
@@ -60,6 +73,7 @@ import {
 	DashboardPageContent
 } from "@/components/ui/Dashboard";
 import { useStage } from "@/composables/apps";
+import { useIssues } from "@/composables/issues";
 import {
 	getStageResourceCategory,
 	resourcesForStageCategory,
@@ -71,6 +85,7 @@ const route = useRoute();
 const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
 const stageQuery = useStage(appName, stageName);
+const issuesQuery = useIssues({});
 const stage = computed(() => stageQuery.data.value);
 const updatingMonitoring = ref(false);
 const target = computed(() => {
@@ -91,6 +106,18 @@ const visibleResources = computed(() => {
 		resourceCategory.value as StageResourceCategory
 	);
 });
+const stageOpenIssues = computed(() =>
+	(issuesQuery.data.value ?? []).filter(
+		issue =>
+			issue.status === "open" &&
+			issue.appName === appName.value &&
+			issue.stageName === stageName.value
+	)
+);
+const issuesRoute = computed(() => ({
+	name: "monitoring",
+	query: { app: appName.value, stage: stageName.value, status: "open" }
+}));
 const breadcrumbs = computed(() => [
 	{ label: "Apps", to: { name: "apps" } },
 	{

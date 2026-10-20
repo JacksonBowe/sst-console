@@ -10,6 +10,21 @@
 			:subtitle="subtitle"
 			icon="sym_r_terminal"
 		/>
+		<div
+			class="row items-center q-gutter-sm q-mb-md text-caption text-secondary"
+			aria-label="Local session status"
+		>
+			<q-badge :color="connectionColor" :label="localSession.status" />
+			<q-badge
+				:color="localSession.isStreaming ? 'positive' : 'warning'"
+				:label="localSession.isStreaming ? 'Streaming' : 'Paused'"
+			/>
+			<span
+				>{{ localSession.invocations.length }} retained
+				invocations</span
+			>
+			<span v-if="lastEventLabel">Last event {{ lastEventLabel }}</span>
+		</div>
 
 		<DashboardPageContent class="local-workspace-page__content">
 			<LocalWorkspace
@@ -70,6 +85,23 @@ const subtitle = computed(() => {
 	if (!identity)
 		return "Live invocation activity from your local SST dev environment.";
 	return `${identity.app} / ${identity.stage}`;
+});
+const connectionColor = computed(() =>
+	localSession.status === "connected"
+		? "positive"
+		: localSession.status === "connecting"
+			? "warning"
+			: "secondary"
+);
+const lastEventLabel = computed(() => {
+	if (!localSession.lastEventAt) return undefined;
+	const seconds = Math.max(
+		0,
+		Math.floor((Date.now() - localSession.lastEventAt) / 1000)
+	);
+	return seconds < 60
+		? `${seconds}s ago`
+		: `${Math.floor(seconds / 60)}m ago`;
 });
 const breadcrumbs = computed(() => [
 	{ label: "Apps", to: { name: "apps" } },

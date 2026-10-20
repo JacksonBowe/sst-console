@@ -20,48 +20,13 @@
 					/>
 				</template>
 			</TableToolbar>
-			<q-card
+			<AppsListErrorState
 				v-if="appsQuery.isError.value"
-				flat
-				bordered
-				class="q-pa-xl"
-			>
-				<div class="column items-center text-center q-gutter-sm">
-					<q-icon name="sym_r_error" size="40px" color="negative" />
-					<div class="text-h6">Unable to load Apps</div>
-					<div class="text-body2 text-secondary">
-						Check your connection, then try again.
-					</div>
-					<q-btn
-						unelevated
-						no-caps
-						color="primary"
-						label="Retry"
-						@click="appsQuery.refetch()"
-					/>
-				</div>
-			</q-card>
-
-			<q-card
+				@retry="appsQuery.refetch()"
+			/>
+			<AppsListNotFoundState
 				v-else-if="!appsQuery.isPending.value && !apps.length"
-				flat
-				bordered
-				class="q-pa-xl"
-			>
-				<div class="column items-center text-center q-gutter-sm">
-					<q-icon
-						name="sym_r_deployed_code"
-						size="40px"
-						color="secondary"
-					/>
-					<div class="text-h6">No Apps discovered</div>
-					<div class="text-body2 text-secondary">
-						Connect and sync an AWS account to discover SST Apps and
-						Stages.
-					</div>
-					<ConnectAccountTrigger />
-				</div>
-			</q-card>
+			/>
 
 			<AppsList
 				v-else
@@ -77,7 +42,11 @@
 import { computed, ref } from "vue";
 
 import { ConnectAccountTrigger } from "@/components/Accounts";
-import { AppsList } from "@/components/App";
+import {
+	AppsList,
+	AppsListErrorState,
+	AppsListNotFoundState
+} from "@/components/App";
 import {
 	DashboardPage,
 	DashboardPageContent,

@@ -11,18 +11,7 @@
 					:disable="connectedAccountCount === 0 || isSyncAllOpen"
 					@click="confirmSyncAll"
 				/>
-				<ConnectAccountTrigger>
-					<template #trigger="{ open }">
-						<q-btn
-							unelevated
-							no-caps
-							color="primary"
-							icon="sym_r_add"
-							label="Connect account"
-							@click="open"
-						/>
-					</template>
-				</ConnectAccountTrigger>
+				<ConnectAccountTrigger />
 			</template>
 		</DashboardPageHeader>
 
@@ -49,6 +38,7 @@ import { computed, ref } from "vue";
 import {
 	AccountsListErrorState,
 	AccountsTable,
+	ConnectAccountTrigger,
 	SyncAllAccountsDialog
 } from "@/components/Accounts";
 import {
@@ -69,8 +59,9 @@ const connectedAccountCount = computed(
 		accounts.value.filter(account => account.status === "connected").length
 );
 const subtitle = computed(() => {
-	const count = connectedAccountCount.value;
-	return `${count} connected AWS ${count === 1 ? "account" : "accounts"}`;
+	const connected = connectedAccountCount.value;
+	const disconnected = accounts.value.length - connected;
+	return `${connected} connected · ${disconnected}`;
 });
 
 function confirmSync(account: Account): void {

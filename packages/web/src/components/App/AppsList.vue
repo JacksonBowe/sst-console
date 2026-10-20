@@ -18,18 +18,26 @@
 	</div>
 
 	<div v-else class="apps-list">
-		<AppSummaryCard v-for="app in apps" :key="app.appName" :app="app" />
+		<AppSummaryCard
+			v-for="app in apps"
+			:key="app.appName"
+			:app="app"
+			:open-issues="
+				openIssues.filter(issue => issue.appName === app.appName)
+			"
+		/>
 	</div>
 </template>
 
 <script setup lang="ts">
-import type { AppSummary } from "@sst-console/sdk";
+import type { AppSummary, Issue } from "@sst-console/sdk";
 
 import AppSummaryCard from "./AppSummaryCard.vue";
 
 defineProps<{
 	apps: AppSummary[];
 	loading: boolean;
+	openIssues: Issue[];
 }>();
 </script>
 

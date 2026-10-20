@@ -14,7 +14,14 @@
 		@update:expanded="setExpanded"
 	>
 		<template #body="tableProps">
-			<q-tr :props="tableProps">
+			<q-tr
+				:props="tableProps"
+				:class="{
+					'issues-table__row--selected':
+						selectedFingerprint === tableProps.row.fingerprint
+				}"
+				@click="$emit('select', tableProps.row)"
+			>
 				<q-td key="error" :props="tableProps">
 					<div class="row items-center no-wrap">
 						<q-btn
@@ -153,11 +160,15 @@ withDefaults(
 		issues: Issue[];
 		loading?: boolean;
 		filters?: Filters;
+		selectedFingerprint?: string | undefined;
 	}>(),
 	{ loading: false }
 );
 
-defineEmits<{ status: [issue: Issue, status: IssueStatus] }>();
+defineEmits<{
+	status: [issue: Issue, status: IssueStatus];
+	select: [issue: Issue];
+}>();
 
 const columns: ExtendedQTableColumn[] = [
 	{
@@ -254,6 +265,10 @@ function stageRoute(issue: Issue) {
 
 .issues-table__details {
 	max-width: 100%;
+}
+
+.issues-table__row--selected > td {
+	background: var(--q-primary-3);
 }
 
 .issues-table__source {

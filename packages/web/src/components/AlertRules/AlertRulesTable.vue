@@ -34,16 +34,27 @@
 							</q-btn>
 						</template>
 					</AlertRuleTrigger>
-					<q-btn
-						flat
-						dense
-						round
-						color="negative"
-						icon="sym_r_delete"
-						@click="$emit('remove', tableProps.row)"
-					>
-						<q-tooltip>Delete rule</q-tooltip>
-					</q-btn>
+					<DialogTrigger>
+						<template #trigger="{ open }">
+							<q-btn
+								flat
+								dense
+								round
+								color="negative"
+								icon="sym_r_delete"
+								@click="open"
+							>
+								<q-tooltip>Delete rule</q-tooltip>
+							</q-btn>
+						</template>
+						<DialogConfirm
+							title="Delete alert rule"
+							:message="`Delete rule for ${sourceLabel(tableProps.row)}?`"
+							variant="negative"
+							confirm-label="Delete"
+							:perform="() => removeRule(tableProps.row)"
+						/>
+					</DialogTrigger>
 				</div>
 			</q-td>
 		</template>
@@ -54,6 +65,8 @@
 import type { AlertRule, NotificationDestination } from "@sst-console/sdk";
 
 import { BaseTable, type ExtendedQTableColumn } from "@/components/ui/Table";
+import { DialogConfirm, DialogTrigger } from "@/components/ui/Dialog";
+import { useRemoveAlertRule } from "@/composables/alert-rules";
 
 import AlertRuleTrigger from "./AlertRuleTrigger.vue";
 
@@ -63,7 +76,7 @@ const props = defineProps<{
 	loading?: boolean;
 }>();
 
-defineEmits<{ remove: [alert: AlertRule] }>();
+const removeAlertRuleMutation = useRemoveAlertRule();
 
 const columns: ExtendedQTableColumn[] = [
 	{ name: "type", label: "Trigger", field: "type", align: "left" },
@@ -89,5 +102,9 @@ function targetLabels(notificationDestinationIds: string[]) {
 	return notificationDestinationIds
 		.map(id => names.get(id) ?? "Removed target")
 		.join(", ");
+}
+
+async function removeRule(alert: AlertRule) {
+	await removeAlertRuleMutation.mutateAsync(alert.id);
 }
 </script>

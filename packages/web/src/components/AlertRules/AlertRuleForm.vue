@@ -82,9 +82,11 @@
 import type { AlertRule, AlertRuleInput } from "@sst-console/sdk";
 import { computed, ref } from "vue";
 
-import { api, handleApiError } from "@/boot/api-client";
 import { useNotificationDestinations } from "@/composables/notification-destinations";
-import { useAlertRules } from "@/composables/alert-rules";
+import {
+	useCreateAlertRule,
+	useUpdateAlertRule
+} from "@/composables/alert-rules";
 import { useApps } from "@/composables/apps";
 import { rules, useForm } from "@/components/ui/form";
 import { SSelect } from "@/components/ui/Select";
@@ -96,9 +98,10 @@ type AlertRuleFormState = Omit<AlertRuleInput, "appName" | "stageName"> & {
 
 const props = defineProps<{ alert?: AlertRule }>();
 const emit = defineEmits<{ success: [] }>();
-const alertsQuery = useAlertRules();
 const targetsQuery = useNotificationDestinations();
 const appsQuery = useApps();
+const createAlertRuleMutation = useCreateAlertRule();
+const updateAlertRuleMutation = useUpdateAlertRule();
 const saving = ref(false);
 const { form, dirty } = useForm<AlertRuleFormState>({
 	type: props.alert?.type ?? "issue",
@@ -139,23 +142,27 @@ function selectApp(appName: string | null) {
 	form.stageName = null;
 }
 
-async function save() {
+function save() {
 	saving.value = true;
-	try {
-		const input: AlertRuleInput = {
-			type: form.type,
-			notificationDestinationIds: form.notificationDestinationIds,
-			...(form.appName ? { appName: form.appName } : {}),
-			...(form.stageName ? { stageName: form.stageName } : {})
-		};
-		if (props.alert) await api.updateAlertRule(props.alert.id, input);
-		else await api.createAlertRule(input);
-		await alertsQuery.refetch();
-		emit("success");
-	} catch (error) {
-		handleApiError(error);
-	} finally {
-		saving.value = false;
+	const input: AlertRuleInput = {
+		type: form.type,
+		notificationDestinationIds: form.notificationDestinationIds,
+		...(form.appName ? { appName: form.appName } : {}),
+		...(form.stageName ? { stageName: form.stageName } : {})
+	};
+	const callbacks = {
+		onSuccess: () => emit("success"),
+		onSettled: () => {
+			saving.value = false;
+		}
+	};
+	if (props.alert) {
+		updateAlertRuleMutation.mutate(
+			{ id: props.alert.id, input },
+			callbacks
+		);
+	} else {
+		createAlertRuleMutation.mutate(input, callbacks);
 	}
 }
 </script>

@@ -140,37 +140,45 @@ import type {
 } from "@sst-console/sdk";
 import { ref } from "vue";
 
-import { api, handleApiError } from "@/boot/api-client";
-import { useNotificationDestinations } from "@/composables/notification-destinations";
+import {
+	useCreateNotificationDestination,
+	useUpdateNotificationDestination
+} from "@/composables/notification-destinations";
 import { rules, useForm } from "@/components/ui/form";
 import { SInput } from "@/components/ui/Input";
 
 const props = defineProps<{ target?: NotificationDestination }>();
 const emit = defineEmits<{ success: [] }>();
-const targetsQuery = useNotificationDestinations();
+const createNotificationDestinationMutation =
+	useCreateNotificationDestination();
+const updateNotificationDestinationMutation =
+	useUpdateNotificationDestination();
 const saving = ref(false);
 const { form, dirty } = useForm({
 	name: props.target?.name ?? "",
 	webhookUrl: ""
 });
 
-async function save() {
+function save() {
 	saving.value = true;
-	try {
-		const input: NotificationDestinationInput = {
-			name: form.name,
-			channel: "discord",
-			channelConfig: { webhookUrl: form.webhookUrl }
-		};
-		if (props.target)
-			await api.updateNotificationDestination(props.target.id, input);
-		else await api.createNotificationDestination(input);
-		await targetsQuery.refetch();
-		emit("success");
-	} catch (error) {
-		handleApiError(error);
-	} finally {
-		saving.value = false;
+	const input: NotificationDestinationInput = {
+		name: form.name,
+		channel: "discord",
+		channelConfig: { webhookUrl: form.webhookUrl }
+	};
+	const callbacks = {
+		onSuccess: () => emit("success"),
+		onSettled: () => {
+			saving.value = false;
+		}
+	};
+	if (props.target) {
+		updateNotificationDestinationMutation.mutate(
+			{ id: props.target.id, input },
+			callbacks
+		);
+	} else {
+		createNotificationDestinationMutation.mutate(input, callbacks);
 	}
 }
 </script>

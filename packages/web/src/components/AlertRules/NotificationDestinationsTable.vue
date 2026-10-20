@@ -17,7 +17,7 @@
 						label="Test"
 						:loading="testingTargetId === tableProps.row.id"
 						:disable="testingTargetId !== undefined"
-						@click="$emit('test', tableProps.row)"
+						@click="testTarget(tableProps.row)"
 					>
 						<q-tooltip>Send a test notification</q-tooltip>
 					</q-btn>
@@ -34,16 +34,27 @@
 							</q-btn>
 						</template>
 					</NotificationDestinationTrigger>
-					<q-btn
-						flat
-						dense
-						round
-						color="negative"
-						icon="sym_r_delete"
-						@click="$emit('remove', tableProps.row)"
-					>
-						<q-tooltip>Delete channel</q-tooltip>
-					</q-btn>
+					<DialogTrigger>
+						<template #trigger="{ open }">
+							<q-btn
+								flat
+								dense
+								round
+								color="negative"
+								icon="sym_r_delete"
+								@click="open"
+							>
+								<q-tooltip>Delete channel</q-tooltip>
+							</q-btn>
+						</template>
+						<DialogConfirm
+							title="Delete notification destination"
+							:message="`Delete ${tableProps.row.name}? Remove it from every alert rule first.`"
+							variant="negative"
+							confirm-label="Delete"
+							:perform="() => removeTarget(tableProps.row)"
+						/>
+					</DialogTrigger>
 				</div>
 			</q-td>
 		</template>
@@ -56,8 +67,14 @@
 
 <script setup lang="ts">
 import type { AlertRule, NotificationDestination } from "@sst-console/sdk";
+import { ref } from "vue";
 
 import { BaseTable, type ExtendedQTableColumn } from "@/components/ui/Table";
+import { DialogConfirm, DialogTrigger } from "@/components/ui/Dialog";
+import {
+	useRemoveNotificationDestination,
+	useTestNotificationDestination
+} from "@/composables/notification-destinations";
 
 import NotificationDestinationTrigger from "./NotificationDestinationTrigger.vue";
 
@@ -65,13 +82,12 @@ const props = defineProps<{
 	targets: NotificationDestination[];
 	alerts: AlertRule[];
 	loading?: boolean;
-	testingTargetId?: string | undefined;
 }>();
 
-defineEmits<{
-	test: [target: NotificationDestination];
-	remove: [target: NotificationDestination];
-}>();
+const testingTargetId = ref<string>();
+const testNotificationDestinationMutation = useTestNotificationDestination();
+const removeNotificationDestinationMutation =
+	useRemoveNotificationDestination();
 
 const columns: ExtendedQTableColumn[] = [
 	{ name: "name", label: "Name", field: "name", align: "left" },
@@ -85,5 +101,17 @@ function ruleUsage(targetId: string) {
 		alert.notificationDestinationIds.includes(targetId)
 	).length;
 	return `${count} ${count === 1 ? "rule" : "rules"}`;
+}
+
+function testTarget(target: NotificationDestination) {
+	testingTargetId.value = target.id;
+	testNotificationDestinationMutation.mutate(target, {
+		onSettled: () => {
+			testingTargetId.value = undefined;
+		}
+	});
+}
+async function removeTarget(target: NotificationDestination) {
+	await removeNotificationDestinationMutation.mutateAsync(target.id);
 }
 </script>
