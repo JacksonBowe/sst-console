@@ -46,6 +46,18 @@ export function usePurgeIssues() {
 	});
 }
 
+export function useTestIssue() {
+	return useMutation({
+		mutationFn: () => api.testIssue(),
+		onError: () => {
+			Notify.create({
+				message: "Task failed successfully :D",
+				color: "positive"
+			});
+		}
+	});
+}
+
 export function useDisableAllIssueMonitoring() {
 	const queryClient = useQueryClient();
 
