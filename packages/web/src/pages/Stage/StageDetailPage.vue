@@ -10,9 +10,13 @@
 					outline
 					no-caps
 					color="primary"
-					label="Manage monitoring"
-					:disable="!target"
-					:loading="updatingMonitoring"
+					:label="
+						stage?.issueMonitoringEnabled
+							? 'Disable monitoring'
+							: 'Enable monitoring'
+					"
+					:disable="!appName || !stageName"
+					:loading="setStageIssueMonitoring.isPending.value"
 					@click="toggleMonitoring"
 				/>
 			</template>
@@ -55,9 +59,8 @@
 
 <script setup lang="ts">
 import { ApiError } from "@sst-console/sdk";
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useRoute } from "vue-router";
-import { Notify } from "quasar";
 
 import {
 	ResourceExplorer,
@@ -72,14 +75,13 @@ import {
 	DashboardPageBreadcrumbs,
 	DashboardPageContent
 } from "@/components/ui/Dashboard";
-import { useStage } from "@/composables/apps";
+import { useSetStageIssueMonitoring, useStage } from "@/composables/apps";
 import { useIssues } from "@/composables/issues";
 import {
 	getStageResourceCategory,
 	resourcesForStageCategory,
 	type StageResourceCategory
 } from "@/composables/apps/stage-resources";
-import { api, handleApiError } from "@/boot/api-client";
 
 const route = useRoute();
 const appName = computed(() => String(route.params.appName ?? ""));
@@ -87,12 +89,7 @@ const stageName = computed(() => String(route.params.stageName ?? ""));
 const stageQuery = useStage(appName, stageName);
 const issuesQuery = useIssues({});
 const stage = computed(() => stageQuery.data.value);
-const updatingMonitoring = ref(false);
-const target = computed(() => {
-	const app = appName.value;
-	const stage = stageName.value;
-	return app && stage ? { app, stage } : undefined;
-});
+const setStageIssueMonitoring = useSetStageIssueMonitoring();
 const resourceCategory = computed(() => {
 	if (route.name !== "stage-resource") return undefined;
 	const category = String(route.params.category ?? "");
@@ -132,26 +129,12 @@ const isNotFound = computed(() => {
 	return error instanceof ApiError && error.code === "stage_not_found";
 });
 
-async function toggleMonitoring() {
-	if (!target.value) return;
-	updatingMonitoring.value = true;
-	try {
-		await api.setStageIssueMonitoring(
-			target.value.app,
-			target.value.stage,
-			!stage.value?.issueMonitoringEnabled
-		);
-		Notify.create({
-			message: stage.value?.issueMonitoringEnabled
-				? "Issue monitoring disabled; filter removal queued"
-				: "Issue monitoring enabled; reconciliation queued",
-			color: "positive"
-		});
-		await stageQuery.refetch();
-	} catch (error) {
-		handleApiError(error);
-	} finally {
-		updatingMonitoring.value = false;
-	}
+function toggleMonitoring() {
+	if (!appName.value || !stageName.value) return;
+	setStageIssueMonitoring.mutate({
+		appName: appName.value,
+		stageName: stageName.value,
+		enabled: !stage.value?.issueMonitoringEnabled
+	});
 }
 </script>
