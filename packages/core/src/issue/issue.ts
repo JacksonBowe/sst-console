@@ -16,6 +16,7 @@ const IngressEventKeySchema = StageKeySchema.extend({
 });
 
 const ingressEventRetentionSeconds = 7 * 24 * 60 * 60;
+const recurrenceQuietPeriodMs = 15 * 60 * 1000;
 
 export const IssueStatusSchema = z.enum(["open", "resolved", "suppressed"]);
 
@@ -45,7 +46,7 @@ const IngressEventSchema = IngressEventKeySchema.extend({
 
 export const Events = {
 	Created: defineEvent("issue.created", z.object({ issue: IssueSchema })),
-	Updated: defineEvent("issue.updated", z.object({ issue: IssueSchema }))
+	Recurred: defineEvent("issue.recurred", z.object({ issue: IssueSchema }))
 };
 
 const ListSchema = z.object({
@@ -89,6 +90,7 @@ const RecordOccurrenceSchema = z.object({
 
 export type RecordOccurrenceResult =
 	| { outcome: "created"; issue: Issue }
+	| { outcome: "recurred"; issue: Issue }
 	| { outcome: "updated"; issue: Issue }
 	| { outcome: "duplicate" };
 
@@ -113,6 +115,9 @@ export const recordOccurrence = fn(
 			const latest =
 				!existing || input.issue.lastSeenAt >= existing.lastSeenAt;
 			const reopen = existing?.status === "resolved";
+			const recurred = existing
+				? isRecurrence(existing, input.issue)
+				: false;
 			const transaction = await db.transaction
 				.write(({ issue, issueIngressEvent }) => [
 					issueIngressEvent
@@ -164,7 +169,14 @@ export const recordOccurrence = fn(
 					stageName: input.issue.stageName,
 					fingerprint: input.issue.fingerprint
 				});
-				return { outcome: existing ? "updated" : "created", issue };
+				return {
+					outcome: existing
+						? recurred
+							? "recurred"
+							: "updated"
+						: "created",
+					issue
+				};
 			}
 			if (await findIngressEvent(eventKey))
 				return { outcome: "duplicate" };
@@ -173,6 +185,18 @@ export const recordOccurrence = fn(
 		throw new Error("Issue occurrence transaction did not commit");
 	}
 );
+
+function isRecurrence(existing: Issue, incoming: Issue) {
+	// TODO: Make recurrence classification transactional. Delayed or concurrent
+	// log events can reopen a resolved Issue or produce duplicate recurrences.
+	if (existing.status === "suppressed") return false;
+	if (existing.status === "resolved") return true;
+	if (existing.statusUpdatedAt > existing.lastSeenAt) return true;
+	return (
+		Date.parse(incoming.lastSeenAt) - Date.parse(existing.lastSeenAt) >=
+		recurrenceQuietPeriodMs
+	);
+}
 
 /** Lists persisted Issues, optionally scoped to an App, Stage, or lifecycle state. */
 export const list = fn(ListSchema, async input => {

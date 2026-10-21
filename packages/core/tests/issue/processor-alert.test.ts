@@ -13,7 +13,7 @@ vi.mock("../../src/issue/monitoring-utils", () => ({
 	isIssueWorkerFunction: () => false
 }));
 vi.mock("../../src/issue/issue", () => ({
-	Events: { Created: "issue.created", Updated: "issue.updated" },
+	Events: { Created: "issue.created", Recurred: "issue.recurred" },
 	recordOccurrence: mocks.recordOccurrence
 }));
 vi.mock("../../src/issue/issue.subscription", () => ({
@@ -42,10 +42,10 @@ describe("Issue processor alerts", () => {
 		});
 	});
 
-	it("publishes an update after recording a new occurrence", async () => {
+	it("publishes a recurrence after recording a recurring occurrence", async () => {
 		const updated = { count: 2 };
 		mocks.recordOccurrence.mockResolvedValue({
-			outcome: "updated",
+			outcome: "recurred",
 			issue: updated
 		});
 
@@ -71,9 +71,34 @@ describe("Issue processor alerts", () => {
 				sourceKey: expect.any(String)
 			})
 		);
-		expect(mocks.publish).toHaveBeenCalledWith("bus", "issue.updated", {
+		expect(mocks.publish).toHaveBeenCalledWith("bus", "issue.recurred", {
 			issue: updated
 		});
+	});
+
+	it("does not publish an ordinary occurrence update", async () => {
+		mocks.recordOccurrence.mockResolvedValue({
+			outcome: "updated",
+			issue: { count: 2 }
+		});
+
+		await processCandidate({
+			source: {
+				accountId: "123456789012",
+				region: "ap-southeast-2",
+				logGroup: "/aws/lambda/example",
+				logStream: "stream"
+			},
+			events: [
+				{
+					id: "event",
+					timestamp: 1_760_313_600_000,
+					message: "failure"
+				}
+			]
+		});
+
+		expect(mocks.publish).not.toHaveBeenCalled();
 	});
 
 	it("does not publish a duplicate ingress event", async () => {

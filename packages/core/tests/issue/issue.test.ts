@@ -26,6 +26,9 @@ const ingressEventDeleteGo = vi.fn();
 const transactionWrite = vi.fn();
 const transactionGo = vi.fn();
 const transactionIssueCreate = vi.fn();
+const transactionIssuePatch = vi.fn();
+const transactionIssueSet = vi.fn();
+const transactionIssueAdd = vi.fn();
 const transactionIngressEventCreate = vi.fn();
 
 vi.mock("../../src/db", () => ({
@@ -86,10 +89,16 @@ describe("issue", () => {
 		ingressEventByType.mockReturnValue({ go: ingressEventByTypeGo });
 		ingressEventDelete.mockReturnValue({ go: ingressEventDeleteGo });
 		transactionIssueCreate.mockReturnValue({ commit: vi.fn() });
+		transactionIssuePatch.mockReturnValue({ set: transactionIssueSet });
+		transactionIssueSet.mockReturnValue({ add: transactionIssueAdd });
+		transactionIssueAdd.mockReturnValue({ commit: vi.fn() });
 		transactionIngressEventCreate.mockReturnValue({ commit: vi.fn() });
 		transactionWrite.mockImplementation(callback => {
 			callback({
-				issue: { create: transactionIssueCreate },
+				issue: {
+					create: transactionIssueCreate,
+					patch: transactionIssuePatch
+				},
 				issueIngressEvent: { create: transactionIngressEventCreate }
 			});
 			return { go: transactionGo };
@@ -237,6 +246,111 @@ describe("issue", () => {
 			})
 		).resolves.toEqual({ outcome: "duplicate" });
 		expect(transactionWrite).not.toHaveBeenCalled();
+	});
+
+	it("classifies an occurrence after fifteen quiet minutes as recurring", async () => {
+		const recurring = { ...issue, lastSeenAt: "2026-10-07T00:15:00.000Z" };
+		ingressEventGetGo.mockResolvedValue({ data: null });
+		issueGetGo.mockResolvedValueOnce({ data: issue }).mockResolvedValue({
+			data: recurring
+		});
+		transactionGo.mockResolvedValue({ canceled: false });
+
+		await expect(
+			recordOccurrence({
+				issue: recurring,
+				sourceKey: "a".repeat(64),
+				eventId: "event"
+			})
+		).resolves.toEqual({ outcome: "recurred", issue: recurring });
+	});
+
+	it("does not classify an occurrence inside fifteen quiet minutes as recurring", async () => {
+		const repeated = { ...issue, lastSeenAt: "2026-10-07T00:14:59.999Z" };
+		ingressEventGetGo.mockResolvedValue({ data: null });
+		issueGetGo.mockResolvedValueOnce({ data: issue }).mockResolvedValue({
+			data: repeated
+		});
+		transactionGo.mockResolvedValue({ canceled: false });
+
+		await expect(
+			recordOccurrence({
+				issue: repeated,
+				sourceKey: "a".repeat(64),
+				eventId: "event"
+			})
+		).resolves.toEqual({ outcome: "updated", issue: repeated });
+	});
+
+	it("classifies an occurrence that reopens a resolved Issue as recurring", async () => {
+		const resolved = { ...issue, status: "resolved" as const };
+		const reopened = {
+			...issue,
+			lastSeenAt: "2026-10-07T00:01:00.000Z"
+		};
+		ingressEventGetGo.mockResolvedValue({ data: null });
+		issueGetGo.mockResolvedValueOnce({ data: resolved }).mockResolvedValue({
+			data: reopened
+		});
+		transactionGo.mockResolvedValue({ canceled: false });
+
+		await expect(
+			recordOccurrence({
+				issue: reopened,
+				sourceKey: "a".repeat(64),
+				eventId: "event"
+			})
+		).resolves.toEqual({ outcome: "recurred", issue: reopened });
+	});
+
+	it("does not classify occurrences for suppressed Issues as recurring", async () => {
+		const suppressed = { ...issue, status: "suppressed" as const };
+		const repeated = {
+			...issue,
+			status: "suppressed" as const,
+			lastSeenAt: "2026-10-07T01:00:00.000Z"
+		};
+		ingressEventGetGo.mockResolvedValue({ data: null });
+		issueGetGo
+			.mockResolvedValueOnce({ data: suppressed })
+			.mockResolvedValue({
+				data: repeated
+			});
+		transactionGo.mockResolvedValue({ canceled: false });
+
+		await expect(
+			recordOccurrence({
+				issue: repeated,
+				sourceKey: "a".repeat(64),
+				eventId: "event"
+			})
+		).resolves.toEqual({ outcome: "updated", issue: repeated });
+	});
+
+	it("classifies first occurrence after unsuppressing as recurring", async () => {
+		const unsuppressed = {
+			...issue,
+			statusUpdatedAt: "2026-10-07T00:10:00.000Z"
+		};
+		const repeated = {
+			...unsuppressed,
+			lastSeenAt: "2026-10-07T00:11:00.000Z"
+		};
+		ingressEventGetGo.mockResolvedValue({ data: null });
+		issueGetGo
+			.mockResolvedValueOnce({ data: unsuppressed })
+			.mockResolvedValue({
+				data: repeated
+			});
+		transactionGo.mockResolvedValue({ canceled: false });
+
+		await expect(
+			recordOccurrence({
+				issue: repeated,
+				sourceKey: "a".repeat(64),
+				eventId: "event"
+			})
+		).resolves.toEqual({ outcome: "recurred", issue: repeated });
 	});
 
 	it("purges every stage Issue", async () => {

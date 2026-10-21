@@ -93,6 +93,7 @@ export async function sendIssueNotifications(issue: Issue) {
 function matchesIssue(alertRule: AlertRule, issue: Issue) {
 	return (
 		alertRule.type === "issue" &&
+		issue.status !== "suppressed" &&
 		(!alertRule.appName || alertRule.appName === issue.appName) &&
 		(!alertRule.stageName || alertRule.stageName === issue.stageName)
 	);
@@ -103,7 +104,7 @@ function issueNotification(issue: Issue): Notification.Notification {
 		title: `🚨 ${issue.errorType}`,
 		body: issue.errorMessage,
 		severity: "error",
-		occurredAt: issue.firstSeenAt,
+		occurredAt: issue.lastSeenAt,
 		fields: [
 			{ name: "App", value: issue.appName, inline: true },
 			{ name: "Stage", value: issue.stageName, inline: true },
