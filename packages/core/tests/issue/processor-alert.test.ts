@@ -1,12 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-	find: vi.fn(),
-	get: vi.fn(),
-	update: vi.fn(),
 	listBySource: vi.fn(),
 	publish: vi.fn(),
-	parseError: vi.fn()
+	parseError: vi.fn(),
+	recordOccurrence: vi.fn()
 }));
 
 vi.mock("sst", () => ({ Resource: { Bus: "bus" } }));
@@ -16,10 +14,7 @@ vi.mock("../../src/issue/monitoring-utils", () => ({
 }));
 vi.mock("../../src/issue/issue", () => ({
 	Events: { Created: "issue.created", Updated: "issue.updated" },
-	find: mocks.find,
-	get: mocks.get,
-	create: vi.fn(),
-	update: mocks.update
+	recordOccurrence: mocks.recordOccurrence
 }));
 vi.mock("../../src/issue/issue.subscription", () => ({
 	listBySource: mocks.listBySource
@@ -31,6 +26,7 @@ import { processCandidate } from "../../src/issue/processor";
 describe("Issue processor alerts", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.publish.mockResolvedValue(undefined);
 		mocks.listBySource.mockResolvedValue([
 			{
 				status: "attached",
@@ -46,13 +42,12 @@ describe("Issue processor alerts", () => {
 		});
 	});
 
-	it("publishes an update after incrementing an existing Issue count", async () => {
-		mocks.find.mockResolvedValue({
-			status: "open",
-			lastSeenAt: "2026-10-13T00:00:00.000Z"
-		});
+	it("publishes an update after recording a new occurrence", async () => {
 		const updated = { count: 2 };
-		mocks.get.mockResolvedValue(updated);
+		mocks.recordOccurrence.mockResolvedValue({
+			outcome: "updated",
+			issue: updated
+		});
 
 		await processCandidate({
 			source: {
@@ -70,11 +65,83 @@ describe("Issue processor alerts", () => {
 			]
 		});
 
-		expect(mocks.update).toHaveBeenCalledWith(
-			expect.objectContaining({ countDelta: 1 })
+		expect(mocks.recordOccurrence).toHaveBeenCalledWith(
+			expect.objectContaining({
+				eventId: "event",
+				sourceKey: expect.any(String)
+			})
 		);
 		expect(mocks.publish).toHaveBeenCalledWith("bus", "issue.updated", {
 			issue: updated
 		});
+	});
+
+	it("does not publish a duplicate ingress event", async () => {
+		mocks.recordOccurrence.mockResolvedValue({ outcome: "duplicate" });
+
+		await processCandidate({
+			source: {
+				accountId: "123456789012",
+				region: "ap-southeast-2",
+				logGroup: "/aws/lambda/example",
+				logStream: "stream"
+			},
+			events: [
+				{
+					id: "event",
+					timestamp: 1_760_313_600_000,
+					message: "failure"
+				}
+			]
+		});
+
+		expect(mocks.recordOccurrence).toHaveBeenCalledOnce();
+		expect(mocks.publish).not.toHaveBeenCalled();
+	});
+
+	it("does not republish when event publication fails after persistence", async () => {
+		mocks.recordOccurrence.mockResolvedValue({
+			outcome: "created",
+			issue: { count: 1 }
+		});
+		mocks.publish.mockRejectedValue(new Error("EventBridge unavailable"));
+
+		await expect(
+			processCandidate({
+				source: {
+					accountId: "123456789012",
+					region: "ap-southeast-2",
+					logGroup: "/aws/lambda/example",
+					logStream: "stream"
+				},
+				events: [
+					{
+						id: "event",
+						timestamp: 1_760_313_600_000,
+						message: "failure"
+					}
+				]
+			})
+		).rejects.toThrow("EventBridge unavailable");
+
+		mocks.recordOccurrence.mockResolvedValue({ outcome: "duplicate" });
+		await processCandidate({
+			source: {
+				accountId: "123456789012",
+				region: "ap-southeast-2",
+				logGroup: "/aws/lambda/example",
+				logStream: "stream"
+			},
+			events: [
+				{
+					id: "event",
+					timestamp: 1_760_313_600_000,
+					message: "failure"
+				}
+			]
+		});
+
+		expect(mocks.recordOccurrence).toHaveBeenCalledTimes(2);
+		expect(mocks.publish).toHaveBeenCalledOnce();
 	});
 });

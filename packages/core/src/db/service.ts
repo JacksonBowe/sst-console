@@ -11,6 +11,7 @@ import {
 import { userEntity, userIdentityEntity } from "../user/user.dynamo";
 import {
 	issueEntity,
+	issueIngressEventEntity,
 	issueSubscriberEntity,
 	issueSubscriptionEntity
 } from "../issue/issue.dynamo";
@@ -30,6 +31,7 @@ export const db = new Service(
 		user: userEntity,
 		userIdentity: userIdentityEntity,
 		issue: issueEntity,
+		issueIngressEvent: issueIngressEventEntity,
 		issueSubscriber: issueSubscriberEntity,
 		issueSubscription: issueSubscriptionEntity,
 		alertRule: alertRuleEntity,
