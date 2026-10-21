@@ -31,6 +31,7 @@ import {
 	errorFilterPattern,
 	isIssueWorkerFunction,
 	lambdaFromResource,
+	reconciliationAction,
 	subscriberRoleName,
 	subscriberStackName
 } from "./monitoring-utils";
@@ -42,6 +43,7 @@ export {
 	errorFilterPattern,
 	isIssueWorkerFunction,
 	lambdaFromResource,
+	reconciliationAction,
 	subscriberRoleName,
 	subscriberStackName
 };
@@ -70,7 +72,7 @@ export async function enableStage(input: {
 		issueMonitoringEnabled: true,
 		updatedAt: now
 	});
-	await enqueueReconcile({ ...input, action: "reconcile", attempt: 0 });
+	await enqueueReconcile({ ...input, attempt: 0 });
 }
 
 /** Disables monitoring for a stage and schedules owned-filter removal. */
@@ -85,7 +87,7 @@ export async function disableStage(input: {
 		issueMonitoringEnabled: false,
 		updatedAt: now
 	});
-	await enqueueReconcile({ ...input, action: "disconnect", attempt: 0 });
+	await enqueueReconcile({ ...input, attempt: 0 });
 }
 
 /** Disables monitoring for every Stage where monitoring is currently enabled. */
@@ -113,7 +115,7 @@ export async function requestReconcile(input: {
 }) {
 	const stage = await Stage.get(input);
 	if (!stage?.issueMonitoringEnabled) return;
-	await enqueueReconcile({ ...input, action: "reconcile", attempt: 0 });
+	await enqueueReconcile({ ...input, attempt: 0 });
 }
 
 /** Returns stage monitoring, subscription, and Issue records for the API. */
@@ -161,16 +163,20 @@ export async function removeStageMonitoring(input: {
 	await deleteStageIssueData(input);
 }
 
-/** Applies one queued setup or teardown action for a monitored stage. */
+/** Reconciles one Stage's filters with its current monitoring setting. */
 export async function reconcileStage(input: {
 	appName: string;
 	stageName: string;
-	action: "reconcile" | "disconnect";
 	attempt: number;
 }) {
 	console.log("Reconciling Issue monitoring", input);
-	const config = await ingressConfig();
 	const stage = await Stage.get(input);
+	const existingSubscriptions = await Subscription.list(input);
+	const action = reconciliationAction(
+		stage.issueMonitoringEnabled,
+		existingSubscriptions.length > 0
+	);
+	if (action === "noop") return;
 	const account = await db.entities.account
 		.get({ accountId: stage.accountId })
 		.go({ consistent: true });
@@ -185,13 +191,21 @@ export async function reconcileStage(input: {
 		roleArn: account.data.roleArn,
 		region: account.data.region
 	});
+	if (action === "disconnect") {
+		await removeSubscriptions({
+			input,
+			credentials: connection.credentials,
+			subscriptions: existingSubscriptions
+		});
+		return;
+	}
+	const config = await ingressConfig();
 	await ensureIngressQueuePolicy(config);
 	const resources = await lambdaResources(
 		input.appName,
 		input.stageName,
 		connection.credentials
 	);
-	const existingSubscriptions = await Subscription.list(input);
 	const desiredLogGroups = new Set(
 		resources.map(resource => resource.logGroup)
 	);
@@ -200,7 +214,7 @@ export async function reconcileStage(input: {
 			subscription.status !== "removed" &&
 			!desiredLogGroups.has(subscription.logGroup)
 	);
-	if (input.action === "reconcile" && staleSubscriptions.length > 0) {
+	if (staleSubscriptions.length > 0) {
 		console.log("Removing stale Issue log subscriptions", {
 			appName: input.appName,
 			stageName: input.stageName,
@@ -217,13 +231,6 @@ export async function reconcileStage(input: {
 		stageName: input.stageName,
 		count: resources.length
 	});
-	if (input.action === "disconnect") {
-		await removeSubscriptions({
-			input,
-			credentials: connection.credentials
-		});
-		return;
-	}
 	for (const [region, regionalResources] of Map.groupBy(
 		resources,
 		item => item.region
@@ -250,7 +257,6 @@ export async function reconcileStage(input: {
 				await enqueueReconcile(
 					{
 						...input,
-						action: "reconcile",
 						attempt: input.attempt + 1
 					},
 					60
@@ -570,12 +576,11 @@ function subscriptionFilterName(config: IngressConfig) {
 	return `sst-console#${config.controlAccountId}#${config.stage}`;
 }
 
-/** Queues a delayed, targeted monitoring setup or teardown action. */
+/** Queues a delayed monitoring reconciliation for one Stage. */
 async function enqueueReconcile(
 	input: {
 		appName: string;
 		stageName: string;
-		action: "reconcile" | "disconnect";
 		attempt: number;
 	},
 	delaySeconds = 0
