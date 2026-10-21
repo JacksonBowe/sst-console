@@ -358,13 +358,15 @@ async function deleteStageIssueData(input: {
 	appName: string;
 	stageName: string;
 }) {
-	const [subscriptions, issues] = await Promise.all([
+	const [subscriptions, issues, ingressEvents] = await Promise.all([
 		Subscription.list(input),
-		Issue.list(input)
+		Issue.list(input),
+		Issue.listIngressEvents(input)
 	]);
 	for (const subscription of subscriptions)
 		await Subscription.remove(subscription);
 	for (const issue of issues) await Issue.remove(issue);
+	for (const event of ingressEvents) await Issue.removeIngressEvent(event);
 }
 
 /** Reads configured log groups for current physical SST Lambda resources. */

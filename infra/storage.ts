@@ -1,4 +1,5 @@
 export const consoleData = new sst.aws.Dynamo("ConsoleData", {
+	ttl: "ttl",
 	fields: {
 		pk: "string",
 		sk: "string",

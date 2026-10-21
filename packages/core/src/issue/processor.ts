@@ -30,6 +30,15 @@ export async function processCandidate(input: IssueCandidate) {
 			throw new Error("Issue subscription is not ready");
 		return;
 	}
+	const sourceKey = createHash("sha256")
+		.update(
+			[
+				input.source.accountId,
+				input.source.region,
+				input.source.logGroup
+			].join("\n")
+		)
+		.digest("hex");
 	for (const event of input.events) {
 		const parsed = parseError(event.message);
 		if (!parsed) continue;
@@ -50,10 +59,9 @@ export async function processCandidate(input: IssueCandidate) {
 			stageName: subscription.stageName,
 			fingerprint
 		};
-		const existing = await Issue.find(key);
 		const occurredAt = new Date(event.timestamp).toISOString();
-		if (!existing) {
-			const issue = {
+		const occurrence = await Issue.recordOccurrence({
+			issue: {
 				...key,
 				accountId: input.source.accountId,
 				region: input.source.region,
@@ -66,7 +74,7 @@ export async function processCandidate(input: IssueCandidate) {
 				errorType: parsed.errorType,
 				errorMessage: parsed.errorMessage,
 				...(parsed.stack ? { stack: parsed.stack } : {}),
-				status: "open" as const,
+				status: "open",
 				statusUpdatedAt: occurredAt,
 				count: 1,
 				firstSeenAt: occurredAt,
@@ -74,84 +82,19 @@ export async function processCandidate(input: IssueCandidate) {
 				logGroup: input.source.logGroup,
 				logStream: input.source.logStream,
 				logTimestamp: event.timestamp
-			};
-			try {
-				await Issue.create(issue);
-			} catch (error) {
-				if (
-					!(error instanceof Error) ||
-					error.name !== "ConditionalCheckFailedException"
-				)
-					throw error;
-				const updated = await incrementIssue(
-					subscription,
-					fingerprint,
-					input.source,
-					event.timestamp,
-					parsed,
-					occurredAt,
-					existing
-				);
-				await bus.publish(Resource.Bus, Issue.Events.Updated, {
-					issue: updated
-				});
-				continue;
-			}
-			await bus.publish(Resource.Bus, Issue.Events.Created, { issue });
-			continue;
-		}
-		const updated = await incrementIssue(
-			subscription,
-			fingerprint,
-			input.source,
-			event.timestamp,
-			parsed,
-			occurredAt,
-			existing
-		);
-		await bus.publish(Resource.Bus, Issue.Events.Updated, {
-			issue: updated
+			},
+			sourceKey,
+			eventId: event.id
 		});
+		if (occurrence.outcome === "duplicate") continue;
+		await bus.publish(
+			Resource.Bus,
+			occurrence.outcome === "created"
+				? Issue.Events.Created
+				: Issue.Events.Updated,
+			{ issue: occurrence.issue }
+		);
 	}
-}
-
-/** Increments a grouped Issue after a concurrent or existing occurrence. */
-async function incrementIssue(
-	subscription: { appName: string; stageName: string },
-	fingerprint: string,
-	source: IssueCandidate["source"],
-	timestamp: number,
-	parsed: ReturnType<typeof parseError> & {},
-	occurredAt: string,
-	existing: Issue.Issue | null
-) {
-	const latest = !existing || occurredAt >= existing.lastSeenAt;
-	const reopen = existing?.status === "resolved";
-	await Issue.update({
-		appName: subscription.appName,
-		stageName: subscription.stageName,
-		fingerprint,
-		errorType: parsed.errorType,
-		errorMessage: parsed.errorMessage,
-		stack: parsed.stack,
-		countDelta: 1,
-		...(latest
-			? {
-					lastSeenAt: occurredAt,
-					logGroup: source.logGroup,
-					logStream: source.logStream,
-					logTimestamp: timestamp
-				}
-			: {}),
-		...(reopen
-			? { status: "open" as const, statusUpdatedAt: occurredAt }
-			: {})
-	});
-	return Issue.get({
-		appName: subscription.appName,
-		stageName: subscription.stageName,
-		fingerprint
-	});
 }
 
 function functionName(functionArn: string | undefined) {

@@ -95,23 +95,24 @@ lookups such as a CloudWatch Logs source.
 ElectroDB derives all keys. These layouts are contract, not values callers
 construct themselves.
 
-| Entity                  | PK                                      | SK                                         |
-| ----------------------- | --------------------------------------- | ------------------------------------------ |
-| Account                 | `ACCOUNT#{accountId}`                   | `account`                                  |
-| App                     | `APP#{appName}`                         | `APP`                                      |
-| Stage                   | `APP#{appName}`                         | `STAGE#{stageName}`                        |
-| Resource                | `APP#{appName}#STAGE#{stageName}`       | `RESOURCE#{resourceId}`                    |
-| StateSnapshot           | `APP#{appName}#STAGE#{stageName}`       | `SNAPSHOT#{reverseTimestamp}#{snapshotId}` |
-| SyncRun                 | `ACCOUNT#{accountId}`                   | `SYNC#{reverseTimestamp}#{syncRunId}`      |
-| DiscoveredStage         | `ACCOUNT#{accountId}`                   | `DISCOVERY#{appName}#STAGE#{stageName}`    |
-| Connection              | `CONNECTIONS`                           | `ACCOUNT#{accountId}`                      |
-| User                    | `USER#{id}`                             | `USER`                                     |
-| UserIdentity            | `COGNITO#{cognitoSub}`                  | `USER`                                     |
-| IssueSubscription       | `APP#{appName}#STAGE#{stageName}`       | `ISSUE_SUBSCRIPTION#{region}#{logGroup}`   |
-| Issue                   | `APP#{appName}#STAGE#{stageName}`       | `ISSUE#{fingerprint}`                      |
-| IssueSubscriber         | `ISSUE_SUBSCRIBER#{accountId}#{region}` | `SUBSCRIBER`                               |
-| AlertRule               | `ALERT_RULE#{id}`                       | `ALERT_RULE`                               |
-| NotificationDestination | `NOTIFICATION_DESTINATION#{id}`         | `NOTIFICATION_DESTINATION`                 |
+| Entity                  | PK                                      | SK                                          |
+| ----------------------- | --------------------------------------- | ------------------------------------------- |
+| Account                 | `ACCOUNT#{accountId}`                   | `account`                                   |
+| App                     | `APP#{appName}`                         | `APP`                                       |
+| Stage                   | `APP#{appName}`                         | `STAGE#{stageName}`                         |
+| Resource                | `APP#{appName}#STAGE#{stageName}`       | `RESOURCE#{resourceId}`                     |
+| StateSnapshot           | `APP#{appName}#STAGE#{stageName}`       | `SNAPSHOT#{reverseTimestamp}#{snapshotId}`  |
+| SyncRun                 | `ACCOUNT#{accountId}`                   | `SYNC#{reverseTimestamp}#{syncRunId}`       |
+| DiscoveredStage         | `ACCOUNT#{accountId}`                   | `DISCOVERY#{appName}#STAGE#{stageName}`     |
+| Connection              | `CONNECTIONS`                           | `ACCOUNT#{accountId}`                       |
+| User                    | `USER#{id}`                             | `USER`                                      |
+| UserIdentity            | `COGNITO#{cognitoSub}`                  | `USER`                                      |
+| IssueSubscription       | `APP#{appName}#STAGE#{stageName}`       | `ISSUE_SUBSCRIPTION#{region}#{logGroup}`    |
+| Issue                   | `APP#{appName}#STAGE#{stageName}`       | `ISSUE#{fingerprint}`                       |
+| IssueIngressEvent       | `APP#{appName}#STAGE#{stageName}`       | `ISSUE_INGRESS_EVENT#{sourceKey}#{eventId}` |
+| IssueSubscriber         | `ISSUE_SUBSCRIBER#{accountId}#{region}` | `SUBSCRIBER`                                |
+| AlertRule               | `ALERT_RULE#{id}`                       | `ALERT_RULE`                                |
+| NotificationDestination | `NOTIFICATION_DESTINATION#{id}`         | `NOTIFICATION_DESTINATION`                  |
 
 `id` is a native Console ULID. `cognitoSub` remains external identity data;
 the UserIdentity record maps it to the native user ID and enforces one Cognito
@@ -164,6 +165,7 @@ inferred from key encoding. Component group rows have no ARN; only physical reso
 | Remove excluded stage Issue data              | sync worker: app + stage                           | IssueSubscription and Issue primary-key queries                               | Implemented |
 | Verify issue ingress source                   | issue processor: account + region + log group      | `lookup` query                                                                | Implemented |
 | Find Issue for new occurrence                 | issue worker: app + stage + fingerprint            | Issue primary-key get                                                         | Implemented |
+| Deduplicate Issue ingress event               | issue worker: app + stage + source hash + event ID | conditional primary-key create, transactionally with Issue mutation           | Implemented |
 | List Issues                                   | dashboard/API: global, App, or App/Stage scope     | `entitiesByType` query; status filters in process                             | Implemented |
 | List stage issue subscriptions                | stage detail: app + stage                          | IssueSubscription primary-key query                                           | Implemented |
 | Delete all persisted Issues                   | authenticated `DELETE /issues`                     | `entitiesByType`, then Stage / Issue primary-key queries                      | Implemented |
@@ -397,8 +399,8 @@ Then:
 
 ### Issue lifecycle and filtering
 
-`Issue` records use their primary key for a strongly consistent deduplication
-read during ingress. Their `entitiesByType` projection has fixed `ISSUE`
+`Issue` records use their primary key for strongly consistent occurrence reads
+during ingress. Their `entitiesByType` projection has fixed `ISSUE`
 partition and sorts by App, Stage, then `lastSeenAt`. `GET /issues` queries all
 Issues, one App, or one App/Stage directly from this index. Status filters run
 in process. The global Issues page sorts its bounded result by `lastSeenAt` in
@@ -411,6 +413,16 @@ patch the primary record only. A reoccurrence reopens a resolved Issue but leave
 a suppressed Issue suppressed while continuing to update its occurrence count.
 This Issue shape is deployed only after the required ConsoleData purge for the
 GSI-overhaul cutover; no prior Issue shape is read or maintained.
+
+`IssueIngressEvent` records retain processed CloudWatch log event IDs for seven
+days. Their `ttl` attribute configures DynamoDB TTL; physical deletion is
+asynchronous after expiry. Ingress processing conditionally creates this marker
+in the same transaction as an Issue create or occurrence increment. A marker
+conflict is a duplicate delivery and makes no Issue mutation or Issue event.
+Issue-event publication is at-most-once: a failure after this transaction can
+lose the corresponding EventBridge event rather than replaying it. Distinct
+event IDs retain separate markers, including when they resolve to the same Issue
+fingerprint.
 
 ## Deferred domains
 

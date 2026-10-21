@@ -215,3 +215,53 @@ export const issueEntity = new Entity({
 		}
 	}
 });
+
+export const issueIngressEventEntity = new Entity({
+	model: { ...model, entity: "issueIngressEvent" },
+	attributes: {
+		appName: { type: "string", required: true },
+		stageName: { type: "string", required: true },
+		sourceKey: { type: "string", required: true },
+		eventId: { type: "string", required: true },
+		ttl: { type: "number", required: true },
+		schemaVersion: { type: "string", default: "1" }
+	},
+	indexes: {
+		stage: {
+			pk: {
+				field: "pk",
+				composite: ["appName", "stageName"],
+				template: "APP#${appName}#STAGE#${stageName}",
+				casing: "none"
+			},
+			sk: {
+				field: "sk",
+				composite: ["sourceKey", "eventId"],
+				template: "ISSUE_INGRESS_EVENT#${sourceKey}#${eventId}",
+				casing: "none"
+			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "ISSUE_INGRESS_EVENT",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: [
+					"appName",
+					"stageName",
+					"ttl",
+					"sourceKey",
+					"eventId"
+				],
+				template:
+					"APP#${appName}#STAGE#${stageName}#TTL#${ttl}#SOURCE#${sourceKey}#EVENT#${eventId}",
+				casing: "none"
+			}
+		}
+	}
+});

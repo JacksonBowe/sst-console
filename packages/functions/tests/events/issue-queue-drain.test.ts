@@ -198,6 +198,38 @@ describe("Issue queue drain", () => {
 		);
 	});
 
+	it("processes a redelivered ingress message after its delete fails", async () => {
+		let ingressReceives = 0;
+		let deleteAttempts = 0;
+		mocks.send.mockImplementation((command: { input: unknown }) => {
+			const input = commandInput(command);
+			if (input.Entries)
+				return Promise.resolve(
+					deleteAttempts++ === 0 ? { Failed: [{ Id: "0" }] } : {}
+				);
+			if (input.QueueUrl === ingressQueueUrl)
+				return Promise.resolve({
+					Messages:
+						ingressReceives++ < 2
+							? [
+									{
+										Body: JSON.stringify(candidate),
+										ReceiptHandle: `ingress-receipt-${ingressReceives}`
+									}
+								]
+							: []
+				});
+			return Promise.resolve({ Messages: [] });
+		});
+
+		await handler();
+		await handler();
+
+		expect(mocks.processCandidate).toHaveBeenCalledTimes(2);
+		expect(mocks.processCandidate).toHaveBeenNthCalledWith(1, candidate);
+		expect(mocks.processCandidate).toHaveBeenNthCalledWith(2, candidate);
+	});
+
 	it("receives another batch after a full batch", async () => {
 		const messages = Array.from({ length: 10 }, (_, index) => ({
 			Body: JSON.stringify(candidate),
