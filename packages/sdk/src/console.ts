@@ -383,8 +383,8 @@ export const consoleMethods = (request: RequestFn) => ({
 		}),
 	purgeIssues: (): Promise<void> =>
 		request({ method: "DELETE", url: "issues" }),
-	testIssueQuery: (): Promise<{ message: string }> =>
-		request({ method: "POST", url: "issues/test-query" }),
+	testIssue: (): Promise<void> =>
+		request({ method: "POST", url: "issues/test" }),
 	listUsers: (filters: UsersFilters = {}): Promise<UsersPage> =>
 		request({ method: "GET", url: "users", params: filters }),
 	inviteUser: (input: InviteUserInput): Promise<InviteUserResult> =>

@@ -30,7 +30,7 @@
 		aria-label="Issue maintenance actions"
 	>
 		<q-menu
-			><q-list dense style="min-width: 13rem">
+			><q-list style="min-width: 13rem">
 				<DialogTrigger>
 					<template #trigger="{ open }">
 						<q-item clickable v-close-popup @click="open">
@@ -49,6 +49,13 @@
 						"
 					/>
 				</DialogTrigger>
+				<q-item
+					clickable
+					v-close-popup
+					@click="testIssueMutation.mutate()"
+				>
+					<q-item-section>Trigger test error</q-item-section>
+				</q-item>
 				<DialogTrigger>
 					<template #trigger="{ open }">
 						<q-item
@@ -81,11 +88,13 @@ import {
 import { DialogConfirm, DialogTrigger } from "@/components/ui/Dialog";
 import {
 	useDisableAllIssueMonitoring,
-	usePurgeIssues
+	usePurgeIssues,
+	useTestIssue
 } from "@/composables/issues";
 
 defineProps<{ tab: "issues" | "rules" | "channels" }>();
 
 const purgeIssuesMutation = usePurgeIssues();
 const disableAllIssueMonitoringMutation = useDisableAllIssueMonitoring();
+const testIssueMutation = useTestIssue();
 </script>
