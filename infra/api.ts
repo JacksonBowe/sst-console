@@ -1,6 +1,10 @@
 import { cognitoUserPool, cognitoUserPoolClient, passwordPolicy } from "./auth";
 import { assumeAccountRolePermission, externalId } from "./console";
-import { issueEnvironment, issueReconcileQueue } from "./issue";
+import {
+	issueEnvironment,
+	issueIngressQueue,
+	issueReconcileQueue
+} from "./issue";
 import { consoleConnections, consoleData } from "./storage";
 
 export const api = new sst.aws.Function("Api", {
@@ -11,6 +15,7 @@ export const api = new sst.aws.Function("Api", {
 		consoleConnections,
 		cognitoUserPool,
 		cognitoUserPoolClient,
+		issueIngressQueue,
 		issueReconcileQueue
 	],
 	environment: {

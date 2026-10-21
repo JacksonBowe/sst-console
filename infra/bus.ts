@@ -1,6 +1,10 @@
 import { assumeAccountRolePermission, externalId } from "./console";
 import { bus } from "./event-bus";
-import { issueEnvironment, issueReconcileQueue } from "./issue";
+import {
+	issueEnvironment,
+	issueIngressQueue,
+	issueReconcileQueue
+} from "./issue";
 import { consoleConnections, consoleData } from "./storage";
 
 export { bus } from "./event-bus";
@@ -20,7 +24,12 @@ bus.subscribe(
 	"AccountEvents",
 	{
 		handler: "packages/functions/src/events/account.handler",
-		link: [consoleConnections, consoleData, issueReconcileQueue],
+		link: [
+			consoleConnections,
+			consoleData,
+			issueIngressQueue,
+			issueReconcileQueue
+		],
 		environment: {
 			SST_CONSOLE_EXTERNAL_ID: externalId,
 			...issueEnvironment
@@ -38,7 +47,12 @@ bus.subscribe(
 	"StateObjectEvents",
 	{
 		handler: "packages/functions/src/events/state.handler",
-		link: [consoleConnections, consoleData, issueReconcileQueue],
+		link: [
+			consoleConnections,
+			consoleData,
+			issueIngressQueue,
+			issueReconcileQueue
+		],
 		environment: {
 			SST_CONSOLE_EXTERNAL_ID: externalId,
 			...issueEnvironment

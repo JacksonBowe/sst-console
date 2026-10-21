@@ -15,10 +15,12 @@ import {
 	LambdaClient
 } from "@aws-sdk/client-lambda";
 import {
+	GetQueueAttributesCommand,
 	SendMessageCommand,
 	SetQueueAttributesCommand,
 	SQSClient
 } from "@aws-sdk/client-sqs";
+import { Resource } from "sst";
 
 import { db } from "../db";
 import { ServerError } from "../error";
@@ -44,13 +46,16 @@ export {
 	subscriberStackName
 };
 
-type IngressConfig = {
-	controlAccountId: string;
+type QueueConfig = {
 	stage: string;
-	queueArn: string;
-	queueRegion: string;
 	ingressQueueUrl: string;
 	reconcileQueueUrl: string;
+};
+
+type IngressConfig = QueueConfig & {
+	controlAccountId: string;
+	queueArn: string;
+	queueRegion: string;
 };
 
 /** Enables monitoring for a stage and schedules its initial setup. */
@@ -164,7 +169,7 @@ export async function reconcileStage(input: {
 	attempt: number;
 }) {
 	console.log("Reconciling Issue monitoring", input);
-	const config = ingressConfig();
+	const config = await ingressConfig();
 	const stage = await Stage.get(input);
 	const account = await db.entities.account
 		.get({ accountId: stage.accountId })
@@ -573,8 +578,8 @@ async function enqueueReconcile(
 	},
 	delaySeconds = 0
 ) {
-	const config = ingressConfig();
-	await new SQSClient({ region: config.queueRegion }).send(
+	const config = queueConfig();
+	await new SQSClient({}).send(
 		new SendMessageCommand({
 			QueueUrl: config.reconcileQueueUrl,
 			MessageBody: JSON.stringify(input),
@@ -597,7 +602,7 @@ async function ensureIngressQueuePolicy(config: IngressConfig) {
 	const accountIds = accounts.data
 		.filter(account => account.status === "connected")
 		.map(account => account.accountId);
-	await new SQSClient({ region: config.queueRegion }).send(
+	await new SQSClient({}).send(
 		new SetQueueAttributesCommand({
 			QueueUrl: config.ingressQueueUrl,
 			Attributes: {
@@ -632,22 +637,39 @@ async function ensureIngressQueuePolicy(config: IngressConfig) {
 	);
 }
 
-/** Reads required central Issue transport configuration from Lambda environment. */
-function ingressConfig(): IngressConfig {
+/** Reads Issue queue bindings and application configuration. */
+function queueConfig(): QueueConfig {
 	const config = {
-		controlAccountId: process.env.SST_CONSOLE_ISSUE_CONTROL_ACCOUNT_ID,
 		stage: process.env.SST_CONSOLE_ISSUE_STAGE,
-		queueArn: process.env.SST_CONSOLE_ISSUE_QUEUE_ARN,
-		queueRegion: process.env.SST_CONSOLE_ISSUE_QUEUE_REGION,
-		ingressQueueUrl: process.env.SST_CONSOLE_ISSUE_QUEUE_URL,
-		reconcileQueueUrl: process.env.SST_CONSOLE_ISSUE_RECONCILE_QUEUE_URL
+		ingressQueueUrl: Resource.IssueIngressQueue.url,
+		reconcileQueueUrl: Resource.IssueReconcileQueue.url
 	};
 	if (Object.values(config).some(value => !value))
 		throw new ServerError(
 			"issue_ingress_not_configured",
 			"Issue ingress infrastructure is not configured"
 		);
-	return config as IngressConfig;
+	return config as QueueConfig;
+}
+
+/** Resolves ingress queue metadata needed for cross-account policy management. */
+async function ingressConfig(): Promise<IngressConfig> {
+	const config = queueConfig();
+	const response = await new SQSClient({}).send(
+		new GetQueueAttributesCommand({
+			QueueUrl: config.ingressQueueUrl,
+			AttributeNames: ["QueueArn"]
+		})
+	);
+	const queueArn = response.Attributes?.QueueArn;
+	const [, partition, , queueRegion, controlAccountId] =
+		queueArn?.split(":") ?? [];
+	if (!queueArn || !partition || !queueRegion || !controlAccountId)
+		throw new ServerError(
+			"issue_ingress_not_configured",
+			"Issue ingress infrastructure is not configured"
+		);
+	return { ...config, controlAccountId, queueArn, queueRegion };
 }
 
 /** Generates regional subscriber CloudFormation resources and permissions. */
@@ -702,7 +724,8 @@ function subscriberTemplate(
 					Code: { ZipFile: subscriberCode },
 					Environment: {
 						Variables: {
-							SST_CONSOLE_ISSUE_QUEUE_REGION: config.queueRegion,
+							SST_CONSOLE_ISSUE_QUEUE_REGION:
+								process.env.AWS_REGION,
 							SST_CONSOLE_ISSUE_QUEUE_URL: config.ingressQueueUrl
 						}
 					},

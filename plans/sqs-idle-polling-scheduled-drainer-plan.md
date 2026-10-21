@@ -30,19 +30,19 @@ SQS polling, rather than Issue message traffic, causes the usage.
 
 ### Verified current behavior
 
-| Fact | Evidence |
-| --- | --- |
-| Each stage creates separate ingress and reconcile SQS queues. | `infra/issue.ts`: `issueIngressQueue`, `issueReconcileQueue` |
-| Each queue has a Lambda event-source subscription. | `infra/issue.ts`: `issueReconcileQueue.subscribe(...)`, `issueIngressQueue.subscribe(...)` |
-| Reconcile messages include delayed retries. | `packages/core/src/issue/monitoring.ts`: `enqueueReconcile()` uses `DelaySeconds` |
-| Workload-account subscriber Lambdas send log-error candidates to ingress SQS. | `packages/core/src/issue/subscriber-code.ts` |
-| Ingress processing validates messages and runs as system actor. | `packages/functions/src/events/issue-ingress.ts` |
-| Reconcile processing validates jobs and calls `Issue.Monitoring.reconcileStage()`. | `packages/functions/src/events/issue-reconcile.ts` |
-| Existing cross-account sender access is maintained by an ingress queue policy. | `ensureIngressQueuePolicy()` in `packages/core/src/issue/monitoring.ts` |
-| SST `4.17.1` supports `sst.aws.CronV2`, backed by EventBridge Scheduler; schedules continue after `sst dev` exits. | Installed `bun.lock`; SST CronV2 documentation and source |
-| `CronV2.enabled` defaults to `true`; `enabled: false` disables the Scheduler schedule. | SST CronV2 documentation and source |
-| `CronV2.retries` configures EventBridge Scheduler target-delivery retries, not failed Lambda handler retries. | SST CronV2 source; AWS Lambda async-invocation documentation |
-| CronV2 invokes its Lambda asynchronously. Lambda retries failed asynchronous invocations twice by default. | AWS Lambda async-invocation documentation |
+| Fact                                                                                                               | Evidence                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| Each stage creates separate ingress and reconcile SQS queues.                                                      | `infra/issue.ts`: `issueIngressQueue`, `issueReconcileQueue`                               |
+| Each queue has a Lambda event-source subscription.                                                                 | `infra/issue.ts`: `issueReconcileQueue.subscribe(...)`, `issueIngressQueue.subscribe(...)` |
+| Reconcile messages include delayed retries.                                                                        | `packages/core/src/issue/monitoring.ts`: `enqueueReconcile()` uses `DelaySeconds`          |
+| Workload-account subscriber Lambdas send log-error candidates to ingress SQS.                                      | `packages/core/src/issue/subscriber-code.ts`                                               |
+| Ingress processing validates messages and runs as system actor.                                                    | `packages/functions/src/events/issue-queue-drain.ts`                                       |
+| Reconcile processing validates jobs and calls `Issue.Monitoring.reconcileStage()`.                                 | `packages/functions/src/events/issue-queue-drain.ts`                                       |
+| Existing cross-account sender access is maintained by an ingress queue policy.                                     | `ensureIngressQueuePolicy()` in `packages/core/src/issue/monitoring.ts`                    |
+| SST `4.17.1` supports `sst.aws.CronV2`, backed by EventBridge Scheduler; schedules continue after `sst dev` exits. | Installed `bun.lock`; SST CronV2 documentation and source                                  |
+| `CronV2.enabled` defaults to `true`; `enabled: false` disables the Scheduler schedule.                             | SST CronV2 documentation and source                                                        |
+| `CronV2.retries` configures EventBridge Scheduler target-delivery retries, not failed Lambda handler retries.      | SST CronV2 source; AWS Lambda async-invocation documentation                               |
+| CronV2 invokes its Lambda asynchronously. Lambda retries failed asynchronous invocations twice by default.         | AWS Lambda async-invocation documentation                                                  |
 
 ### Goals and boundaries
 
@@ -50,7 +50,7 @@ Goals:
 
 - retain separate ingress and reconcile queues;
 - reduce idle SQS polling below free-tier limits;
-- accept about one minute of pickup delay;
+- make Issue queue pickup cadence configurable;
 - preserve SQS durability and delayed reconciliation.
 
 Boundaries:
@@ -62,33 +62,34 @@ Boundaries:
 ### Assumptions
 
 - Normal queue traffic remains low; current metrics support this.
-- Scheduler delivery has one-minute precision, so pickup is approximately one
-  minute rather than a hard 60-second guarantee.
+- Scheduler delivery has one-minute precision, so pickup is approximately the
+  configured schedule interval rather than a hard timing guarantee.
 - Existing at-least-once delivery behavior remains acceptable.
 
 ## 2. Approach
 
 Remove the two SQS-to-Lambda event-source mappings in each stage. Add one
-EventBridge Scheduler-triggered Lambda per stage, running every minute. It polls
-both queues directly, processes successful messages, and deletes only successful
-messages.
+EventBridge Scheduler-triggered Lambda per stage, running at configured
+cadence. It polls both queues directly, processes successful messages, and
+deletes only successful messages.
 
 This keeps SQS as the durable transport and preserves existing producer payloads.
 It removes permanently active Lambda pollers, which are the source of idle SQS
 requests.
 
-Expected idle request rate per active application stage:
+Expected idle request rate per active application stage with the default
+five-minute cadence:
 
 ```text
-2 queues × 1 ReceiveMessage/minute
-= 2 requests/minute
-= 86,400 empty receives/month
+2 queues × 1 ReceiveMessage/5 minutes
+= 0.4 requests/minute
+= 17,280 empty receives/month
 ```
 
-If two application stages are active, this is four requests/minute or 172,800
-empty receives/month: approximately a 97% reduction from the observed 5.184M
-idle requests/month. These figures cover idle receives only; normal sends,
-busy-queue receives, and batch deletes add SQS requests.
+If two application stages are active, this is 34,560 empty receives/month:
+approximately a 99% reduction from the observed 5.184M idle requests/month.
+These figures cover idle receives only; normal sends, busy-queue receives, and
+batch deletes add SQS requests.
 
 ### Design decisions
 
@@ -97,8 +98,8 @@ busy-queue receives, and batch deletes add SQS requests.
    stated cost target.
 2. **One scheduled worker per stage polls both queues concurrently.** A slow
    reconciliation batch must not delay ingress polling.
-3. **Use immediate `ReceiveMessage` calls.** Scheduler cadence supplies the
-   one-minute wait; long polling would add Lambda execution time without reducing
+3. **Use immediate `ReceiveMessage` calls.** Configured Scheduler cadence supplies
+   the wait; long polling would add Lambda execution time without reducing
    scheduled idle request count.
 4. **Leave failed messages undeleted.** SQS visibility timeout provides retry;
    successful sibling messages are deleted to avoid needless replay.
@@ -106,30 +107,31 @@ busy-queue receives, and batch deletes add SQS requests.
    Lambda asynchronous-invocation retries to zero. The next schedule invocation
    retries retained SQS messages; neither retry system is needed for message
    processing.
-6. **Restrict worker concurrency to one.** Scheduler delivery can overlap a
-   prior run. Reserved Lambda concurrency prevents simultaneous drains; the 120
-   second SQS visibility timeout remains a second line of protection.
+6. **Use SQS visibility for overlap protection.** Account concurrency quota
+   cannot reserve one worker while retaining Lambda's required ten unreserved
+   executions. The 120-second SQS visibility timeout exceeds the 55-second
+   worker timeout, so overlapping runs cannot receive the same message.
 
 ## 3. Implementation steps
 
-### 1. Replace subscriptions with an every-minute scheduler
+### 1. Replace subscriptions with a configurable scheduler
 
 **File:** `infra/issue.ts`
 
-Remove both calls to `Queue.subscribe()`. Keep both queue resources and
-`issueEnvironment` unchanged.
+Remove both calls to `Queue.subscribe()`. Keep both queue resources. Retain
+`issueEnvironment` only for the application stage; queue bindings use
+`sst.Resource`.
 
 Add `sst.aws.CronV2` named `IssueQueueDrain`:
 
 ```ts
 new sst.aws.CronV2("IssueQueueDrain", {
-	schedule: "rate(1 minute)",
+	schedule: config.issue.queueDrainSchedule,
 	retries: 0,
 	function: {
 		handler: "packages/functions/src/events/issue-queue-drain.handler",
 		timeout: "55 seconds",
 		retries: 0,
-		concurrency: { reserved: 1 },
 		link: [
 			bus,
 			consoleData,
@@ -139,12 +141,7 @@ new sst.aws.CronV2("IssueQueueDrain", {
 		],
 		environment: {
 			SST_CONSOLE_EXTERNAL_ID: externalId,
-			SST_CONSOLE_ISSUE_CONTROL_ACCOUNT_ID: controlAccountId,
-			SST_CONSOLE_ISSUE_STAGE: $app.stage,
-			SST_CONSOLE_ISSUE_QUEUE_ARN: issueIngressQueue.arn,
-			SST_CONSOLE_ISSUE_QUEUE_REGION: region,
-			SST_CONSOLE_ISSUE_QUEUE_URL: issueIngressQueue.url,
-			SST_CONSOLE_ISSUE_RECONCILE_QUEUE_URL: issueReconcileQueue.url
+			SST_CONSOLE_ISSUE_STAGE: $app.stage
 		},
 		permissions: [
 			assumeAccountRolePermission,
@@ -153,7 +150,7 @@ new sst.aws.CronV2("IssueQueueDrain", {
 				resources: [issueIngressQueue.arn, issueReconcileQueue.arn]
 			},
 			{
-				actions: ["sqs:SetQueueAttributes"],
+				actions: ["sqs:GetQueueAttributes", "sqs:SetQueueAttributes"],
 				resources: [issueIngressQueue.arn]
 			}
 		]
@@ -163,9 +160,12 @@ new sst.aws.CronV2("IssueQueueDrain", {
 
 `CronV2.retries: 0` maps to EventBridge Scheduler target-delivery retries.
 Nested `function.retries: 0` disables Lambda's otherwise-default two retries
-for failed asynchronous invocations. The worker requires the existing data,
-connection, bus, cross-account role, and queue-policy permissions because it
-performs work previously split between the two subscribed functions.
+for failed asynchronous invocations. The worker reads queue URLs from
+`Resource.IssueIngressQueue` and `Resource.IssueReconcileQueue`; it resolves
+the ingress ARN with `GetQueueAttributes` for cross-account queue policy
+management. The worker requires the existing data, connection, bus,
+cross-account role, and queue-policy permissions because it performs work
+previously split between the two subscribed functions.
 
 ### 2. Add direct SQS dependency to functions workspace
 
@@ -177,56 +177,39 @@ directly and must not rely on the SDK being transitively available through
 
 Regenerate `bun.lock` with Bun from repository root.
 
-### 3. Extract ingress message processing
+### 3. Add scheduled queue-drain event handler
 
-**File:** `packages/functions/src/events/issue-ingress.ts`
+**Add:** `packages/functions/src/events/issue-queue-drain.ts`
 
-Replace the `SQSHandler` entrypoint with a message-level function, or move this
-logic into the new worker module and delete this file.
+This is the sole Issue-related file in `src/events` and the transport seam. Move
+both existing Zod schemas and their message processing into private helpers in
+this handler module:
 
 ```ts
-export async function processIngressMessage(body: string): Promise<void> {
-	const input = IngressSchema.parse(JSON.parse(body));
-
+async function processIngressMessage(body: string): Promise<void> {
+	const input = ingressSchema.parse(JSON.parse(body));
 	await withActor({ type: "system", properties: {} }, async () => {
 		console.log("Processing Issue ingress candidate", {
-			source: input.source,
-			eventCount: input.events.length
+			source: input.source
 		});
 		await processCandidate(input);
 	});
 }
-```
 
-Preserve validation and system-actor behavior exactly. Invalid JSON or invalid
-candidates throw so the message is retained for SQS retry.
-
-### 4. Extract reconciliation message processing
-
-**File:** `packages/functions/src/events/issue-reconcile.ts`
-
-Replace the `SQSHandler` entrypoint with a message-level function, or move this
-logic into the new worker module and delete this file.
-
-```ts
-export async function processReconcileMessage(body: string): Promise<void> {
-	const input = ReconcileSchema.parse(JSON.parse(body));
+async function processReconcileMessage(body: string): Promise<void> {
+	const input = reconcileSchema.parse(JSON.parse(body));
 	console.log("Issue reconciliation started", input);
 	await Issue.Monitoring.reconcileStage(input);
 	console.log("Issue reconciliation complete", input);
 }
 ```
 
-Keep `packages/core/src/issue/monitoring.ts` and `enqueueReconcile()` unchanged.
-The reconciliation queue retains its existing body format and `DelaySeconds`
-behavior.
-
-### 5. Add scheduled queue-drain worker
-
-**Add:** `packages/functions/src/events/issue-queue-drain.ts`
-
-The new module is the transport seam. It reads each queue, calls the relevant
-message-level function, and deletes only messages whose work completed.
+Delete `packages/functions/src/events/issue-ingress.ts` and
+`packages/functions/src/events/issue-reconcile.ts`. Preserve validation,
+system-actor behavior, reconciliation body format, and `DelaySeconds` behavior.
+Invalid messages throw from their private processor and are retained for retry.
+The exported `handler` reads each queue and deletes only messages whose work
+completed.
 
 ```ts
 export async function handler() {
@@ -280,7 +263,9 @@ async function drainQueue({ queueUrl, process }) {
 		for (const message of messages) {
 			try {
 				if (!message.Body || !message.ReceiptHandle)
-					throw new Error("SQS message is missing body or receipt handle");
+					throw new Error(
+						"SQS message is missing body or receipt handle"
+					);
 				await process(message.Body);
 				successful.push(message);
 			} catch (error) {
@@ -324,7 +309,7 @@ Resulting behavior:
 - Busy queue: process up to 100 messages per queue per run, bounded by 45 seconds.
 - A queue-level failure does not prevent the other queue from being drained.
 
-### 6. Replace event-handler tests
+### 4. Replace event-handler tests
 
 **Delete:** `packages/functions/tests/events/issue-ingress.test.ts`
 
@@ -347,14 +332,14 @@ Cover:
    available for retry.
 8. One queue failure does not prevent the other queue from running.
 
-### 7. Apply as one infrastructure update
+### 5. Apply as one infrastructure update
 
 The app has no deployed environment or consumer rollout to coordinate. Apply
 this change in one update; any current development-stage event-source mappings
 are removed as part of that update:
 
 1. Remove both `Queue.subscribe()` mappings.
-2. Create enabled `IssueQueueDrain` with `rate(1 minute)`.
+2. Create enabled `IssueQueueDrain` with configured `queueDrainSchedule`.
 3. Verify no Issue SQS event-source mapping remains.
 4. Verify the worker executes once per minute and drains queue messages.
 
@@ -393,8 +378,8 @@ bun run check
 
 - No SQS Lambda event-source mapping remains for either Issue queue.
 - One `IssueQueueDrain` EventBridge Scheduler schedule exists per application
-  stage, configured for `rate(1 minute)`, Scheduler retries `0`, Lambda async
-  retries `0`, and reserved concurrency `1`.
+  stage, configured with `issue.queueDrainSchedule`, Scheduler retries `0`, and
+  Lambda async retries `0`.
 - Existing cross-account queue sender policy remains restricted to connected
   workload subscriber roles.
 - A monitored Lambda error produces or updates an Issue within roughly one
@@ -411,14 +396,15 @@ After an application stage runs, observe each queue with CloudWatch
 `NumberOfEmptyReceives`, `Sum`, `1 minute`:
 
 ```text
-Each queue: approximately 1 empty receive/minute
-Each active application stage: approximately 2 empty receives/minute
+Each queue: one empty receive per configured scheduler run
+Each active application stage: two empty receives per configured scheduler run
 ```
 
 Projected idle SQS consumption:
 
 ```text
-2 queues/stage × 60 × 24 × 30 = 86,400 requests/month per active stage
+2 queues/stage × 60 ÷ schedule interval in minutes × 24 × 30
+= 17,280 requests/month per active stage at five minutes
 ```
 
 ## 6. Risks and open questions
@@ -426,8 +412,8 @@ Projected idle SQS consumption:
 ### Risks
 
 1. **Added latency.** Scheduler delivery has one-minute precision. Ingress can
-   wait approximately one scheduler interval; a delayed reconcile retry can
-   take its existing 60 seconds plus another scheduler interval.
+   wait approximately one configured scheduler interval; a delayed reconcile
+   retry can take its existing 60 seconds plus another scheduler interval.
 2. **Manual queue transport code.** Receipt handling, visibility timeout, partial
    successes, and batch deletion need thorough tests.
 3. **Backlog limit.** Initial limit is 100 messages per queue per run. A larger
@@ -435,9 +421,9 @@ Projected idle SQS consumption:
 4. **At-least-once delivery.** A timeout after domain processing but before batch
    deletion can process a message more than once; this is already possible with
    SQS event-source mappings.
-5. **Scheduled overlap or throttling.** Reserved concurrency of one prevents
-   concurrent drains, but an invocation delayed behind a prior run adds pickup
-   latency.
+5. **Scheduled overlap.** SQS's 120-second visibility timeout prevents
+   overlapping runs from receiving the same message, but different messages can
+   process concurrently.
 
 ### Open questions
 
