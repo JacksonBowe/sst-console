@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	errorFilterPattern,
 	lambdaFromResource,
+	reconciliationAction,
 	subscriberRoleName,
 	subscriberStackName
 } from "../../src/issue/monitoring-utils";
@@ -75,6 +76,16 @@ describe("Issue monitoring", () => {
 		expect(errorFilterPattern).toContain('"Error: Runtime exited"');
 		expect(errorFilterPattern).toContain('"ERROR\t"');
 		expect(errorFilterPattern).toContain('"[ERROR]"');
+	});
+
+	it("uses current monitoring intent for reordered and retried work", () => {
+		// A delayed or retried wake-up runs after monitoring was disabled.
+		expect(reconciliationAction(false, true)).toBe("disconnect");
+		expect(reconciliationAction(false, false)).toBe("noop");
+
+		// Another wake-up runs after monitoring was re-enabled.
+		expect(reconciliationAction(true, true)).toBe("reconcile");
+		expect(reconciliationAction(true, false)).toBe("reconcile");
 	});
 
 	it("uses regional SQS delivery without a public ingress endpoint", () => {

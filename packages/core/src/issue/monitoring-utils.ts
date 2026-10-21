@@ -28,6 +28,15 @@ export function isIssueWorkerFunction(functionName: string) {
 	return issueWorkerFunctionNames.some(name => functionName.includes(name));
 }
 
+/** Selects work from persisted monitoring intent, not queued message intent. */
+export function reconciliationAction(
+	monitoringEnabled: boolean,
+	hasSubscriptions: boolean
+): "reconcile" | "disconnect" | "noop" {
+	if (monitoringEnabled) return "reconcile";
+	return hasSubscriptions ? "disconnect" : "noop";
+}
+
 /** Derives a Lambda log-group target from a physical SST Function resource. */
 export function lambdaFromResource(resource: {
 	accountId: string;

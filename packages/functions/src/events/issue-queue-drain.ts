@@ -40,7 +40,6 @@ const ingressSchema = z.object({
 const reconcileSchema = z.object({
 	appName: z.string().min(1),
 	stageName: z.string().min(1),
-	action: z.enum(["reconcile", "disconnect"]),
 	attempt: z.number().int().nonnegative()
 });
 

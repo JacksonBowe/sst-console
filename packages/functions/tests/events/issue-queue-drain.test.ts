@@ -51,7 +51,6 @@ const candidate = {
 const reconciliation = {
 	appName: "console",
 	stageName: "dev",
-	action: "reconcile",
 	attempt: 0
 };
 
