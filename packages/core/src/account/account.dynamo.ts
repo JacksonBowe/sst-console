@@ -32,16 +32,16 @@ export const accountEntity = new Entity({
 			},
 			sk: { field: "sk", composite: [], template: "ACCOUNT" }
 		},
-		byStatus: {
-			index: "accountsByStatus",
+		byType: {
+			index: "entitiesByType",
 			pk: {
-				field: "gsi1pk",
-				composite: ["status"],
-				template: "ACCOUNT_STATUS#${status}",
+				field: "entityType",
+				composite: [],
+				template: "ACCOUNT",
 				casing: "none"
 			},
 			sk: {
-				field: "gsi1sk",
+				field: "entitySort",
 				composite: ["accountId"],
 				template: "ACCOUNT#${accountId}",
 				casing: "none"

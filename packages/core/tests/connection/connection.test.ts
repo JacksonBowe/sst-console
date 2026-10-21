@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("sst", () => ({
 	Resource: {
-		ConsoleConnections: { name: "ConsoleConnections-test" }
+		ConsoleConnections: { name: "ConsoleConnections-test" },
+		ConsoleData: { name: "ConsoleData-test" }
 	}
 }));
 
@@ -35,7 +36,8 @@ describe("connection entity", () => {
 			.create({
 				accountId: "123456789012",
 				region: "us-east-1",
-				roleArn: "arn:aws:iam::123456789012:role/SSTConsoleRole",
+				roleArn:
+					"arn:aws:iam::123456789012:role/SSTConsoleRole-123456789012-ef260e9aa3c673af",
 				createdAt: "2026-01-01T00:00:00.000Z",
 				updatedAt: "2026-01-01T00:00:00.000Z"
 			})
@@ -53,7 +55,8 @@ describe("connection entity", () => {
 			.ifNotExists({ createdAt: "2026-01-01T00:00:00.000Z" })
 			.set({
 				region: "us-east-1",
-				roleArn: "arn:aws:iam::123456789012:role/SSTConsoleRole",
+				roleArn:
+					"arn:aws:iam::123456789012:role/SSTConsoleRole-123456789012-ef260e9aa3c673af",
 				updatedAt: "2026-01-01T00:00:00.000Z"
 			})
 			.params();

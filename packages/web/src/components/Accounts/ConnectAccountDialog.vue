@@ -1,53 +1,78 @@
 <template>
-	<q-card class="connect-account-dialog">
-		<q-card-section>
-			<div class="text-h6">Connect AWS account</div>
-			<div class="text-body2 text-secondary q-mt-sm">
-				Deploy a ConsoleConnection stack in your workload AWS account to
-				grant Console access to sync data.
+	<q-card>
+		<q-card-section class="row items-start no-wrap q-pb-sm">
+			<q-icon
+				name="sym_r_deployed_code"
+				color="primary"
+				size="32px"
+				class="q-mr-md q-mt-xs"
+			/>
+			<div class="col">
+				<div class="text-h6">Connect AWS account</div>
+				<div class="text-body2 text-secondary q-mt-xs">
+					Deploy a SSTConsoleConnection stack in your workload AWS
+					account to connect it to this console.
+				</div>
 			</div>
+			<q-btn
+				flat
+				round
+				dense
+				icon="sym_r_close"
+				aria-label="Close connect AWS account dialog"
+				v-close-popup
+			/>
 		</q-card-section>
 
-		<q-card-section class="q-pt-none">
-			<ol
-				class="connect-account-dialog__steps q-my-none q-pl-lg text-body2"
-			>
-				<li>Sign in to workload AWS account.</li>
-				<li
-					>Copy Quick Create URL below and paste it into browser
-					address bar.</li
+		<q-card-section class="q-pt-sm q-gutter-md">
+			<div class="q-gutter-y-md">
+				<div
+					v-for="(step, index) in steps"
+					:key="step"
+					class="row items-center q-gutter-sm text-body2"
 				>
-				<li>Review CloudFormation stack, then select Create stack.</li>
-			</ol>
+					<q-badge
+						rounded
+						color="primary"
+						class="q-px-sm text-body2"
+						>{{ index + 1 }}</q-badge
+					>
+					<span>{{ step }}</span>
+				</div>
+			</div>
 
-			<q-input
+			<q-banner rounded class="bg-primary-3 text-body2">
+				<template #avatar
+					><q-icon name="sym_r_info" color="primary"
+				/></template>
+				<div class="text-secondary">
+					Creates an IAM role for SST Console, a registration Lambda,
+					and EventBridge notifications for state updates.
+				</div>
+				<div class="text-weight-medium q-mt-sm text-warning">
+					Security: The IAM role grants AdministratorAccess. Review
+					the CloudFormation template before deployment.
+				</div>
+			</q-banner>
+
+			<SInput
 				:model-value="quickCreateUrl"
+				label="CloudFormation setup link"
 				readonly
-				outlined
-				dense
-				type="textarea"
-				autogrow
-				label="Quick Create URL"
-				class="q-mt-md"
+				hide-bottom-space
 			>
 				<template #append>
 					<q-btn
 						flat
-						round
 						dense
-						icon="sym_r_content_copy"
-						aria-label="Copy Quick Create URL"
-						@click="copyUrl"
+						round
+						size="sm"
+						:icon="copied ? 'sym_r_check' : 'sym_r_content_copy'"
+						aria-label="Copy CloudFormation setup URL"
+						@click="copy"
 					/>
 				</template>
-			</q-input>
-		</q-card-section>
-
-		<q-card-section class="q-pt-none">
-			<q-checkbox
-				v-model="acknowledged"
-				label="I’m signed in to workload AWS account."
-			/>
+			</SInput>
 		</q-card-section>
 
 		<q-card-actions align="right" class="q-px-md q-pb-md">
@@ -56,11 +81,11 @@
 				unelevated
 				no-caps
 				color="primary"
-				label="Open Quick Create"
+				label="Open CloudFormation"
+				icon-right="sym_r_open_in_new"
 				:href="quickCreateUrl"
 				target="_blank"
 				rel="noopener noreferrer"
-				:disable="!acknowledged"
 				v-close-popup
 			/>
 		</q-card-actions>
@@ -68,37 +93,15 @@
 </template>
 
 <script setup lang="ts">
-import { Notify } from "quasar";
-import { ref } from "vue";
+import { useCopyValue } from "@/components/ui/Identifier";
+import { SInput } from "../ui/Input";
 
 const props = defineProps<{ quickCreateUrl: string }>();
 
-const acknowledged = ref(false);
-
-async function copyUrl(): Promise<void> {
-	try {
-		await navigator.clipboard.writeText(props.quickCreateUrl);
-		Notify.create({
-			message: "Quick Create URL copied",
-			color: "positive",
-			icon: "sym_r_check"
-		});
-	} catch {
-		Notify.create({
-			message: "Unable to copy URL. Select and copy it manually.",
-			color: "negative",
-			icon: "sym_r_error"
-		});
-	}
-}
+const steps = [
+	"Sign in to your workload AWS account.",
+	"Open the CloudFormation setup.",
+	"Review permissions and create the stack."
+];
+const { copied, copy } = useCopyValue(() => props.quickCreateUrl);
 </script>
-
-<style scoped lang="scss">
-.connect-account-dialog {
-	width: min(100vw - 32px, 640px);
-}
-
-.connect-account-dialog__steps {
-	line-height: 1.6;
-}
-</style>

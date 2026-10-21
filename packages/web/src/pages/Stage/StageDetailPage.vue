@@ -4,7 +4,19 @@
 		<StageDetailHeader
 			:title="stage?.stageName ?? stageName"
 			icon="sym_r_account_tree"
-		/>
+		>
+			<template #actions>
+				<q-btn
+					outline
+					no-caps
+					color="primary"
+					label="Manage monitoring"
+					:disable="!target"
+					:loading="updatingMonitoring"
+					@click="toggleMonitoring"
+				/>
+			</template>
+		</StageDetailHeader>
 
 		<DashboardPageContent>
 			<StageDetailLoadingState v-if="stageQuery.isPending.value" />
@@ -15,6 +27,25 @@
 			/>
 			<template v-else-if="stage">
 				<StageMetadata :stage="stage" />
+				<q-card flat bordered>
+					<q-card-section class="row items-center q-gutter-md">
+						<div class="col">
+							<div class="text-subtitle2">Open issues</div>
+							<div class="text-body2 text-secondary"
+								>{{ stageOpenIssues.length }} open issues for
+								this stage</div
+							>
+						</div>
+						<q-btn
+							flat
+							dense
+							no-caps
+							color="primary"
+							label="View all issues"
+							:to="issuesRoute"
+						/>
+					</q-card-section>
+				</q-card>
 				<StageDetailEmptyResources v-if="!visibleResources.length" />
 				<ResourceExplorer v-else :resources="visibleResources" />
 			</template>
@@ -24,8 +55,9 @@
 
 <script setup lang="ts">
 import { ApiError } from "@sst-console/sdk";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRoute } from "vue-router";
+import { Notify } from "quasar";
 
 import {
 	ResourceExplorer,
@@ -41,17 +73,26 @@ import {
 	DashboardPageContent
 } from "@/components/ui/Dashboard";
 import { useStage } from "@/composables/apps";
+import { useIssues } from "@/composables/issues";
 import {
 	getStageResourceCategory,
 	resourcesForStageCategory,
 	type StageResourceCategory
 } from "@/composables/apps/stage-resources";
+import { api, handleApiError } from "@/boot/api-client";
 
 const route = useRoute();
 const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
 const stageQuery = useStage(appName, stageName);
+const issuesQuery = useIssues({});
 const stage = computed(() => stageQuery.data.value);
+const updatingMonitoring = ref(false);
+const target = computed(() => {
+	const app = appName.value;
+	const stage = stageName.value;
+	return app && stage ? { app, stage } : undefined;
+});
 const resourceCategory = computed(() => {
 	if (route.name !== "stage-resource") return undefined;
 	const category = String(route.params.category ?? "");
@@ -65,6 +106,18 @@ const visibleResources = computed(() => {
 		resourceCategory.value as StageResourceCategory
 	);
 });
+const stageOpenIssues = computed(() =>
+	(issuesQuery.data.value ?? []).filter(
+		issue =>
+			issue.status === "open" &&
+			issue.appName === appName.value &&
+			issue.stageName === stageName.value
+	)
+);
+const issuesRoute = computed(() => ({
+	name: "monitoring",
+	query: { app: appName.value, stage: stageName.value, status: "open" }
+}));
 const breadcrumbs = computed(() => [
 	{ label: "Apps", to: { name: "apps" } },
 	{
@@ -78,4 +131,27 @@ const isNotFound = computed(() => {
 	const error = stageQuery.error.value;
 	return error instanceof ApiError && error.code === "stage_not_found";
 });
+
+async function toggleMonitoring() {
+	if (!target.value) return;
+	updatingMonitoring.value = true;
+	try {
+		await api.setStageIssueMonitoring(
+			target.value.app,
+			target.value.stage,
+			!stage.value?.issueMonitoringEnabled
+		);
+		Notify.create({
+			message: stage.value?.issueMonitoringEnabled
+				? "Issue monitoring disabled; filter removal queued"
+				: "Issue monitoring enabled; reconciliation queued",
+			color: "positive"
+		});
+		await stageQuery.refetch();
+	} catch (error) {
+		handleApiError(error);
+	} finally {
+		updatingMonitoring.value = false;
+	}
+}
 </script>

@@ -14,5 +14,8 @@ export default {
 			requireUppercase: true,
 			temporaryPasswordValidityDays: 7
 		}
+	},
+	issue: {
+		queueDrainSchedule: "rate(5 minutes)"
 	}
 } satisfies ConsoleConfig;

@@ -7,12 +7,6 @@
 		:row-class="() => 'cursor-pointer'"
 		@row-click="openAccount"
 	>
-		<template #top>
-			<div class="q-pa-md text-subtitle1 text-weight-medium">
-				Accounts
-			</div>
-		</template>
-
 		<template #no-data>
 			<div
 				v-if="!loading"
@@ -28,17 +22,7 @@
 					Connect an AWS account, then sync it to discover SST Apps
 					and Stages.
 				</div>
-				<ConnectAccountTrigger>
-					<template #trigger="{ open }">
-						<q-btn
-							unelevated
-							no-caps
-							color="primary"
-							label="Connect account"
-							@click="open"
-						/>
-					</template>
-				</ConnectAccountTrigger>
+				<ConnectAccountTrigger />
 			</div>
 		</template>
 
@@ -63,17 +47,6 @@
 		<template #body-cell-status="tableProps">
 			<q-td :props="tableProps">
 				<AccountConnectionStatus :status="tableProps.row.status" />
-			</q-td>
-		</template>
-
-		<template #body-cell-roleArn="tableProps">
-			<q-td :props="tableProps">
-				<span
-					class="accounts-table__role text-mono"
-					:title="tableProps.row.roleArn"
-				>
-					{{ tableProps.row.roleArn }}
-				</span>
 			</q-td>
 		</template>
 
@@ -143,12 +116,6 @@ const columns: ExtendedQTableColumn[] = [
 		sortable: true
 	},
 	{
-		name: "roleArn",
-		label: "Role identity",
-		field: "roleArn",
-		align: "left"
-	},
-	{
 		name: "actions",
 		label: "Actions",
 		field: () => "",
@@ -185,19 +152,5 @@ function openAccount(event: Event, account: Account) {
 
 .accounts-table__link:hover {
 	text-decoration: underline;
-}
-
-.accounts-table__role {
-	display: block;
-	max-width: 24rem;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-@media (max-width: 599px) {
-	.accounts-table__role {
-		max-width: 12rem;
-	}
 }
 </style>

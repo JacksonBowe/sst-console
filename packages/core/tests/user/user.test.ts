@@ -6,9 +6,9 @@ const userCreate = vi.fn();
 const identityCreate = vi.fn();
 const userGet = vi.fn();
 const userGetGo = vi.fn();
-const userById = vi.fn();
-const userByIdGo = vi.fn();
-const userByIdWhere = vi.fn();
+const userByType = vi.fn();
+const userByTypeGo = vi.fn();
+const userByTypeWhere = vi.fn();
 const userDelete = vi.fn();
 const identityDelete = vi.fn();
 const transactionWrite = vi.fn();
@@ -42,7 +42,7 @@ vi.mock("../../src/db", () => ({
 			user: {
 				create: userCreate,
 				get: userGet,
-				query: { byId: userById },
+				query: { byType: userByType },
 				delete: userDelete
 			},
 			userIdentity: {
@@ -67,6 +67,7 @@ const input = {
 const userId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
 const user = {
 	id: userId,
+	cognitoSub: input.cognitoSub,
 	email: input.email,
 	cognitoStatus: input.cognitoStatus,
 	cognitoEnabled: input.cognitoEnabled,
@@ -79,9 +80,9 @@ describe("user", () => {
 		vi.clearAllMocks();
 		identityGet.mockImplementation(() => ({ go: identityGetGo }));
 		userGet.mockImplementation(() => ({ go: userGetGo }));
-		userById.mockImplementation(() => {
-			const query = { go: userByIdGo, where: userByIdWhere };
-			userByIdWhere.mockReturnValue(query);
+		userByType.mockImplementation(() => {
+			const query = { go: userByTypeGo, where: userByTypeWhere };
+			userByTypeWhere.mockReturnValue(query);
 			return query;
 		});
 		userCreate.mockImplementation(() => ({ commit: vi.fn() }));
@@ -105,7 +106,7 @@ describe("user", () => {
 	});
 
 	it("lists users by descending ID with pagination", async () => {
-		userByIdGo.mockResolvedValue({
+		userByTypeGo.mockResolvedValue({
 			data: [user],
 			cursor: "next-page"
 		});
@@ -114,8 +115,8 @@ describe("user", () => {
 			items: [user],
 			meta: { limit: 25, hasMore: true, nextCursor: "next-page" }
 		});
-		expect(userById).toHaveBeenCalledWith({});
-		expect(userByIdGo).toHaveBeenCalledWith({
+		expect(userByType).toHaveBeenCalledWith({});
+		expect(userByTypeGo).toHaveBeenCalledWith({
 			limit: 25,
 			cursor: "page",
 			order: "desc"
@@ -123,7 +124,7 @@ describe("user", () => {
 	});
 
 	it("deletes Cognito user and Console user records", async () => {
-		userGetGo.mockResolvedValue({ data: { ...input, id: userId } });
+		userGetGo.mockResolvedValue({ data: user });
 		transactionGo.mockResolvedValue({ canceled: false });
 
 		await remove({ id: userId });

@@ -1,16 +1,11 @@
 import { z } from "zod";
 
-import * as Connection from "../connection";
-import { db } from "../db";
+import * as Connection from "./connection";
 import { fn } from "../util/fn";
+import * as Account from "../account/account";
 
 export const backupConnections = fn(z.object({}), async () => {
-	const accounts = await Promise.all(
-		(["connected", "disconnected"] as const).map(status =>
-			db.entities.account.query.byStatus({ status }).go({ pages: "all" })
-		)
-	);
-	const records = accounts.flatMap(result => result.data);
+	const records = await Account.list();
 	await Promise.all(
 		records.map(account => {
 			const now = new Date().toISOString();
@@ -33,16 +28,14 @@ export const recover = fn(z.object({}), async () => {
 		connections.map(async connection => {
 			try {
 				const now = new Date().toISOString();
-				await db.entities.account
-					.upsert({
-						accountId: connection.accountId,
-						region: connection.region,
-						roleArn: connection.roleArn,
-						status: "connected",
-						updatedAt: now
-					})
-					.ifNotExists({ createdAt: now })
-					.go({ response: "none" });
+				await Account.create({
+					accountId: connection.accountId,
+					region: connection.region,
+					roleArn: connection.roleArn,
+					status: "connected",
+					createdAt: now,
+					updatedAt: now
+				});
 
 				return {
 					accountId: connection.accountId,

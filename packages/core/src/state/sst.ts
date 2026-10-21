@@ -29,7 +29,6 @@ export type SstState = z.output<typeof checkpointSchema>;
 
 export type NormalizedResource = {
 	resourceId: string;
-	arnIndex: string;
 	parentResourceId?: string;
 	resourceKind: "component" | "physical";
 	resourceType: string;
@@ -209,7 +208,6 @@ function normalizeResource(
 			resourceKind: "component",
 			resourceType: component.type.replaceAll(":", "."),
 			urn: component.urn,
-			arnIndex: `component#${resourceIdFor(component.urn)}`,
 			name: nameFromUrn(component.urn),
 			summary: undefined
 		}
@@ -240,7 +238,6 @@ function baseResource(
 		resourceType,
 		urn: component.urn,
 		normalizedArn: arn.trim(),
-		arnIndex: arn.trim(),
 		name: nameFromUrn(component.urn),
 		summary
 	};

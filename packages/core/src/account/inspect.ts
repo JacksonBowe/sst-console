@@ -1,92 +1,77 @@
-import { z } from "zod";
-
 import { db } from "../db";
-import { InputError } from "../error";
 import { fn } from "../util/fn";
+import * as Account from "./account";
+import { AccountKeySchema } from "./schema";
 
-export const inspect = fn(
-	z.object({ accountId: z.string().regex(/^\d{12}$/) }),
-	async ({ accountId }) => {
-		const account = await db.entities.account
-			.get({ accountId })
-			.go({ consistent: true });
-		if (!account.data) {
-			throw new InputError(
-				"account_not_found",
-				"Connected account was not found"
-			);
-		}
+export const inspect = fn(AccountKeySchema, async ({ accountId }) => {
+	const account = await Account.get({ accountId });
 
-		const stages = await db.entities.stage.query
-			.byAccount({ accountId })
-			.go({ pages: "all" });
-		const [apps, resourceResults] = await Promise.all([
-			Promise.all(
-				[...new Set(stages.data.map(stage => stage.appName))].map(
-					appName =>
-						db.entities.app
-							.get({ appName })
-							.go({ consistent: true })
-				)
-			),
-			Promise.all(
-				stages.data.map(stage =>
-					db.entities.resource.query
-						.resource({
-							appName: stage.appName,
-							stageName: stage.stageName
-						})
-						.go({ pages: "all" })
-				)
+	const stages = await db.entities.stage.query
+		.byAwsAccount({ accountId })
+		.go({ pages: "all" });
+	const [apps, resourceResults] = await Promise.all([
+		Promise.all(
+			[...new Set(stages.data.map(stage => stage.appName))].map(appName =>
+				db.entities.app.get({ appName }).go({ consistent: true })
 			)
-		]);
-		const resources = resourceResults.flatMap(result => result.data);
-		const snapshots = await Promise.all(
-			stages.data.map(async stage => {
-				const result = await db.entities.stateSnapshot.query
-					.snapshot({
+		),
+		Promise.all(
+			stages.data.map(stage =>
+				db.entities.resource.query
+					.resource({
 						appName: stage.appName,
 						stageName: stage.stageName
 					})
-					.go({ limit: 1 });
-				return [
-					stageKey(stage.appName, stage.stageName),
-					result.data[0]
-				] as const;
-			})
-		);
-		const latestSnapshots = new Map(snapshots);
+					.go({ pages: "all" })
+			)
+		)
+	]);
+	const resources = resourceResults.flatMap(result => result.data);
+	const snapshots = await Promise.all(
+		stages.data.map(async stage => {
+			const result = await db.entities.stateSnapshot.query
+				.snapshot({
+					appName: stage.appName,
+					stageName: stage.stageName
+				})
+				.go({ limit: 1 });
+			return [
+				stageKey(stage.appName, stage.stageName),
+				result.data[0]
+			] as const;
+		})
+	);
+	const latestSnapshots = new Map(snapshots);
 
-		return {
-			account: account.data,
-			apps: apps
-				.flatMap(result => (result.data ? [result.data] : []))
-				.map(app => ({
-					appName: app.appName,
-					createdAt: app.createdAt,
-					updatedAt: app.updatedAt,
-					stages: stages.data
-						.filter(stage => stage.appName === app.appName)
-						.map(stage => ({
-							stageName: stage.stageName,
-							createdAt: stage.createdAt,
-							updatedAt: stage.updatedAt,
-							latestSnapshot:
-								latestSnapshots.get(
-									stageKey(app.appName, stage.stageName)
-								) ?? null,
-							resources: resourceTree(
-								resources.filter(
-									resource =>
-										resource.appName === app.appName &&
-										resource.stageName === stage.stageName
-								)
+	return {
+		account,
+		apps: apps
+			.flatMap(result => (result.data ? [result.data] : []))
+			.map(app => ({
+				appName: app.appName,
+				createdAt: app.createdAt,
+				updatedAt: app.updatedAt,
+				stages: stages.data
+					.filter(stage => stage.appName === app.appName)
+					.map(stage => ({
+						stageName: stage.stageName,
+						createdAt: stage.createdAt,
+						updatedAt: stage.updatedAt,
+						latestSnapshot:
+							latestSnapshots.get(
+								stageKey(app.appName, stage.stageName)
+							) ?? null,
+						resources: resourceTree(
+							resources.filter(
+								resource =>
+									resource.appName === app.appName &&
+									resource.stageName === stage.stageName
 							)
-						}))
-				}))
-		};
-	}
-);
+						)
+					}))
+			}))
+	};
+});
 
 function stageKey(appName: string, stageName: string): string {
 	return `${appName}\u0000${stageName}`;

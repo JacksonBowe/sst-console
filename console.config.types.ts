@@ -24,11 +24,16 @@ export type ExternalDnsDomain = {
 	};
 };
 
+export type IssueQueueDrainSchedule = `rate(${string})`;
+
 export type ConsoleConfig = {
 	profile: string;
 	region: string;
 	domain?: Route53Domain | ExternalDnsDomain;
 	auth: {
 		passwordPolicy: CognitoPasswordPolicy;
+	};
+	issue: {
+		queueDrainSchedule: IssueQueueDrainSchedule;
 	};
 };

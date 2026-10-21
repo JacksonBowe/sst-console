@@ -1,5 +1,9 @@
 <template>
-	<DashboardPageHeader :title="title" :subtitle="subtitle" :icon="icon" />
+	<DashboardPageHeader :title="title" :subtitle="subtitle" :icon="icon">
+		<template #actions>
+			<slot name="actions" />
+		</template>
+	</DashboardPageHeader>
 </template>
 
 <script setup lang="ts">

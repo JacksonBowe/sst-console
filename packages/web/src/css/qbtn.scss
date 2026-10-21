@@ -1,0 +1,46 @@
+.q-btn.bg-primary.text-white {
+	color: var(--q-on-primary) !important;
+}
+
+.q-btn.bg-secondary.text-white {
+	color: var(--q-on-secondary) !important;
+}
+
+.q-btn.bg-accent.text-white {
+	color: var(--q-on-accent) !important;
+}
+
+.q-btn.bg-positive.text-white {
+	color: var(--q-on-positive) !important;
+}
+
+.q-btn.bg-negative.text-white {
+	color: var(--q-on-negative) !important;
+}
+
+.q-btn.bg-warning.text-white {
+	color: var(--q-on-warning) !important;
+}
+
+.q-btn.bg-info.text-white {
+	color: var(--q-on-info) !important;
+}
+
+.q-btn {
+	.q-icon {
+		font-size: 1.57em; // 20px at standard 14px button text
+	}
+
+	.on-left,
+	.on-right {
+		transform: translateY(-1px);
+	}
+
+	.on-left {
+		margin-right: 6px;
+	}
+
+	.on-right {
+		margin-left: 6px;
+	}
+}

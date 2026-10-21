@@ -41,6 +41,8 @@ import {
 	type DrawerNavItem
 } from "@/components/ui/Drawer";
 import { ThemeToggle } from "@/components/ui/theme";
+import { useIssues } from "@/composables/issues";
+import { computed } from "vue";
 import ConsoleUserMenu from "./ConsoleUserMenu.vue";
 import LocalSessionControl from "./LocalSessionControl.vue";
 import StageContextNavigation from "./StageContextNavigation.vue";
@@ -49,12 +51,25 @@ defineProps<{ modelValue: boolean }>();
 
 const emit = defineEmits<{ "update:modelValue": [value: boolean] }>();
 
-const navigation: DrawerNavItem[] = [
-	{ label: "Apps", icon: "sym_r_deployed_code", to: "/apps" },
-	{ label: "Accounts", icon: "sym_r_account_balance", to: "/accounts" },
-	{ label: "Users", icon: "sym_r_group", to: "/users" },
-	{ label: "Operations", icon: "sym_r_build", to: "/operations" }
-];
+const openIssuesQuery = useIssues({ status: "open" });
+const navigation = computed<DrawerNavItem[]>(() => {
+	const openIssueCount = openIssuesQuery.data.value?.length ?? 0;
+
+	return [
+		{ label: "Apps", icon: "sym_r_deployed_code", to: "/apps" },
+		{
+			label: "Monitoring",
+			icon: "sym_r_error",
+			to: "/monitoring",
+			...(openIssueCount > 0
+				? { badge: openIssueCount, badgeColor: "negative" }
+				: {})
+		},
+		{ label: "Accounts", icon: "sym_r_account_balance", to: "/accounts" },
+		{ label: "Users", icon: "sym_r_group", to: "/users" },
+		{ label: "Operations", icon: "sym_r_build", to: "/operations" }
+	];
+});
 </script>
 
 <style lang="scss" scoped>

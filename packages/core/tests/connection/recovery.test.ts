@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { listConnections, upsertConnection, queryAccounts, upsertAccount } =
-	vi.hoisted(() => ({
-		listConnections: vi.fn(),
-		upsertConnection: vi.fn(),
-		queryAccounts: vi.fn(),
-		upsertAccount: vi.fn()
-	}));
+const {
+	listConnections,
+	upsertConnection,
+	queryAccounts,
+	upsertAccount,
+	getAccount
+} = vi.hoisted(() => ({
+	listConnections: vi.fn(),
+	upsertConnection: vi.fn(),
+	queryAccounts: vi.fn(),
+	upsertAccount: vi.fn(),
+	getAccount: vi.fn()
+}));
 
-vi.mock("../../src/connection", () => ({
+vi.mock("../../src/connection/connection", () => ({
 	list: listConnections,
 	upsert: upsertConnection
 }));
@@ -17,19 +23,32 @@ vi.mock("../../src/db", () => ({
 		entities: {
 			account: {
 				upsert: upsertAccount,
-				query: { byStatus: queryAccounts }
+				get: getAccount,
+				query: { byType: queryAccounts }
 			}
 		}
 	}
 }));
 const { backupConnections, recover } =
-	await import("../../src/account/recover");
+	await import("../../src/connection/recovery");
 
 describe("account recovery", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		upsertAccount.mockImplementation(() => ({
 			ifNotExists: () => ({ go: vi.fn().mockResolvedValue(undefined) })
+		}));
+		getAccount.mockImplementation(({ accountId }) => ({
+			go: vi.fn().mockResolvedValue({
+				data: {
+					accountId,
+					region: "us-east-1",
+					roleArn: `arn:aws:iam::${accountId}:role/SSTConsoleRole-123456789012-ef260e9aa3c673af`,
+					status: "connected",
+					createdAt: "2026-01-01T00:00:00.000Z",
+					updatedAt: "2026-01-01T00:00:00.000Z"
+				}
+			})
 		}));
 		queryAccounts.mockImplementation(() => ({
 			go: vi.fn().mockResolvedValue({ data: [] })
@@ -46,7 +65,8 @@ describe("account recovery", () => {
 							accountId: "111111111111",
 							region: "us-east-1",
 							roleArn:
-								"arn:aws:iam::111111111111:role/SSTConsoleRole",
+								"arn:aws:iam::111111111111:role/SSTConsoleRole-123456789012-ef260e9aa3c673af",
+							status: "connected",
 							createdAt: "2026-01-01T00:00:00.000Z",
 							updatedAt: "2026-01-02T00:00:00.000Z"
 						}
@@ -61,7 +81,8 @@ describe("account recovery", () => {
 		expect(upsertConnection).toHaveBeenCalledWith({
 			accountId: "111111111111",
 			region: "us-east-1",
-			roleArn: "arn:aws:iam::111111111111:role/SSTConsoleRole",
+			roleArn:
+				"arn:aws:iam::111111111111:role/SSTConsoleRole-123456789012-ef260e9aa3c673af",
 			createdAt: "2026-01-01T00:00:00.000Z",
 			updatedAt: "2026-01-02T00:00:00.000Z"
 		});
@@ -72,12 +93,14 @@ describe("account recovery", () => {
 			{
 				accountId: "111111111111",
 				region: "us-east-1",
-				roleArn: "arn:aws:iam::111111111111:role/SSTConsoleRole"
+				roleArn:
+					"arn:aws:iam::111111111111:role/SSTConsoleRole-123456789012-ef260e9aa3c673af"
 			},
 			{
 				accountId: "222222222222",
 				region: "us-west-2",
-				roleArn: "arn:aws:iam::222222222222:role/SSTConsoleRole"
+				roleArn:
+					"arn:aws:iam::222222222222:role/SSTConsoleRole-123456789012-ef260e9aa3c673af"
 			}
 		]);
 		const result = await recover({});

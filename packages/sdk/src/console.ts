@@ -1,6 +1,41 @@
 import type { RequestFn } from "./request";
 
 export type AccountStatus = "connected" | "disconnected";
+export type IssueStatus = "open" | "resolved" | "suppressed";
+export type NotificationChannel = "discord";
+export type AlertRuleType = "issue";
+
+export type AlertRule = {
+	id: string;
+	type: AlertRuleType;
+	appName?: string;
+	stageName?: string;
+	notificationDestinationIds: string[];
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type AlertRuleInput = {
+	type: AlertRuleType;
+	appName?: string;
+	stageName?: string;
+	notificationDestinationIds: string[];
+};
+
+export type NotificationDestination = {
+	id: string;
+	name: string;
+	channel: NotificationChannel;
+	configured: true;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type NotificationDestinationInput = {
+	name: string;
+	channel: NotificationChannel;
+	channelConfig: { webhookUrl: string };
+};
 
 export type StageSelector = { app: string; stage?: string };
 
@@ -45,7 +80,6 @@ export type Resource = {
 	resourceType: string;
 	urn: string;
 	normalizedArn?: string;
-	arnIndex: string;
 	name?: string;
 	summary?: unknown;
 	createdAt: string;
@@ -58,6 +92,7 @@ export type AppStage = {
 	stageName: string;
 	accountId: string;
 	region: string;
+	issueMonitoringEnabled: boolean;
 	createdAt: string;
 	updatedAt: string;
 	latestSnapshot: StateSnapshot | null;
@@ -68,7 +103,14 @@ export type App = {
 	appName: string;
 	createdAt: string;
 	updatedAt: string;
+};
+
+export type AppSummary = App & {
 	stages: AppStage[];
+};
+
+export type ListAppsOptions<Summaries extends boolean = boolean> = {
+	summaries?: Summaries;
 };
 
 export type Stage = {
@@ -76,6 +118,7 @@ export type Stage = {
 	stageName: string;
 	accountId: string;
 	region: string;
+	issueMonitoringEnabled: boolean;
 	createdAt: string;
 	updatedAt: string;
 	latestSnapshot: StateSnapshot | null;
@@ -181,9 +224,87 @@ export type UsersPage = {
 export type InviteUserInput = { email: string };
 export type InviteUserResult = { id: string };
 
+export type Issue = {
+	appName: string;
+	stageName: string;
+	fingerprint: string;
+	accountId: string;
+	region: string;
+	functionArn?: string;
+	functionName?: string;
+	errorType: string;
+	errorMessage: string;
+	stack?: string;
+	status: IssueStatus;
+	statusUpdatedAt: string;
+	count: number;
+	firstSeenAt: string;
+	lastSeenAt: string;
+	logGroup: string;
+	logStream: string;
+	logTimestamp: number;
+};
+
+export type IssuesFilters = {
+	appName?: string;
+	stageName?: string;
+	status?: IssueStatus;
+};
+
 export const consoleMethods = (request: RequestFn) => ({
-	listApps: (): Promise<App[]> => request({ method: "GET", url: "apps" }),
-	getApp: (appName: string): Promise<App> =>
+	listNotificationDestinations: (): Promise<NotificationDestination[]> =>
+		request({ method: "GET", url: "notification-destinations" }),
+	createNotificationDestination: (
+		input: NotificationDestinationInput
+	): Promise<NotificationDestination> =>
+		request({
+			method: "POST",
+			url: "notification-destinations",
+			data: input
+		}),
+	updateNotificationDestination: (
+		id: string,
+		input: NotificationDestinationInput
+	): Promise<NotificationDestination> =>
+		request({
+			method: "PUT",
+			url: `notification-destinations/${encodeURIComponent(id)}`,
+			data: input
+		}),
+	removeNotificationDestination: (id: string): Promise<void> =>
+		request({
+			method: "DELETE",
+			url: `notification-destinations/${encodeURIComponent(id)}`
+		}),
+	testNotificationDestination: (id: string): Promise<void> =>
+		request({
+			method: "POST",
+			url: `notification-destinations/${encodeURIComponent(id)}/test`
+		}),
+	listAlertRules: (): Promise<AlertRule[]> =>
+		request({ method: "GET", url: "alert-rules" }),
+	createAlertRule: (input: AlertRuleInput): Promise<AlertRule> =>
+		request({ method: "POST", url: "alert-rules", data: input }),
+	updateAlertRule: (id: string, input: AlertRuleInput): Promise<AlertRule> =>
+		request({
+			method: "PUT",
+			url: `alert-rules/${encodeURIComponent(id)}`,
+			data: input
+		}),
+	removeAlertRule: (id: string): Promise<void> =>
+		request({
+			method: "DELETE",
+			url: `alert-rules/${encodeURIComponent(id)}`
+		}),
+	listApps: <Summaries extends boolean = false>(
+		options: ListAppsOptions<Summaries> = {}
+	): Promise<Summaries extends true ? AppSummary[] : App[]> =>
+		request<Summaries extends true ? AppSummary[] : App[]>({
+			method: "GET",
+			url: "apps",
+			params: options
+		}),
+	getApp: (appName: string): Promise<AppSummary> =>
 		request({ method: "GET", url: `apps/${encodeURIComponent(appName)}` }),
 	getStage: (appName: string, stageName: string): Promise<Stage> =>
 		request({
@@ -238,6 +359,32 @@ export const consoleMethods = (request: RequestFn) => ({
 		request({ method: "POST", url: "accounts/recover" }),
 	backupConnections: (): Promise<BackupConnectionsResult> =>
 		request({ method: "POST", url: "accounts/backup-connections" }),
+	listIssues: (filters: IssuesFilters = {}): Promise<Issue[]> =>
+		request({ method: "GET", url: "issues", params: filters }),
+	setIssueStatus: (
+		issue: Pick<Issue, "appName" | "stageName" | "fingerprint">,
+		status: IssueStatus
+	): Promise<void> =>
+		request({
+			method: "POST",
+			url: `issues/${encodeURIComponent(issue.appName)}/${encodeURIComponent(issue.stageName)}/${encodeURIComponent(issue.fingerprint)}/status`,
+			data: { status }
+		}),
+	disableAllIssueMonitoring: (): Promise<{ disabled: number }> =>
+		request({ method: "POST", url: "issues/monitoring/disable" }),
+	setStageIssueMonitoring: (
+		appName: string,
+		stageName: string,
+		enabled: boolean
+	): Promise<void> =>
+		request({
+			method: "POST",
+			url: `issues/${encodeURIComponent(appName)}/${encodeURIComponent(stageName)}/${enabled ? "connect" : "disconnect"}`
+		}),
+	purgeIssues: (): Promise<void> =>
+		request({ method: "DELETE", url: "issues" }),
+	testIssueQuery: (): Promise<{ message: string }> =>
+		request({ method: "POST", url: "issues/test-query" }),
 	listUsers: (filters: UsersFilters = {}): Promise<UsersPage> =>
 		request({ method: "GET", url: "users", params: filters }),
 	inviteUser: (input: InviteUserInput): Promise<InviteUserResult> =>

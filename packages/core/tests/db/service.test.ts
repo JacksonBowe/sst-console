@@ -10,12 +10,10 @@ vi.mock("sst", () => ({
 const { db } = await import("../../src/db/service");
 
 describe("db service", () => {
-	it("builds account and status lookup keys", () => {
+	it("builds account and type listing keys", () => {
 		const accountId = "123456789012";
 		const get = db.entities.account.get({ accountId }).params();
-		const list = db.entities.account.query
-			.byStatus({ status: "connected" })
-			.params();
+		const list = db.entities.account.query.byType({}).params();
 
 		expect(get).toMatchObject({
 			TableName: "ConsoleData-test",
@@ -23,7 +21,7 @@ describe("db service", () => {
 		});
 		expect(list).toMatchObject({
 			TableName: "ConsoleData-test",
-			IndexName: "accountsByStatus"
+			IndexName: "entitiesByType"
 		});
 	});
 
@@ -32,7 +30,7 @@ describe("db service", () => {
 		const identity = db.entities.userIdentity
 			.get({ cognitoSub: "cognito-sub" })
 			.params();
-		const usersById = db.entities.user.query.byId({}).params();
+		const usersByType = db.entities.user.query.byType({}).params();
 
 		expect(user).toMatchObject({
 			TableName: "ConsoleData-test",
@@ -42,17 +40,17 @@ describe("db service", () => {
 			TableName: "ConsoleData-test",
 			Key: { pk: "COGNITO#cognito-sub", sk: "user" }
 		});
-		expect(usersById.IndexName).toBe("usersById");
+		expect(usersByType.IndexName).toBe("entitiesByType");
 	});
 
-	it("builds global app hierarchy and resource ARN lookup keys", () => {
+	it("builds global app hierarchy and account listing keys", () => {
 		const app = db.entities.app.get({ appName: "console" }).params();
-		const appsByName = db.entities.app.query.byName({}).params();
+		const appsByType = db.entities.app.query.byType({}).params();
 		const stage = db.entities.stage
 			.get({ appName: "console", stageName: "prod" })
 			.params();
-		const stagesByAccount = db.entities.stage.query
-			.byAccount({ accountId: "123456789012" })
+		const stagesByAwsAccount = db.entities.stage.query
+			.byAwsAccount({ accountId: "123456789012" })
 			.params();
 		const resource = db.entities.resource
 			.get({
@@ -61,22 +59,18 @@ describe("db service", () => {
 				resourceId: "bucket"
 			})
 			.params();
-		const byArn = db.entities.resource.query
-			.byArn({ arnIndex: "arn:aws:s3:::console-bucket" })
-			.params();
 
 		expect(app.Key).toEqual({ pk: "APP#console", sk: "APP" });
-		expect(appsByName.IndexName).toBe("appsByName");
+		expect(appsByType.IndexName).toBe("entitiesByType");
 		expect(stage.Key).toEqual({
 			pk: "APP#console",
 			sk: "STAGE#prod"
 		});
-		expect(stagesByAccount.IndexName).toBe("stagesByAccount");
+		expect(stagesByAwsAccount.IndexName).toBe("entitiesByAwsAccount");
 		expect(resource.Key).toEqual({
 			pk: "APP#console#STAGE#prod",
 			sk: "RESOURCE#bucket"
 		});
-		expect(byArn.IndexName).toBe("resourcesByArn");
 	});
 
 	it("builds state snapshot keys", () => {
@@ -108,29 +102,12 @@ describe("db service", () => {
 			.params();
 		expect(discovery.Item).toMatchObject({
 			pk: "ACCOUNT#691249328599",
-			sk: "DISCOVERY#console#STAGE#prod"
+			sk: "DISCOVERY#console#STAGE#prod",
+			entityType: "DISCOVERED_STAGE",
+			entitySort: "ACCOUNT#691249328599#APP#console#STAGE#prod",
+			accountPk: "ACCOUNT#691249328599",
+			accountSk: "DISCOVERY#console#prod"
 		});
-	});
-
-	it("removes ARN index fields from component groups", () => {
-		const now = "2026-09-25T00:00:00.000Z";
-		const component = db.entities.resource
-			.upsert({
-				accountId: "123456789012",
-				appName: "console",
-				stageName: "prod",
-				resourceId: "realtime",
-				resourceKind: "component",
-				resourceType: "sst.aws.Realtime",
-				urn: "urn:pulumi:prod::console::sst:aws:Realtime::Realtime",
-				arnIndex: "component#realtime",
-				name: "Realtime",
-				updatedAt: now
-			})
-			.ifNotExists({ createdAt: now })
-			.params();
-
-		expect(component.UpdateExpression).toContain("REMOVE #gsi2pk, #gsi2sk");
 	});
 
 	it("builds atomic account sync persistence", () => {

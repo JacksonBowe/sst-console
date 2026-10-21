@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { useCopyValue } from "./useCopyValue";
 
 const props = withDefaults(
 	defineProps<{
@@ -33,17 +33,7 @@ const props = withDefaults(
 	{ copyOnly: false, label: "value" }
 );
 
-const copied = ref(false);
-
-async function copy() {
-	try {
-		await navigator.clipboard.writeText(props.value);
-		copied.value = true;
-		window.setTimeout(() => (copied.value = false), 1500);
-	} catch {
-		copied.value = false;
-	}
-}
+const { copied, copy } = useCopyValue(() => props.value);
 </script>
 
 <style scoped lang="scss">

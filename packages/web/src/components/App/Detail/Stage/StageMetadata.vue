@@ -34,6 +34,17 @@
 				<div>{{ resourceCount }}</div>
 			</div>
 			<div>
+				<div class="stage-metadata__label">Monitoring</div>
+				<q-badge
+					:color="
+						stage.issueMonitoringEnabled ? 'positive' : 'secondary'
+					"
+					:label="
+						stage.issueMonitoringEnabled ? 'Enabled' : 'Disabled'
+					"
+				/>
+			</div>
+			<div>
 				<div class="stage-metadata__label">Latest snapshot</div>
 				<div
 					v-if="stage.latestSnapshot"
@@ -73,7 +84,7 @@ function formatTimestamp(value: string) {
 <style scoped lang="scss">
 .stage-metadata {
 	display: grid;
-	grid-template-columns: repeat(5, minmax(0, 1fr));
+	grid-template-columns: repeat(6, minmax(0, 1fr));
 	gap: 1rem;
 }
 

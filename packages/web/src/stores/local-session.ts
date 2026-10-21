@@ -74,6 +74,7 @@ export const useLocalSessionStore = defineStore("local-session", {
 			if (version !== initializationVersion) return;
 			if (
 				this.permission === "granted" ||
+				this.permission === "prompt" ||
 				this.permission === "unsupported"
 			)
 				this.start();

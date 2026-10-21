@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { includesStage, matchesStageSelector } from "../../src/account/policy";
+import {
+	includesStage,
+	matchesStageSelector
+} from "../../src/connection/policy";
 
 describe("account sync policy", () => {
 	it("matches exact selectors and restricted single-star globs", () => {

@@ -4,6 +4,8 @@ export { default as AppDetailLoadingState } from "./Detail/AppDetailLoadingState
 export { default as AppMetadata } from "./Detail/AppMetadata.vue";
 export { default as AppStagesTable } from "./Detail/AppStagesTable.vue";
 export { default as AppsList } from "./AppsList.vue";
+export { default as AppsListErrorState } from "./AppsListErrorState.vue";
+export { default as AppsListNotFoundState } from "./AppsListNotFoundState.vue";
 export { default as AppStagePreviews } from "./AppStagePreviews.vue";
 export { default as AppSummaryMetrics } from "./AppSummaryMetrics.vue";
 export { default as AppSummaryCard } from "./AppSummaryCard.vue";

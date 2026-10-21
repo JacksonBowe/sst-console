@@ -1,96 +1,36 @@
-import { z } from "zod";
-
 import { db } from "../db";
-import { InputError } from "../error";
 import { fn } from "../util/fn";
+import * as App from "./app";
+import * as Stage from "./app.stage";
+import { AppKeySchema, StageKeySchema } from "./schema";
 
-const appInput = z.object({ appName: z.string().min(1) });
-const stageInput = appInput.extend({ stageName: z.string().min(1) });
+export * from "./app";
+export * as Stage from "./app.stage";
+export { appErrors } from "./errors";
+export { AppKeySchema, AppSchema, StageKeySchema, StageSchema } from "./schema";
 
-export const list = async () => {
-	const apps = await db.entities.app.query.byName({}).go({ pages: "all" });
-	return Promise.all(apps.data.map(app => summary(app)));
-};
+/** DEPR: Superseded by get() and summary(). */
+export const inspect = fn(AppKeySchema, async input => App.summary(input));
 
-export const inspect = fn(appInput, async ({ appName }) => {
-	const app = await db.entities.app.get({ appName }).go({ consistent: true });
-	if (!app.data) {
-		throw new InputError("app_not_found", "SST app was not found");
-	}
-	return summary(app.data);
-});
-
-export const inspectStage = fn(stageInput, async ({ appName, stageName }) => {
-	const stage = await db.entities.stage
-		.get({ appName, stageName })
-		.go({ consistent: true });
-	if (!stage.data) {
-		throw new InputError("stage_not_found", "SST stage was not found");
-	}
-
+/** DEPR: Superseded by Stage.get(). */
+export const inspectStage = fn(StageKeySchema, async input => {
+	const stage = await Stage.get(input);
 	const [snapshot, resources] = await Promise.all([
-		db.entities.stateSnapshot.query
-			.snapshot({ appName, stageName })
-			.go({ limit: 1 }),
-		db.entities.resource.query
-			.resource({ appName, stageName })
-			.go({ pages: "all" })
+		db.entities.stateSnapshot.query.snapshot(input).go({ limit: 1 }),
+		db.entities.resource.query.resource(input).go({ pages: "all" })
 	]);
 	return {
-		appName,
-		stageName,
-		accountId: stage.data.accountId,
-		region: stage.data.region,
-		createdAt: stage.data.createdAt,
-		updatedAt: stage.data.updatedAt,
+		appName: stage.appName,
+		stageName: stage.stageName,
+		accountId: stage.accountId,
+		region: stage.region,
+		issueMonitoringEnabled: stage.issueMonitoringEnabled,
+		createdAt: stage.createdAt,
+		updatedAt: stage.updatedAt,
 		latestSnapshot: snapshot.data[0] ?? null,
 		resources: resourceTree(resources.data)
 	};
 });
-
-async function summary(app: {
-	appName: string;
-	createdAt: string;
-	updatedAt: string;
-}) {
-	const stages = await db.entities.stage.query
-		.stage({ appName: app.appName })
-		.go({ pages: "all" });
-	const stageSummaries = await Promise.all(
-		stages.data.map(async stage => {
-			const [snapshot, resources] = await Promise.all([
-				db.entities.stateSnapshot.query
-					.snapshot({
-						appName: stage.appName,
-						stageName: stage.stageName
-					})
-					.go({ limit: 1 }),
-				db.entities.resource.query
-					.resource({
-						appName: stage.appName,
-						stageName: stage.stageName
-					})
-					.go({ pages: "all" })
-			]);
-			return {
-				stageName: stage.stageName,
-				accountId: stage.accountId,
-				region: stage.region,
-				createdAt: stage.createdAt,
-				updatedAt: stage.updatedAt,
-				latestSnapshot: snapshot.data[0] ?? null,
-				resourceCount: resources.data.length
-			};
-		})
-	);
-
-	return {
-		appName: app.appName,
-		createdAt: app.createdAt,
-		updatedAt: app.updatedAt,
-		stages: stageSummaries
-	};
-}
 
 function resourceTree<
 	T extends { resourceId: string; parentResourceId?: string }

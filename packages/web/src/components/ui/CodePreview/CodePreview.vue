@@ -1,15 +1,18 @@
 <template>
-	<q-scroll-area
+	<component
+		:is="previewComponent"
 		class="code-preview"
-		:style="{ backgroundColor: codeBackground }"
+		:class="`code-preview--${mode}`"
+		:style="previewStyle"
 		:aria-label="label"
 		role="region"
 	>
 		<div v-html="highlightedCode" />
-	</q-scroll-area>
+	</component>
 </template>
 
 <script setup lang="ts">
+import { QScrollArea } from "quasar";
 import { computed, ref, watch } from "vue";
 
 import { useTheme } from "@/composables/theme";
@@ -23,12 +26,21 @@ const props = withDefaults(
 		code: string;
 		language?: CodeLanguage;
 		label?: string;
+		mode?: "content" | "fill";
+		maxHeight?: string;
 	}>(),
-	{ label: "Code preview" }
+	{ label: "Code preview", mode: "fill", maxHeight: "20rem" }
 );
 
 const { dark } = useTheme();
 const codeBackground = computed(() => (dark.value ? "#0d1117" : "#ffffff"));
+const previewComponent = computed(() =>
+	props.mode === "fill" ? QScrollArea : "div"
+);
+const previewStyle = computed(() => ({
+	backgroundColor: codeBackground.value,
+	...(props.mode === "content" ? { maxHeight: props.maxHeight } : {})
+}));
 const highlightedCode = ref(toPlainTextHtml(props.code));
 let requestId = 0;
 
@@ -74,6 +86,10 @@ function escapeHtml(value: string): string {
 	font-family: monospace;
 	font-size: 0.78rem;
 	line-height: 1.5;
+}
+
+.code-preview--content {
+	overflow: auto;
 }
 
 .code-preview :deep(pre) {

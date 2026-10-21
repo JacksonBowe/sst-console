@@ -1,5 +1,5 @@
 <template>
-	<div class="q-gutter-sm">
+	<div class="q-gutter-sm items-center row">
 		<slot />
 	</div>
 </template>

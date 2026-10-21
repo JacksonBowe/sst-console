@@ -9,6 +9,13 @@ import {
 	syncRunEntity
 } from "../state/state.dynamo";
 import { userEntity, userIdentityEntity } from "../user/user.dynamo";
+import {
+	issueEntity,
+	issueSubscriberEntity,
+	issueSubscriptionEntity
+} from "../issue/issue.dynamo";
+import { alertRuleEntity } from "../alert-rule/alert-rule.dynamo";
+import { notificationDestinationEntity } from "../notification-destination/notification-destination.dynamo";
 import { dynamo } from "./client";
 
 export const db = new Service(
@@ -21,7 +28,12 @@ export const db = new Service(
 		syncRun: syncRunEntity,
 		discoveredStage: discoveredStageEntity,
 		user: userEntity,
-		userIdentity: userIdentityEntity
+		userIdentity: userIdentityEntity,
+		issue: issueEntity,
+		issueSubscriber: issueSubscriberEntity,
+		issueSubscription: issueSubscriptionEntity,
+		alertRule: alertRuleEntity,
+		notificationDestination: notificationDestinationEntity
 	},
 	{ client: dynamo, table: Resource.ConsoleData.name }
 );

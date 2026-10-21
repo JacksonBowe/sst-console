@@ -52,6 +52,50 @@
 				{{ formatTimestamp(props.row.updatedAt) }}
 			</q-td>
 		</template>
+
+		<template #body-cell-issueMonitoringEnabled="props">
+			<q-td :props="props">
+				<q-badge
+					:color="
+						props.row.issueMonitoringEnabled ? 'positive' : 'grey'
+					"
+					:label="
+						props.row.issueMonitoringEnabled
+							? 'Enabled'
+							: 'Disabled'
+					"
+				/>
+			</q-td>
+		</template>
+
+		<template #body-cell-actions="props">
+			<q-td :props="props">
+				<q-btn
+					flat
+					dense
+					no-caps
+					:color="
+						props.row.issueMonitoringEnabled
+							? 'negative'
+							: 'primary'
+					"
+					:label="
+						props.row.issueMonitoringEnabled
+							? 'Disable monitoring'
+							: 'Enable monitoring'
+					"
+					:loading="updatingStageName === props.row.stageName"
+					:disable="Boolean(updatingStageName)"
+					@click.stop="
+						$emit(
+							'monitoring',
+							props.row,
+							!props.row.issueMonitoringEnabled
+						)
+					"
+				/>
+			</q-td>
+		</template>
 	</BaseTable>
 </template>
 
@@ -65,7 +109,10 @@ import { BaseTable, type ExtendedQTableColumn } from "@/components/ui/Table";
 const props = defineProps<{
 	appName: string;
 	stages: AppStage[];
+	updatingStageName?: string | undefined;
 }>();
+
+defineEmits<{ monitoring: [stage: AppStage, enabled: boolean] }>();
 
 const router = useRouter();
 
@@ -106,11 +153,24 @@ const columns: ExtendedQTableColumn[] = [
 		sortable: true
 	},
 	{
+		name: "issueMonitoringEnabled",
+		label: "Issue monitoring",
+		field: "issueMonitoringEnabled",
+		align: "left",
+		sortable: true
+	},
+	{
 		name: "updatedAt",
 		label: "Updated",
 		field: "updatedAt",
 		align: "left",
 		sortable: true
+	},
+	{
+		name: "actions",
+		label: "Actions",
+		field: () => "",
+		align: "right"
 	}
 ];
 

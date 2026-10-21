@@ -22,11 +22,11 @@
 </template>
 
 <script setup lang="ts">
-import type { App } from "@sst-console/sdk";
+import type { AppSummary } from "@sst-console/sdk";
 
 import { formatDateTime } from "@/components/ui/format";
 
-defineProps<{ app: App }>();
+defineProps<{ app: AppSummary }>();
 
 function formatTimestamp(value: string) {
 	if (Number.isNaN(new Date(value).getTime())) return "Unavailable";

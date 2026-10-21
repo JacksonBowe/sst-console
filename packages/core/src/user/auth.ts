@@ -42,7 +42,6 @@ async function requireConsoleUser(email: string) {
 	});
 	if (!id) throw userErrors.notFound();
 	const user = await User.get({ id });
-	if (!user) throw userErrors.notFound();
 	if (!user.cognitoEnabled) {
 		throw userErrors.invalidState("User is disabled");
 	}

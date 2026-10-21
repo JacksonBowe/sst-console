@@ -1,0 +1,34 @@
+info:
+    name: Update issue status
+    type: http
+    seq: 7
+
+http:
+    method: POST
+    url: "{{ApiBase}}/issues/:appName/:stageName/:fingerprint/status"
+    params:
+        - name: appName
+          value: "{{SSTApp}}"
+          type: path
+        - name: stageName
+          value: "{{SSTAppStage}}"
+          type: path
+        - name: fingerprint
+          value: "{{IssueFingerprint}}"
+          type: path
+    headers:
+        - name: Content-Type
+          value: application/json
+    body:
+        type: json
+        data: |-
+            {
+              "status": "resolved"
+            }
+    auth: inherit
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
