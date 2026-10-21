@@ -18,16 +18,16 @@ The cost is idle polling, not message throughput.
 
 ### Verified current behavior
 
-| Fact | Evidence |
-| --- | --- |
-| Two Issue SQS queues each have a Lambda subscription. | `infra/issue.ts`: `issueReconcileQueue.subscribe(...)` and `issueIngressQueue.subscribe(...)` |
-| Lambda event-source mappings poll queues when empty. | AWS Lambda SQS behavior; observed `NumberOfEmptyReceives` confirms it here. |
-| Reconcile jobs send directly to the reconcile queue. | `packages/core/src/issue/monitoring.ts`: `enqueueReconcile()` |
-| Regional subscriber Lambdas send error-log candidates to the ingress queue. | `packages/core/src/issue/subscriber-code.ts` |
-| Ingress and reconciliation use separate queue handlers. | `packages/functions/src/events/issue-ingress.ts`; `packages/functions/src/events/issue-reconcile.ts` |
-| API, account-event, and S3-state-event functions link to the reconcile queue. | `infra/api.ts`; `infra/bus.ts` |
-| Ingress queue policy grants connected workload subscriber roles `sqs:SendMessage`. | `ensureIngressQueuePolicy()` in `packages/core/src/issue/monitoring.ts` |
-| EventBridge already carries Console domain events. | `infra/event-bus.ts`; `infra/bus.ts` |
+| Fact                                                                               | Evidence                                                                                             |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Two Issue SQS queues each have a Lambda subscription.                              | `infra/issue.ts`: `issueReconcileQueue.subscribe(...)` and `issueIngressQueue.subscribe(...)`        |
+| Lambda event-source mappings poll queues when empty.                               | AWS Lambda SQS behavior; observed `NumberOfEmptyReceives` confirms it here.                          |
+| Reconcile jobs send directly to the reconcile queue.                               | `packages/core/src/issue/monitoring.ts`: `enqueueReconcile()`                                        |
+| Regional subscriber Lambdas send error-log candidates to the ingress queue.        | `packages/core/src/issue/subscriber-code.ts`                                                         |
+| Ingress and reconciliation use separate queue handlers.                            | `packages/functions/src/events/issue-ingress.ts`; `packages/functions/src/events/issue-reconcile.ts` |
+| API, account-event, and S3-state-event functions link to the reconcile queue.      | `infra/api.ts`; `infra/bus.ts`                                                                       |
+| Ingress queue policy grants connected workload subscriber roles `sqs:SendMessage`. | `ensureIngressQueuePolicy()` in `packages/core/src/issue/monitoring.ts`                              |
+| EventBridge already carries Console domain events.                                 | `infra/event-bus.ts`; `infra/bus.ts`                                                                 |
 
 ### Goal
 
@@ -322,8 +322,8 @@ bun run check
 
 1. Keep the existing ingress queue resource, or create a newly named
    `IssueQueue` resource?
-   - Recommended: retain existing resource now, avoiding a connected-account
-     subscriber rollout.
+    - Recommended: retain existing resource now, avoiding a connected-account
+      subscriber rollout.
 2. Is halving baseline use sufficient, or should later work replace SQS event
    mappings with scheduled queue draining?
 3. Should a later improvement configure partial-batch responses to avoid
