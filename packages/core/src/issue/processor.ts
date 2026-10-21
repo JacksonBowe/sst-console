@@ -86,12 +86,16 @@ export async function processCandidate(input: IssueCandidate) {
 			sourceKey,
 			eventId: event.id
 		});
-		if (occurrence.outcome === "duplicate") continue;
+		if (
+			occurrence.outcome !== "created" &&
+			occurrence.outcome !== "recurred"
+		)
+			continue;
 		await bus.publish(
 			Resource.Bus,
 			occurrence.outcome === "created"
 				? Issue.Events.Created
-				: Issue.Events.Updated,
+				: Issue.Events.Recurred,
 			{ issue: occurrence.issue }
 		);
 	}

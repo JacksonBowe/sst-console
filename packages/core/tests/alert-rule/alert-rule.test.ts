@@ -78,7 +78,7 @@ describe("alert rules", () => {
 		await expect(list()).resolves.toEqual([alertRule]);
 	});
 
-	it("delivers generic Issue notifications to matching destinations", async () => {
+	it("delivers matching Issue notifications using last seen time", async () => {
 		const destination = {
 			id: notificationDestinationId,
 			channel: "discord"
@@ -102,7 +102,7 @@ describe("alert rules", () => {
 			title: "🚨 Error",
 			body: "Failure",
 			severity: "error",
-			occurredAt: issue.firstSeenAt,
+			occurredAt: issue.lastSeenAt,
 			fields: [
 				{ name: "App", value: "console", inline: true },
 				{ name: "Stage", value: "prod", inline: true },
@@ -113,6 +113,14 @@ describe("alert rules", () => {
 				}
 			]
 		});
+	});
+
+	it("does not deliver notifications for suppressed Issues", async () => {
+		alertRuleByTypeGo.mockResolvedValue({ data: [alertRule] });
+
+		await sendIssueNotifications({ ...issue, status: "suppressed" });
+
+		expect(deliver).not.toHaveBeenCalled();
 	});
 
 	it("uses type index to list alert rules", () => {
