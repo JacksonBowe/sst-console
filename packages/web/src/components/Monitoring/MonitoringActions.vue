@@ -31,24 +31,13 @@
 	>
 		<q-menu
 			><q-list style="min-width: 13rem">
-				<DialogTrigger>
-					<template #trigger="{ open }">
-						<q-item clickable v-close-popup @click="open">
-							<q-item-section>Disable monitoring</q-item-section>
-						</q-item>
-					</template>
-					<DialogConfirm
-						title="Disable issue monitoring"
-						message="This disables issue monitoring on every monitored stage. Existing log subscriptions are removed asynchronously."
-						validation-string="DISABLE"
-						variant="negative"
-						confirm-label="Disable monitoring"
-						:perform="
-							() =>
-								disableAllIssueMonitoringMutation.mutateAsync()
-						"
-					/>
-				</DialogTrigger>
+				<q-item
+					clickable
+					v-close-popup
+					@click="openDisableMonitoringConfirm"
+				>
+					<q-item-section>Disable monitoring</q-item-section>
+				</q-item>
 				<q-item
 					clickable
 					v-close-popup
@@ -56,36 +45,27 @@
 				>
 					<q-item-section>Trigger test error</q-item-section>
 				</q-item>
-				<DialogTrigger>
-					<template #trigger="{ open }">
-						<q-item
-							clickable
-							v-close-popup
-							class="text-negative"
-							@click="open"
-						>
-							<q-item-section>Delete all issues</q-item-section>
-						</q-item>
-					</template>
-					<DialogConfirm
-						title="Delete all issues"
-						message="This permanently deletes every persisted issue."
-						validation-string="DELETE"
-						variant="negative"
-						confirm-label="Delete all"
-						:perform="() => purgeIssuesMutation.mutateAsync()"
-					/>
-				</DialogTrigger> </q-list
-		></q-menu>
+				<q-item
+					clickable
+					v-close-popup
+					class="text-negative"
+					@click="openPurgeIssuesConfirm"
+				>
+					<q-item-section>Delete all issues</q-item-section>
+				</q-item>
+			</q-list></q-menu
+		>
 	</q-btn>
 </template>
 
 <script setup lang="ts">
+import { Dialog } from "quasar";
+
 import {
 	AlertRuleTrigger,
 	NotificationDestinationTrigger
 } from "@/components/AlertRules";
-import { DialogConfirm, DialogTrigger } from "@/components/ui/Dialog";
+import { DialogConfirm } from "@/components/ui/Dialog";
 import {
 	useDisableAllIssueMonitoring,
 	usePurgeIssues,
@@ -97,4 +77,33 @@ defineProps<{ tab: "issues" | "rules" | "channels" }>();
 const purgeIssuesMutation = usePurgeIssues();
 const disableAllIssueMonitoringMutation = useDisableAllIssueMonitoring();
 const testIssueMutation = useTestIssue();
+
+function openDisableMonitoringConfirm(): void {
+	Dialog.create({
+		component: DialogConfirm,
+		componentProps: {
+			title: "Disable issue monitoring",
+			message:
+				"This disables issue monitoring on every monitored stage. Existing log subscriptions are removed asynchronously.",
+			validationString: "DISABLE",
+			variant: "negative",
+			confirmLabel: "Disable monitoring",
+			perform: () => disableAllIssueMonitoringMutation.mutateAsync()
+		}
+	});
+}
+
+function openPurgeIssuesConfirm(): void {
+	Dialog.create({
+		component: DialogConfirm,
+		componentProps: {
+			title: "Delete all issues",
+			message: "This permanently deletes every persisted issue.",
+			validationString: "DELETE",
+			variant: "negative",
+			confirmLabel: "Delete all",
+			perform: () => purgeIssuesMutation.mutateAsync()
+		}
+	});
+}
 </script>
