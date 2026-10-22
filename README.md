@@ -1,30 +1,46 @@
 # SST Console
 
-> **Very early work in progress. Not fit for personal, community, or production use.**
+> **Early alpha.** Use isolated AWS accounts while connector permissions are broad and platform behavior is still changing.
 
 SST Console is an experimental, self-hosted control plane for viewing SST v4 resources across AWS accounts in one organization. One installation is intended to run in a dedicated AWS control account and connect workload accounts through explicit cross-account roles.
 
-Development is moving quickly. Features, APIs, infrastructure, data models, and security boundaries may change without notice. Do not deploy this against AWS accounts or data you cannot afford to lose or expose.
+Development is moving quickly. Features, APIs, infrastructure, data models, and security boundaries may change without notice. Deploy from a [stable release tag](#deploy), never the moving `main` branch.
 
 ## Status
 
-SST Console has early functionality for browsing apps, stages, and resource metadata from connected AWS accounts. It also augments a local `sst dev` session: when the Console is open on the matching app and stage, its Functions workspace shows live cross-function invocation activity, including input, output, logs, errors, and duration.
+### What works today
 
-This is not yet a complete Console. Function inspection for deployed stages, resource actions, and many operational workflows are incomplete.
+- Browse apps, stages, and resource metadata from connected AWS accounts.
+- Investigate workload failures, configure alert rules, and route notifications through Console-managed Issue Monitoring.
+- Inspect live cross-function invocation activity from a matching local `sst dev` session, including input, output, logs, errors, and duration.
+
+### Not ready yet
+
+- Function inspection for deployed stages.
+- Resource actions and many operational workflows.
+- Production hardening, least-privilege workload connectors, and stable upgrade or rollback guarantees.
 
 ## Screenshots
 
 ### Apps
 
-![SST Console apps screen](docs/images/home-screen.png)
+![SST Console Apps screen](docs/images/apps.png)
 
-### Stage resources
+### App stages
 
-![SST Console stage resource detail](docs/images/app-stage-detail.png)
+![SST Console App stages](docs/images/app-overview.png)
 
-### Local `sst dev` Function activity
+### Stage overview
 
-![Live local Function invocations from sst dev](docs/images/local-stage-workspace.png)
+![SST Console Stage overview](docs/images/stage-overview.png)
+
+### Issue Monitoring
+
+![SST Console Issue Monitoring](docs/images/monitoring-issues.png)
+
+### Local Workspace
+
+![Live local Function invocations from sst dev](docs/images/local-workspace.png)
 
 ## Self-hosting
 
@@ -94,6 +110,12 @@ This bucket must contain only public deployment artifacts. Console data, configu
     ```
 
 Deploy only release tags. Do not run `git pull`, deploy `main`, or use an older release tag as a rollback procedure.
+
+## Contributing
+
+Contributions and feedback are welcome. Open a GitHub issue to discuss a feature or bug before starting a large change, then submit a pull request. Help is especially useful for AWS and IAM review, supported-resource coverage, UX, test coverage, and documentation.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for pull request and release requirements.
 
 ## How this differs from SST's official Console
 

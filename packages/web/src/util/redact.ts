@@ -1,4 +1,4 @@
-const sensitiveKeys = new Set([
+const partiallyRedactedKeys = new Set([
 	"authorization",
 	"apikey",
 	"xapikey",
@@ -19,6 +19,15 @@ const sensitiveKeys = new Set([
 	"awssecuritytoken"
 ]);
 
+const fullyRedactedKeys = new Set([
+	"xforwardedfor",
+	"sourceip",
+	"forwarded",
+	"xrealip",
+	"trueclientip",
+	"cfconnectingip"
+]);
+
 export function redactSensitiveData(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(redactSensitiveData);
 	if (!isRecord(value)) return value;
@@ -26,9 +35,7 @@ export function redactSensitiveData(value: unknown): unknown {
 	return Object.fromEntries(
 		Object.entries(value).map(([key, child]) => [
 			key,
-			isSensitiveKey(key)
-				? redactSecret(child)
-				: redactSensitiveData(child)
+			redactValue(key, child)
 		])
 	);
 }
@@ -37,11 +44,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
 }
 
-function isSensitiveKey(key: string): boolean {
-	return sensitiveKeys.has(key.replaceAll(/[^a-z0-9]/gi, "").toLowerCase());
+function redactValue(key: string, value: unknown): unknown {
+	const normalizedKey = key.replaceAll(/[^a-z0-9]/gi, "").toLowerCase();
+	if (fullyRedactedKeys.has(normalizedKey)) return "••••••••";
+	if (partiallyRedactedKeys.has(normalizedKey))
+		return partiallyRedactValue(value);
+	return redactSensitiveData(value);
 }
 
-function redactSecret(value: unknown): string {
+function partiallyRedactValue(value: unknown): string {
 	if (typeof value !== "string") return "••••••••";
 
 	const bearer = value.match(/^(Bearer\s+)(.+)$/i);

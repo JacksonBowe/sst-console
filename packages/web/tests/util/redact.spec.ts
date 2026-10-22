@@ -29,4 +29,18 @@ describe("redactSensitiveData", () => {
 			redactSensitiveData({ password: "short", token: 42, enabled: true })
 		).toEqual({ password: "••••••••", token: "••••••••", enabled: true });
 	});
+
+	it("fully masks client IP fields without mutation", () => {
+		const value = {
+			headers: { "x-forwarded-for": "14.200.230.114" },
+			requestContext: { http: { sourceIp: "14.200.230.114" } }
+		};
+
+		expect(redactSensitiveData(value)).toEqual({
+			headers: { "x-forwarded-for": "••••••••" },
+			requestContext: { http: { sourceIp: "••••••••" } }
+		});
+		expect(value.headers["x-forwarded-for"]).toBe("14.200.230.114");
+		expect(value.requestContext.http.sourceIp).toBe("14.200.230.114");
+	});
 });
