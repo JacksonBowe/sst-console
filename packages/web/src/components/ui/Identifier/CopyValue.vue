@@ -1,5 +1,5 @@
 <template>
-	<div class="copy-value">
+	<span class="copy-value">
 		<span
 			v-if="!copyOnly"
 			class="copy-value__text text-mono"
@@ -18,7 +18,7 @@
 		<span class="sr-only" aria-live="polite">{{
 			copied ? `${label} copied` : ""
 		}}</span>
-	</div>
+	</span>
 </template>
 
 <script setup lang="ts">
@@ -38,7 +38,7 @@ const { copied, copy } = useCopyValue(() => props.value);
 
 <style scoped lang="scss">
 .copy-value {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	gap: 0.25rem;
 	min-width: 0;
