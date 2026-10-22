@@ -61,6 +61,7 @@
 				:invocations="localSession.invocations"
 				:status="localSession.status"
 				:is-streaming="localSession.isStreaming"
+				:function-options="functionOptions"
 				class="col"
 				@clear="localSession.clear()"
 				@toggle-stream="localSession.toggleStreaming()"
@@ -94,6 +95,8 @@ import {
 	DashboardPageContent,
 	DashboardPageHeader
 } from "@/components/ui/Dashboard";
+import { useStage } from "@/composables/apps";
+import { functionResourcesFor } from "@/composables/apps/stage-resources";
 import { localSessionMatchesStage } from "@/composables/local";
 import { useLocalSessionStore } from "@/stores/local-session";
 
@@ -115,6 +118,15 @@ onUnmounted(() => {
 const isContextual = computed(() => route.name === "stage-local-workspace");
 const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
+const stageQuery = useStage(appName, stageName);
+const functionOptions = computed(() =>
+	functionResourcesFor(stageQuery.data.value?.resources ?? []).map(
+		resource => ({
+			label: resource.name ?? resource.resourceId,
+			value: resource.name ?? resource.resourceId
+		})
+	)
+);
 const hasMatchingSession = computed(() => {
 	if (!isContextual.value) return Boolean(localSession.identity);
 	return localSessionMatchesStage(localSession.identity, {

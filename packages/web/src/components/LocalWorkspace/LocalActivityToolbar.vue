@@ -1,20 +1,23 @@
 <template>
 	<div class="row items-stretch q-gutter-sm">
 		<TableSearch
-			:model-value="text"
-			@update:model-value="$emit('update:text', $event ?? '')"
+			:model-value="filters.text"
+			@update:model-value="updateText($event ?? '')"
 		/>
 		<TableFilter
 			label="Status"
 			:options="invocationStatusOptions"
-			:model-value="statuses"
-			@update:model-value="$emit('update:statuses', $event)"
-			menu-width="narrow"
+			:model-value="filters.facets.status ?? []"
+			@update:model-value="updateFacet('status', $event)"
 		/>
-		<TableClearFilters
-			:filters="{ text, facets: { status: statuses } }"
-			@clear-facets="$emit('update:statuses', [])"
+		<TableFilter
+			label="Function"
+			:options="functionOptions"
+			:model-value="filters.facets.function ?? []"
+			searchable
+			@update:model-value="updateFacet('function', $event)"
 		/>
+		<TableClearFilters :filters="filters" @clear-facets="clearFacets" />
 		<q-space />
 		<q-btn
 			flat
@@ -42,6 +45,7 @@
 </template>
 
 <script setup lang="ts">
+import type { Filters } from "@/components/ui/Table";
 import {
 	TableClearFilters,
 	TableFilter,
@@ -49,18 +53,37 @@ import {
 } from "@/components/ui/Table";
 import { invocationStatusOptions } from "./invocation-filters";
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
-		text: string;
-		statuses: string[];
+		filters: Filters;
+		functionOptions?: Array<{ label: string; value: string }>;
 		isStreaming?: boolean;
 	}>(),
-	{ isStreaming: true }
+	{ functionOptions: () => [], isStreaming: true }
 );
-defineEmits<{
+const emit = defineEmits<{
 	clear: [];
 	"toggle-stream": [];
-	"update:text": [text: string];
-	"update:statuses": [statuses: string[]];
+	"update:filters": [filters: Filters];
 }>();
+
+function clearFacets() {
+	emit("update:filters", {
+		text: props.filters.text,
+		facets: Object.fromEntries(
+			Object.keys(props.filters.facets).map(key => [key, []])
+		)
+	});
+}
+
+function updateText(text: string) {
+	emit("update:filters", { ...props.filters, text });
+}
+
+function updateFacet(facet: string, values: string[]) {
+	emit("update:filters", {
+		...props.filters,
+		facets: { ...props.filters.facets, [facet]: values }
+	});
+}
 </script>
