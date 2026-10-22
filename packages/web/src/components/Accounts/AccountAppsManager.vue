@@ -8,14 +8,14 @@
 					download SST state.
 				</div>
 			</div>
-			<q-toggle
-				:model-value="onlySelected"
-				:label="
-					onlySelected
-						? `Only selected (${selectedStageCount})`
-						: 'All discovered'
-				"
-				@update:model-value="setOnlySelected"
+			<q-btn
+				flat
+				dense
+				no-caps
+				icon="sym_r_data_object"
+				label="Debug policy"
+				:disable="!policy"
+				@click="showPolicy = true"
 			/>
 		</q-card-section>
 		<q-separator />
@@ -39,12 +39,36 @@
 				@toggle-stage="toggleStage"
 			/>
 		</q-card-section>
+
+		<q-dialog v-model="showPolicy">
+			<q-card style="width: min(720px, 90vw)">
+				<q-card-section
+					class="row items-center justify-between q-pb-sm"
+				>
+					<div class="text-h6">Sync policy</div>
+					<q-btn
+						flat
+						round
+						dense
+						icon="sym_r_close"
+						aria-label="Close sync policy dialog"
+						v-close-popup
+					/>
+				</q-card-section>
+				<q-card-section class="q-pt-none">
+					<JsonPreview :value="policy" />
+				</q-card-section>
+			</q-card>
+		</q-dialog>
 	</q-card>
 </template>
 
 <script setup lang="ts">
 import type { AccountSyncPolicy, DiscoveredStage } from "@sst-console/sdk";
+import { ref } from "vue";
+
 import { useAccountAppPolicy } from "@/composables/account-app-policy";
+import { JsonPreview } from "@/components/ui/Preview";
 
 import AccountAppsList from "./AccountAppsList.vue";
 
@@ -59,15 +83,13 @@ const emit = defineEmits<{
 	"update:policy": [policy: AccountSyncPolicy];
 }>();
 
+const showPolicy = ref(false);
 const {
 	apps,
-	onlySelected,
-	selectedStageCount,
 	stageIncluded,
 	appIgnored,
 	appAllowanceCaption,
 	appAllowanceVariant,
-	setOnlySelected,
 	toggleApp,
 	toggleStage
 } = useAccountAppPolicy(
