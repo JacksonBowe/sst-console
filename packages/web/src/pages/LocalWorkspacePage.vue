@@ -9,22 +9,51 @@
 			title="Local Workspace"
 			:subtitle="subtitle"
 			icon="sym_r_terminal"
-		/>
-		<div
-			class="row items-center q-gutter-sm q-mb-md text-caption text-secondary"
-			aria-label="Local session status"
 		>
-			<q-badge :color="connectionColor" :label="localSession.status" />
-			<q-badge
-				:color="localSession.isStreaming ? 'positive' : 'warning'"
-				:label="localSession.isStreaming ? 'Streaming' : 'Paused'"
-			/>
-			<span
-				>{{ localSession.invocations.length }} retained
-				invocations</span
-			>
-			<span v-if="lastEventLabel">Last event {{ lastEventLabel }}</span>
-		</div>
+			<template #actions>
+				<div
+					class="row items-center no-wrap text-captio text-secondary"
+					aria-label="Local session status"
+				>
+					<div class="row items-center no-wrap">
+						<q-icon
+							:name="connectionIcon"
+							:color="connectionColor"
+							size="16px"
+							class="q-mr-xs"
+						/>
+						<span>WebSocket {{ connectionLabel }}</span>
+					</div>
+					<q-separator vertical inset class="q-mx-sm" />
+					<div class="row items-center no-wrap">
+						<q-icon
+							:name="
+								localSession.isStreaming
+									? 'sym_r_play_circle'
+									: 'sym_r_pause_circle'
+							"
+							:color="
+								localSession.isStreaming
+									? 'positive'
+									: 'warning'
+							"
+							size="16px"
+							class="q-mr-xs"
+						/>
+						<span>
+							Streaming
+							{{ localSession.isStreaming ? "live" : "paused" }}
+						</span>
+					</div>
+					<q-separator vertical inset class="q-mx-sm" />
+					<span>{{ localSession.invocations.length }} retained</span>
+					<template v-if="lastEventLabel">
+						<q-separator vertical inset class="q-mx-sm" />
+						<span>Last event {{ lastEventLabel }}</span>
+					</template>
+				</div>
+			</template>
+		</DashboardPageHeader>
 
 		<DashboardPageContent class="local-workspace-page__content">
 			<LocalWorkspace
@@ -55,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
 import { LocalWorkspace } from "@/components/LocalWorkspace";
@@ -70,6 +99,19 @@ import { useLocalSessionStore } from "@/stores/local-session";
 
 const route = useRoute();
 const localSession = useLocalSessionStore();
+const now = ref(Date.now());
+let clock: number | undefined;
+
+onMounted(() => {
+	clock = window.setInterval(() => {
+		now.value = Date.now();
+	}, 1_000);
+});
+
+onUnmounted(() => {
+	if (clock !== undefined) window.clearInterval(clock);
+});
+
 const isContextual = computed(() => route.name === "stage-local-workspace");
 const appName = computed(() => String(route.params.appName ?? ""));
 const stageName = computed(() => String(route.params.stageName ?? ""));
@@ -93,11 +135,22 @@ const connectionColor = computed(() =>
 			? "warning"
 			: "secondary"
 );
+const connectionIcon = computed(() =>
+	localSession.status === "connected"
+		? "sym_r_check_circle"
+		: localSession.status === "connecting"
+			? "sym_r_sync"
+			: "sym_r_cancel"
+);
+const connectionLabel = computed(
+	() =>
+		`${localSession.status[0]?.toUpperCase()}${localSession.status.slice(1)}`
+);
 const lastEventLabel = computed(() => {
 	if (!localSession.lastEventAt) return undefined;
 	const seconds = Math.max(
 		0,
-		Math.floor((Date.now() - localSession.lastEventAt) / 1000)
+		Math.floor((now.value - localSession.lastEventAt) / 1000)
 	);
 	return seconds < 60
 		? `${seconds}s ago`
