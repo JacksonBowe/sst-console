@@ -1,11 +1,10 @@
 <template>
 	<div class="column full-height q-gap-md">
 		<LocalActivityToolbar
-			:text="filters.text"
-			:statuses="filters.facets.status ?? []"
+			:filters="filters"
+			:function-options="functionOptions"
 			:is-streaming="isStreaming"
-			@update:text="filters.text = $event"
-			@update:statuses="filters.facets.status = $event"
+			@update:filters="updateFilters"
 			@toggle-stream="$emit('toggle-stream')"
 			@clear="$emit('clear')"
 		/>
@@ -47,20 +46,28 @@ const props = withDefaults(
 	defineProps<{
 		invocations: LocalInvocation[];
 		status: LocalConnectionStatus;
+		functionOptions?: Array<{ label: string; value: string }>;
 		isStreaming?: boolean;
 	}>(),
-	{ isStreaming: true }
+	{ functionOptions: () => [], isStreaming: true }
 );
 defineEmits<{ clear: []; "toggle-stream": [] }>();
 
 const selectedId = ref<string>();
-const filters = reactive<Filters>({ text: "", facets: { status: [] } });
+const filters = reactive<Filters>({
+	text: "",
+	facets: { status: [], function: [] }
+});
 const filteredInvocations = computed(() =>
 	filterInvocations(props.invocations, filters)
 );
 const selectedInvocation = computed(() =>
 	props.invocations.find(invocation => invocation.id === selectedId.value)
 );
+
+function updateFilters(next: Filters) {
+	Object.assign(filters, next);
+}
 
 watch(
 	filteredInvocations,

@@ -42,7 +42,7 @@ const stubs = {
 describe("LocalWorkspace", () => {
 	it("emits clear from activity toolbar", async () => {
 		const wrapper = mount(LocalActivityToolbar, {
-			props: { text: "", statuses: [] },
+			props: { filters: { text: "", facets: { status: [] } } },
 			global: {
 				stubs: {
 					TableFilter: true,
@@ -59,6 +59,36 @@ describe("LocalWorkspace", () => {
 
 		await wrapper.findAll("button")[1]!.trigger("click");
 		expect(wrapper.emitted("clear")).toHaveLength(1);
+	});
+
+	it("clears Status and Function filters together", async () => {
+		const wrapper = mount(LocalActivityToolbar, {
+			props: {
+				filters: {
+					text: "",
+					facets: { status: ["success"], function: ["checkout"] }
+				},
+				functionOptions: [{ label: "checkout", value: "checkout" }]
+			},
+			global: {
+				stubs: {
+					TableFilter: true,
+					TableSearch: true,
+					TableClearFilters: {
+						emits: ["clearFacets"],
+						template:
+							"<button data-clear-filters @click=\"$emit('clearFacets')\" />"
+					},
+					QSpace: true,
+					QBtn: true
+				}
+			}
+		});
+
+		await wrapper.get("[data-clear-filters]").trigger("click");
+		expect(wrapper.emitted("update:filters")).toEqual([
+			[{ text: "", facets: { status: [], function: [] } }]
+		]);
 	});
 
 	it("preserves selected invocation through incoming activity", async () => {
@@ -104,9 +134,9 @@ describe("LocalWorkspace", () => {
 				stubs: {
 					...stubs,
 					LocalActivityToolbar: {
-						emits: ["update:text"],
+						emits: ["update:filters"],
 						template:
-							"<button data-filter @click=\"$emit('update:text', 'missing')\" />"
+							"<button data-filter @click=\"$emit('update:filters', { text: 'missing', facets: { status: [], function: [] } })\" />"
 					}
 				}
 			}
@@ -153,5 +183,42 @@ describe("local invocation filters", () => {
 				facets: { status: ["error"] }
 			}).map(invocation => invocation.id)
 		).toEqual(["application", "platform"]);
+	});
+
+	it("combines Function, Status, and search filters", () => {
+		const invocations: LocalInvocation[] = [
+			{
+				...latest,
+				id: "checkout-success",
+				source: "sst::Function::checkout",
+				http: { method: "POST", path: "/orders" }
+			},
+			{
+				...latest,
+				id: "checkout-error",
+				status: "application_error",
+				source: "sst::Function::checkout",
+				http: { method: "POST", path: "/orders" }
+			},
+			{
+				...latest,
+				id: "users-success",
+				source: "sst::Function::users",
+				http: { method: "POST", path: "/users" }
+			}
+		];
+
+		expect(
+			filterInvocations(invocations, {
+				text: "post",
+				facets: { status: ["success"], function: ["checkout", "users"] }
+			}).map(invocation => invocation.id)
+		).toEqual(["checkout-success", "users-success"]);
+		expect(
+			filterInvocations(invocations, {
+				text: "",
+				facets: { function: ["missing"] }
+			})
+		).toEqual([]);
 	});
 });

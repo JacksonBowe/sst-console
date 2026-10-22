@@ -14,6 +14,7 @@ export function filterInvocations(
 ) {
 	const text = filters.text.trim().toLowerCase();
 	const statuses = filters.facets.status ?? [];
+	const functions = filters.facets.function ?? [];
 
 	return invocations.filter(invocation => {
 		if (statuses.length) {
@@ -22,9 +23,14 @@ export function filterInvocations(
 			).label.toLowerCase();
 			if (!statuses.includes(status)) return false;
 		}
+		if (
+			functions.length &&
+			!functions.includes(invocationFunctionName(invocation))
+		)
+			return false;
 
 		if (!text) return true;
-		const functionName = invocation.source?.split("::").at(-1) ?? "";
+		const functionName = invocationFunctionName(invocation);
 		const route = invocation.http
 			? `${invocation.http.method} ${invocation.http.path}`
 			: "";
@@ -33,4 +39,8 @@ export function filterInvocations(
 			value.toLowerCase().includes(text)
 		);
 	});
+}
+
+function invocationFunctionName(invocation: LocalInvocation) {
+	return invocation.source?.split("::").at(-1) ?? "";
 }
