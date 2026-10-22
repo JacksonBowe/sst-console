@@ -11,11 +11,21 @@
 			<div>
 				<h2 class="text-h6 q-my-none">
 					{{ sourceName }}
+					<CopyValue
+						copy-only
+						:value="sourceName"
+						label="function name"
+					/>
 					<span
-						v-if="httpLabel"
+						v-if="httpRoute"
 						class="text-body2 text-secondary q-ml-xs"
 					>
 						{{ httpLabel }}
+						<CopyValue
+							copy-only
+							:value="httpRoute"
+							label="HTTP route"
+						/>
 					</span>
 				</h2>
 				<div class="text-body2 text-secondary">
@@ -45,6 +55,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
+import { CopyValue } from "@/components/ui/Identifier";
 import type { LocalInvocation } from "@/composables/local";
 import { localInvocationStatusDisplay } from "@/composables/local";
 
@@ -53,10 +64,13 @@ const props = defineProps<{ invocation: LocalInvocation }>();
 const sourceName = computed(
 	() => props.invocation.source?.split("::").at(-1) ?? "Unknown source"
 );
-const httpLabel = computed(() => {
+const httpRoute = computed(() => {
 	if (!props.invocation.http) return undefined;
-	return `(${props.invocation.http.method} ${props.invocation.http.path})`;
+	return `${props.invocation.http.method} ${props.invocation.http.path}`;
 });
+const httpLabel = computed(() =>
+	httpRoute.value ? `(${httpRoute.value})` : undefined
+);
 const statusDisplay = computed(() =>
 	localInvocationStatusDisplay(props.invocation.status)
 );
