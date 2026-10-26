@@ -264,6 +264,14 @@ describe("InvocationPayloadPanel", () => {
 });
 
 describe("InvocationLogPanel", () => {
+	beforeEach(() => {
+		clipboardWrite.mockReset();
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: { writeText: clipboardWrite }
+		});
+	});
+
 	it("keeps log whitespace", () => {
 		const wrapper = mount(InvocationLogPanel, {
 			props: {
@@ -275,6 +283,32 @@ describe("InvocationLogPanel", () => {
 		});
 
 		expect(wrapper.get("pre").text()).toBe("first\n  second");
+	});
+
+	it("copies messages in displayed chronological order", async () => {
+		const wrapper = mount(InvocationLogPanel, {
+			props: {
+				logs: [
+					{ id: "second", timestamp: 20, message: "second log" },
+					{ id: "first", timestamp: 10, message: "first\n  log" }
+				]
+			},
+			global: { stubs }
+		});
+
+		await wrapper.get('[aria-label="Copy logs"]').trigger("click");
+
+		expect(clipboardWrite).toHaveBeenCalledWith("first\n  log\nsecond log");
+		expect(wrapper.text()).toContain("logs copied");
+	});
+
+	it("does not offer copy when logs are empty", () => {
+		const wrapper = mount(InvocationLogPanel, {
+			props: { logs: [] },
+			global: { stubs }
+		});
+
+		expect(wrapper.find('[aria-label="Copy logs"]').exists()).toBe(false);
 	});
 });
 

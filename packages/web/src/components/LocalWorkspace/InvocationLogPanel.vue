@@ -9,9 +9,17 @@
 			<h3 id="invocation-logs-title" class="text-subtitle2 q-my-none">
 				Logs
 			</h3>
-			<q-badge color="primary" class="q-px-sm q-py-xs">
-				{{ logs.length }}
-			</q-badge>
+			<div class="row items-center q-gutter-xs">
+				<q-badge color="primary" class="q-px-sm q-py-xs">
+					{{ logs.length }}
+				</q-badge>
+				<CopyValue
+					v-if="logs.length"
+					copy-only
+					:value="copiedLogs"
+					label="logs"
+				/>
+			</div>
 		</q-card-section>
 		<q-separator />
 		<q-scroll-area
@@ -37,11 +45,15 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
+import { CopyValue } from "@/components/ui/Identifier";
 import type { LocalLogLine } from "@/composables/local";
 
 const props = defineProps<{ logs: LocalLogLine[] }>();
 const orderedLogs = computed(() =>
 	[...props.logs].sort((left, right) => left.timestamp - right.timestamp)
+);
+const copiedLogs = computed(() =>
+	orderedLogs.value.map(log => log.message).join("\n")
 );
 
 function formatTime(timestamp: number) {
