@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { db } from "../db";
+import * as State from "../state/state";
 import { fn } from "../util/fn";
 import { appErrors } from "./errors";
 import { AppKeySchema, StageKeySchema, StageSchema } from "./schema";
@@ -52,15 +53,17 @@ export const get = fn(StageKeySchema, async input => {
 
 /** Deletes one App Stage projection. */
 export const remove = fn(StageKeySchema, async input => {
+	// Direct Stage deletion follows same history-retention policy as sync removal.
+	await State.removeStageHistory(input);
 	await db.entities.stage.delete(input).go({ response: "none" });
 });
 
 /** Returns summary data used by App listings. */
 export async function summary(stage: Stage) {
-	const [snapshot, resources] = await Promise.all([
-		db.entities.stateSnapshot.query
-			.snapshot({ appName: stage.appName, stageName: stage.stageName })
-			.go({ limit: 1 }),
+	const [state, resources] = await Promise.all([
+		db.entities.state
+			.get({ appName: stage.appName, stageName: stage.stageName })
+			.go({ consistent: true }),
 		db.entities.resource.query
 			.resource({ appName: stage.appName, stageName: stage.stageName })
 			.go({ pages: "all" })
@@ -72,7 +75,7 @@ export async function summary(stage: Stage) {
 		issueMonitoringEnabled: stage.issueMonitoringEnabled,
 		createdAt: stage.createdAt,
 		updatedAt: stage.updatedAt,
-		latestSnapshot: snapshot.data[0] ?? null,
+		state: state.data ?? null,
 		resourceCount: resources.data.length
 	};
 }

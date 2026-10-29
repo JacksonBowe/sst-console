@@ -5,7 +5,8 @@ import { accountEntity } from "../account/account.dynamo";
 import { appEntity, resourceEntity, stageEntity } from "../app/app.dynamo";
 import {
 	discoveredStageEntity,
-	stateSnapshotEntity,
+	stateEntity,
+	stateUpdateEntity,
 	syncRunEntity
 } from "../state/state.dynamo";
 import { userEntity, userIdentityEntity } from "../user/user.dynamo";
@@ -25,7 +26,8 @@ export const db = new Service(
 		app: appEntity,
 		stage: stageEntity,
 		resource: resourceEntity,
-		stateSnapshot: stateSnapshotEntity,
+		state: stateEntity,
+		stateUpdate: stateUpdateEntity,
 		syncRun: syncRunEntity,
 		discoveredStage: discoveredStageEntity,
 		user: userEntity,

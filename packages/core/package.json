@@ -12,6 +12,8 @@
 		"./alert-rule": "./src/alert-rule/index.ts",
 		"./notification": "./src/notification/index.ts",
 		"./notification-destination": "./src/notification-destination/index.ts",
+		"./state": "./src/state/index.ts",
+		"./state/state.update": "./src/state/state.update.ts",
 		"./*": "./src/*.ts",
 		"./user*": "./src/user/index.ts"
 	},

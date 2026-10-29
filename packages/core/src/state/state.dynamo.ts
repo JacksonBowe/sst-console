@@ -5,23 +5,22 @@ const model = {
 	version: "1"
 } as const;
 
-export const stateSnapshotEntity = new Entity({
-	model: { ...model, entity: "stateSnapshot" },
+// One mutable source locator for a Stage's current app/ object. It intentionally
+// contains no checkpoint data; S3 remains authoritative for raw SST State.
+export const stateEntity = new Entity({
+	model: { ...model, entity: "state" },
 	attributes: {
 		accountId: { type: "string", required: true },
 		appName: { type: "string", required: true },
 		stageName: { type: "string", required: true },
-		snapshotId: { type: "string", required: true },
-		reverseTimestamp: { type: "string", required: true },
 		sourceBucket: { type: "string", required: true },
 		sourceKey: { type: "string", required: true },
 		sourceVersion: { type: "string" },
-		archiveKey: { type: "string" },
-		createdAt: { type: "string", required: true },
-		schemaVersion: { type: "string", default: "2" }
+		observedAt: { type: "string", required: true },
+		schemaVersion: { type: "string", default: "3" }
 	},
 	indexes: {
-		snapshot: {
+		state: {
 			pk: {
 				field: "pk",
 				composite: ["appName", "stageName"],
@@ -30,50 +29,70 @@ export const stateSnapshotEntity = new Entity({
 			},
 			sk: {
 				field: "sk",
-				composite: ["reverseTimestamp", "snapshotId"],
-				template: "SNAPSHOT#${reverseTimestamp}#${snapshotId}",
-				casing: "none"
-			}
-		},
-		byType: {
-			index: "entitiesByType",
-			pk: {
-				field: "entityType",
 				composite: [],
-				template: "STATE_SNAPSHOT",
+				template: "STATE",
+				casing: "none"
+			}
+		}
+	}
+});
+
+// One Console-safe update summary. `history` is a sparse Stage-local index so
+// future history screens can page newest-first without scanning ConsoleData.
+export const stateUpdateEntity = new Entity({
+	model: { ...model, entity: "stateUpdate" },
+	attributes: {
+		accountId: { type: "string", required: true },
+		appName: { type: "string", required: true },
+		stageName: { type: "string", required: true },
+		updateId: { type: "string", required: true },
+		sourceBucket: { type: "string", required: true },
+		sourceKey: { type: "string", required: true },
+		sourceVersion: { type: "string" },
+		observedAt: { type: "string", required: true },
+		sstVersion: { type: "string", required: true },
+		command: { type: "string", required: true },
+		timeStarted: { type: "string", required: true },
+		timeCompleted: { type: "string" },
+		errors: { type: "any", required: true },
+		errorsSourceCount: { type: "number", required: true },
+		errorsStoredCount: { type: "number", required: true },
+		errorsTruncated: { type: "boolean", required: true },
+		createdCount: { type: "number" },
+		updatedCount: { type: "number" },
+		deletedCount: { type: "number" },
+		unchangedCount: { type: "number" },
+		reverseHistoryAt: { type: "string", required: true },
+		createdAt: { type: "string", required: true },
+		schemaVersion: { type: "string", default: "1" }
+	},
+	indexes: {
+		update: {
+			pk: {
+				field: "pk",
+				composite: ["appName", "stageName"],
+				template: "APP#${appName}#STAGE#${stageName}",
 				casing: "none"
 			},
 			sk: {
-				field: "entitySort",
-				composite: [
-					"appName",
-					"stageName",
-					"reverseTimestamp",
-					"snapshotId"
-				],
-				template:
-					"APP#${appName}#STAGE#${stageName}#SNAPSHOT#${reverseTimestamp}#${snapshotId}",
+				field: "sk",
+				composite: ["updateId"],
+				template: "STATE_UPDATE#${updateId}",
 				casing: "none"
 			}
 		},
-		byAwsAccount: {
-			index: "entitiesByAwsAccount",
+		history: {
+			index: "lookup",
 			pk: {
-				field: "accountPk",
-				composite: ["accountId"],
-				template: "ACCOUNT#${accountId}",
+				field: "lookupPk",
+				composite: ["appName", "stageName"],
+				template: "STATE_UPDATE#${appName}#${stageName}",
 				casing: "none"
 			},
 			sk: {
-				field: "accountSk",
-				composite: [
-					"appName",
-					"stageName",
-					"reverseTimestamp",
-					"snapshotId"
-				],
-				template:
-					"SNAPSHOT#${appName}#${stageName}#${reverseTimestamp}#${snapshotId}",
+				field: "lookupSk",
+				composite: ["reverseHistoryAt", "updateId"],
+				template: "STATE_UPDATE#${reverseHistoryAt}#${updateId}",
 				casing: "none"
 			}
 		}

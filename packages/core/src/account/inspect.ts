@@ -27,21 +27,21 @@ export const inspect = fn(AccountKeySchema, async ({ accountId }) => {
 		)
 	]);
 	const resources = resourceResults.flatMap(result => result.data);
-	const snapshots = await Promise.all(
+	const states = await Promise.all(
 		stages.data.map(async stage => {
-			const result = await db.entities.stateSnapshot.query
-				.snapshot({
+			const result = await db.entities.state
+				.get({
 					appName: stage.appName,
 					stageName: stage.stageName
 				})
-				.go({ limit: 1 });
+				.go({ consistent: true });
 			return [
 				stageKey(stage.appName, stage.stageName),
-				result.data[0]
+				result.data
 			] as const;
 		})
 	);
-	const latestSnapshots = new Map(snapshots);
+	const statesByStage = new Map(states);
 
 	return {
 		account,
@@ -57,8 +57,8 @@ export const inspect = fn(AccountKeySchema, async ({ accountId }) => {
 						stageName: stage.stageName,
 						createdAt: stage.createdAt,
 						updatedAt: stage.updatedAt,
-						latestSnapshot:
-							latestSnapshots.get(
+						state:
+							statesByStage.get(
 								stageKey(app.appName, stage.stageName)
 							) ?? null,
 						resources: resourceTree(

@@ -39,8 +39,10 @@ packages/core/src/
     account.dynamo.ts      # Account entity
   app/
     app.dynamo.ts          # App, Stage, Resource entities
-  state/
-    state.dynamo.ts        # StateSnapshot, SyncRun, DiscoveredStage entities
+	state/
+		state.dynamo.ts        # State, StateUpdate, SyncRun, DiscoveredStage entities
+		state.ts               # Current State contract and CRUD
+		state.update.ts        # State Update contract and CRUD
   db/
     client.ts              # DynamoDBDocumentClient
     service.ts             # ElectroDB Service composition
@@ -95,24 +97,27 @@ lookups such as a CloudWatch Logs source.
 ElectroDB derives all keys. These layouts are contract, not values callers
 construct themselves.
 
-| Entity                  | PK                                      | SK                                          |
-| ----------------------- | --------------------------------------- | ------------------------------------------- |
-| Account                 | `ACCOUNT#{accountId}`                   | `account`                                   |
-| App                     | `APP#{appName}`                         | `APP`                                       |
-| Stage                   | `APP#{appName}`                         | `STAGE#{stageName}`                         |
-| Resource                | `APP#{appName}#STAGE#{stageName}`       | `RESOURCE#{resourceId}`                     |
-| StateSnapshot           | `APP#{appName}#STAGE#{stageName}`       | `SNAPSHOT#{reverseTimestamp}#{snapshotId}`  |
-| SyncRun                 | `ACCOUNT#{accountId}`                   | `SYNC#{reverseTimestamp}#{syncRunId}`       |
-| DiscoveredStage         | `ACCOUNT#{accountId}`                   | `DISCOVERY#{appName}#STAGE#{stageName}`     |
-| Connection              | `CONNECTIONS`                           | `ACCOUNT#{accountId}`                       |
-| User                    | `USER#{id}`                             | `USER`                                      |
-| UserIdentity            | `COGNITO#{cognitoSub}`                  | `USER`                                      |
-| IssueSubscription       | `APP#{appName}#STAGE#{stageName}`       | `ISSUE_SUBSCRIPTION#{region}#{logGroup}`    |
-| Issue                   | `APP#{appName}#STAGE#{stageName}`       | `ISSUE#{fingerprint}`                       |
-| IssueIngressEvent       | `APP#{appName}#STAGE#{stageName}`       | `ISSUE_INGRESS_EVENT#{sourceKey}#{eventId}` |
-| IssueSubscriber         | `ISSUE_SUBSCRIBER#{accountId}#{region}` | `SUBSCRIBER`                                |
-| AlertRule               | `ALERT_RULE#{id}`                       | `ALERT_RULE`                                |
-| NotificationDestination | `NOTIFICATION_DESTINATION#{id}`         | `NOTIFICATION_DESTINATION`                  |
+| Entity                  | PK                                                        | SK                                          |
+| ----------------------- | --------------------------------------------------------- | ------------------------------------------- |
+| Account                 | `ACCOUNT#{accountId}`                                     | `account`                                   |
+| App                     | `APP#{appName}`                                           | `APP`                                       |
+| Stage                   | `APP#{appName}`                                           | `STAGE#{stageName}`                         |
+| Resource                | `APP#{appName}#STAGE#{stageName}`                         | `RESOURCE#{resourceId}`                     |
+| State                   | `APP#{appName}#STAGE#{stageName}`                         | `STATE`                                     |
+| StateUpdate             | `APP#{appName}#STAGE#{stageName}`                         | `STATE_UPDATE#{updateId}`                   |
+| StateSnapshot (planned) | `APP#{appName}#STAGE#{stageName}`                         | `STATE_SNAPSHOT#{updateId}`                 |
+| StateEvent (planned)    | `APP#{appName}#STAGE#{stageName}#STATE_UPDATE#{updateId}` | `STATE_EVENT#{resourceId}`                  |
+| SyncRun                 | `ACCOUNT#{accountId}`                                     | `SYNC#{reverseTimestamp}#{syncRunId}`       |
+| DiscoveredStage         | `ACCOUNT#{accountId}`                                     | `DISCOVERY#{appName}#STAGE#{stageName}`     |
+| Connection              | `CONNECTIONS`                                             | `ACCOUNT#{accountId}`                       |
+| User                    | `USER#{id}`                                               | `USER`                                      |
+| UserIdentity            | `COGNITO#{cognitoSub}`                                    | `USER`                                      |
+| IssueSubscription       | `APP#{appName}#STAGE#{stageName}`                         | `ISSUE_SUBSCRIPTION#{region}#{logGroup}`    |
+| Issue                   | `APP#{appName}#STAGE#{stageName}`                         | `ISSUE#{fingerprint}`                       |
+| IssueIngressEvent       | `APP#{appName}#STAGE#{stageName}`                         | `ISSUE_INGRESS_EVENT#{sourceKey}#{eventId}` |
+| IssueSubscriber         | `ISSUE_SUBSCRIBER#{accountId}#{region}`                   | `SUBSCRIBER`                                |
+| AlertRule               | `ALERT_RULE#{id}`                                         | `ALERT_RULE`                                |
+| NotificationDestination | `NOTIFICATION_DESTINATION#{id}`                           | `NOTIFICATION_DESTINATION`                  |
 
 `id` is a native Console ULID. `cognitoSub` remains external identity data;
 the UserIdentity record maps it to the native user ID and enforces one Cognito
@@ -136,44 +141,52 @@ inferred from key encoding. Component group rows have no ARN; only physical reso
 
 ## Current indexes and access patterns
 
-| Access pattern                                | Entity/API                                         | Dynamo operation                                                              | Status      |
-| --------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------- | ----------- |
-| Get one account                               | `db.entities.account.get({ accountId })`           | primary-key get                                                               | Implemented |
-| List accounts                                 | `db.entities.account.query.byType({})`             | `entitiesByType` query                                                        | Implemented |
-| Register/update connector                     | `db.entities.account.upsert(...)`                  | primary-key update                                                            | Implemented |
-| Persist successful sync                       | Account patch + SyncRun create                     | `TransactWriteItems`                                                          | Implemented |
-| Mark disconnected after remote access denial  | `db.entities.account.patch({ accountId })`         | primary-key update                                                            | Implemented |
-| Home → App list                               | name ascending                                     | `entitiesByType` query                                                        | Implemented |
-| App detail                                    | app name                                           | App primary-key get                                                           | Model ready |
-| App → stages                                  | app name, stage order                              | Stage primary-key query                                                       | Implemented |
-| Stage → resources                             | app and stage                                      | Resource primary-key query                                                    | Implemented |
-| Reconcile account state projections           | worker: account ID                                 | `entitiesByAwsAccount`, then per-Stage resource queries                       | Implemented |
-| Reconcile changed SST state object            | EventBridge worker: account ID + state key         | Account primary-key get; Stage/resource primary-key queries                   | Implemented |
-| Latest state snapshot                         | app and stage, descending, limit 1                 | StateSnapshot primary-key query                                               | Implemented |
-| Account sync history                          | account partition, descending sync prefix          | primary-key query                                                             | Planned     |
-| Durable connection registry                   | `Connection.list()`                                | `ConsoleConnections` primary-key query                                        | Implemented |
-| Workload app management inventory             | authenticated `GET /accounts/{id}/manage-apps`     | DiscoveredStage account primary-key query                                     | Implemented |
-| Refresh Workload discovery                    | authenticated `POST /accounts/{id}/discovery`      | S3 list, then DiscoveredStage account reconciliation                          | Implemented |
-| Save/apply Workload sync policy               | authenticated sync-policy API                      | Connection primary-key get/patch; projection reconciliation                   | Implemented |
-| Recover ConsoleData accounts                  | authenticated `POST /accounts/recover`             | registry query, then account upserts                                          | Implemented |
-| Resolve Cognito subject                       | `User.exchangeCognitoSub()`                        | UserIdentity primary-key get                                                  | Implemented |
-| Provision invited user                        | Cognito custom-message trigger: Cognito `sub`      | conditional User + UserIdentity transaction create                            | Implemented |
-| Confirm invited user                          | invite-confirm endpoint: native User `id`          | User primary-key patch                                                        | Implemented |
-| List users                                    | authenticated API: ID descending, cursor-paginated | `entitiesByType` query                                                        | Implemented |
-| Enable/disable stage monitoring               | authenticated issue API: app + stage               | Stage primary-key get/patch                                                   | Implemented |
-| Reconcile an enabled stage                    | worker: app + stage                                | Stage, Resource, IssueSubscription primary-key queries                        | Implemented |
-| Remove excluded stage Issue data              | sync worker: app + stage                           | IssueSubscription and Issue primary-key queries                               | Implemented |
-| Verify issue ingress source                   | issue processor: account + region + log group      | `lookup` query                                                                | Implemented |
-| Find Issue for new occurrence                 | issue worker: app + stage + fingerprint            | Issue primary-key get                                                         | Implemented |
-| Deduplicate Issue ingress event               | issue worker: app + stage + source hash + event ID | conditional primary-key create, transactionally with Issue mutation           | Implemented |
-| List Issues                                   | dashboard/API: global, App, or App/Stage scope     | `entitiesByType` query; status filters in process                             | Implemented |
-| List stage issue subscriptions                | stage detail: app + stage                          | IssueSubscription primary-key query                                           | Implemented |
-| Delete all persisted Issues                   | authenticated `DELETE /issues`                     | `entitiesByType`, then Stage / Issue primary-key queries                      | Implemented |
-| List alert rules                              | authenticated API / alert event worker             | `entitiesByType` query for fixed `ALERT_RULE` partition                       | Implemented |
-| Get notification destination for delivery     | alert event worker: destination ID                 | NotificationDestination primary-key get                                       | Implemented |
-| List notification destinations                | authenticated API                                  | `entitiesByType` query for fixed `NOTIFICATION_DESTINATION` partition         | Implemented |
-| Create/update/delete alert rule               | authenticated `/alert-rules` API                   | AlertRule primary-key write                                                   | Implemented |
-| Create/update/delete notification destination | authenticated `/notification-destinations` API     | NotificationDestination primary-key write; AlertRule type query before delete | Implemented |
+| Access pattern                                | Entity/API                                                           | Dynamo operation                                                              | Status      |
+| --------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----------- |
+| Get one account                               | `db.entities.account.get({ accountId })`                             | primary-key get                                                               | Implemented |
+| List accounts                                 | `db.entities.account.query.byType({})`                               | `entitiesByType` query                                                        | Implemented |
+| Register/update connector                     | `db.entities.account.upsert(...)`                                    | primary-key update                                                            | Implemented |
+| Persist successful sync                       | Account patch + SyncRun create                                       | `TransactWriteItems`                                                          | Implemented |
+| Mark disconnected after remote access denial  | `db.entities.account.patch({ accountId })`                           | primary-key update                                                            | Implemented |
+| Home → App list                               | name ascending                                                       | `entitiesByType` query                                                        | Implemented |
+| App detail                                    | app name                                                             | App primary-key get                                                           | Model ready |
+| App → stages                                  | app name, stage order                                                | Stage primary-key query                                                       | Implemented |
+| Stage → resources                             | app and stage                                                        | Resource primary-key query                                                    | Implemented |
+| Reconcile account state projections           | worker: account ID                                                   | `entitiesByAwsAccount`, then per-Stage resource queries                       | Implemented |
+| Reconcile changed SST state object            | EventBridge worker: account ID + state key                           | Account primary-key get; Stage/resource primary-key queries                   | Implemented |
+| Read current State                            | app and stage                                                        | State primary-key get, strongly consistent                                    | Implemented |
+| Upsert current State                          | account sync/event worker: current app state                         | State primary-key upsert                                                      | Implemented |
+| Read one State Update                         | app, stage, update ID                                                | StateUpdate primary-key get, strongly consistent                              | Implemented |
+| Upsert State Update                           | state artifact worker: validated update object                       | StateUpdate primary-key upsert; preserves aggregate counts                    | Implemented |
+| List State Updates                            | future update-history API: app/stage, newest first, cursor-paginated | `lookup` query on StateUpdate history partition                               | Model ready |
+| Read State Snapshot for update                | future reconciliation/API: app, stage, update ID                     | StateSnapshot primary-key get                                                 | Planned     |
+| Find State Snapshot neighbors                 | future reconciliation: app, stage, observed time                     | `lookup` range query on StateSnapshot chronology partition                    | Planned     |
+| List State Events                             | future update-detail API: app, stage, update ID                      | StateEvent primary-key query                                                  | Planned     |
+| Delete State history with Stage               | stage removal/account purge: app, stage                              | State get/delete; StateUpdate history query then batched primary-key deletes  | Implemented |
+| Account sync history                          | account partition, descending sync prefix                            | primary-key query                                                             | Planned     |
+| Durable connection registry                   | `Connection.list()`                                                  | `ConsoleConnections` primary-key query                                        | Implemented |
+| Workload app management inventory             | authenticated `GET /accounts/{id}/manage-apps`                       | DiscoveredStage account primary-key query                                     | Implemented |
+| Refresh Workload discovery                    | authenticated `POST /accounts/{id}/discovery`                        | S3 list, then DiscoveredStage account reconciliation                          | Implemented |
+| Save/apply Workload sync policy               | authenticated sync-policy API                                        | Connection primary-key get/patch; projection reconciliation                   | Implemented |
+| Recover ConsoleData accounts                  | authenticated `POST /accounts/recover`                               | registry query, then account upserts                                          | Implemented |
+| Resolve Cognito subject                       | `User.exchangeCognitoSub()`                                          | UserIdentity primary-key get                                                  | Implemented |
+| Provision invited user                        | Cognito custom-message trigger: Cognito `sub`                        | conditional User + UserIdentity transaction create                            | Implemented |
+| Confirm invited user                          | invite-confirm endpoint: native User `id`                            | User primary-key patch                                                        | Implemented |
+| List users                                    | authenticated API: ID descending, cursor-paginated                   | `entitiesByType` query                                                        | Implemented |
+| Enable/disable stage monitoring               | authenticated issue API: app + stage                                 | Stage primary-key get/patch                                                   | Implemented |
+| Reconcile an enabled stage                    | worker: app + stage                                                  | Stage, Resource, IssueSubscription primary-key queries                        | Implemented |
+| Remove excluded stage Issue data              | sync worker: app + stage                                             | IssueSubscription and Issue primary-key queries                               | Implemented |
+| Verify issue ingress source                   | issue processor: account + region + log group                        | `lookup` query                                                                | Implemented |
+| Find Issue for new occurrence                 | issue worker: app + stage + fingerprint                              | Issue primary-key get                                                         | Implemented |
+| Deduplicate Issue ingress event               | issue worker: app + stage + source hash + event ID                   | conditional primary-key create, transactionally with Issue mutation           | Implemented |
+| List Issues                                   | dashboard/API: global, App, or App/Stage scope                       | `entitiesByType` query; status filters in process                             | Implemented |
+| List stage issue subscriptions                | stage detail: app + stage                                            | IssueSubscription primary-key query                                           | Implemented |
+| Delete all persisted Issues                   | authenticated `DELETE /issues`                                       | `entitiesByType`, then Stage / Issue primary-key queries                      | Implemented |
+| List alert rules                              | authenticated API / alert event worker                               | `entitiesByType` query for fixed `ALERT_RULE` partition                       | Implemented |
+| Get notification destination for delivery     | alert event worker: destination ID                                   | NotificationDestination primary-key get                                       | Implemented |
+| List notification destinations                | authenticated API                                                    | `entitiesByType` query for fixed `NOTIFICATION_DESTINATION` partition         | Implemented |
+| Create/update/delete alert rule               | authenticated `/alert-rules` API                                     | AlertRule primary-key write                                                   | Implemented |
+| Create/update/delete notification destination | authenticated `/notification-destinations` API                       | NotificationDestination primary-key write; AlertRule type query before delete | Implemented |
 
 No first-release arbitrary cross-account resource search, type search, log search,
 or issue search exists. Do not approximate them with a scan.
@@ -182,7 +195,7 @@ or issue search exists. Do not approximate them with a scan.
 
 When an SST state bucket contains an `appName + stageName` already owned by a
 different Workload account, sync skips that state projection. It never overwrites
-or deletes owning Workload's Stage, Resources, or snapshots. Other projections
+or deletes owning Workload's Stage, Resources, or State history. Other projections
 from Workload continue syncing.
 
 `Account.lastSyncConflicts` and matching SyncRun `conflicts` record skipped app,
@@ -217,9 +230,9 @@ this access pattern.
 
 Connector Create/Update callback upserts account ID, region, and role ARN into
 `ConsoleConnections`, then writes the Console-facing Account projection to
-`ConsoleData`. Workload-stack Delete removes that account's Stage, Resource, and
-discovery projections, then removes Apps left without stages; snapshots and the
-durable connection record remain. Recovery is an explicit API action, never
+`ConsoleData`. Workload-stack Delete removes that account's Stage, Resource,
+State history, and discovery projections, then removes Apps left without stages;
+durable connection record remains. Recovery is an explicit API action, never
 automatic on startup: query the registry and upsert each Account projection.
 Recovery does not sync; users
 invoke the existing per-account sync action after confirming restored accounts.
@@ -238,7 +251,7 @@ objects with `Content-Encoding: gzip` are decompressed before parsing.
 
 Only Console-safe projections are stored in DynamoDB:
 
-- `StateSnapshot` records source bucket, key, and S3 version locator. It never
+- `State` records source bucket, key, S3 version locator, and observation time. It never
   stores state JSON.
 - `App` and `Stage` describe current `app/{app}/{stage}.json` objects.
 - `Resource` records supported SST component summaries. Supported types are
@@ -249,10 +262,10 @@ Secrets are redacted before normalization. Persisted summaries are allowlisted;
 raw Pulumi inputs and outputs are never written to `ConsoleData`.
 
 Reconciliation begins only after every listed object was fetched and parsed.
-It upserts desired projections, then deletes resource and Stage projections
+It upserts desired projections, then deletes resource, State history, and Stage projections
 absent from complete discovery output for that account. After all Stage deletes
-commit, it deletes an App only when no Stages remain in any account. Snapshots
-are retained. This order means incomplete discovery cannot delete existing data.
+commit, it deletes an App only when no Stages remain in any account. This order
+means incomplete discovery cannot delete existing data.
 
 Projection writes are ordered and split into transactions of at most 90 actions
 and 3 MiB of estimated payload, below DynamoDB's 100-action/4-MB limits. A
@@ -272,8 +285,8 @@ events for `app/` state keys from its SST state bucket to the Console EventBridg
 bus. The event worker validates the source account and bucket against the Account
 primary-key record, then reads the current S3 object. It never trusts event order:
 an object that exists is reconciled as one App/Stage projection; an absent object
-removes only that Account-owned Stage and its Resources. Duplicate and stale events
-therefore converge on current S3 state. Full account sync remains the connection and
+removes only that Account-owned Stage, Resources, and State history. Duplicate and
+stale events therefore converge on current S3 state. Full account sync remains the connection and
 manual repair path.
 
 ### App-first projection cutover
@@ -281,6 +294,40 @@ manual repair path.
 This is an incompatible key-layout change from account-first projections. Deploy
 the current indexes, then sync every connected account to populate App-first
 records. Old account-first projection records are not read or maintained.
+
+### State Update history
+
+`State` is one mutable source reference for a Stage's current `app/` object.
+`StateUpdate` is one safe projection of an SST `update/` object. It stores source
+location, SST version, bounded command, lifecycle times, bounded deployment
+errors, and aggregate resource-change counts. Its outcome is derived: incomplete
+is running; completed with no errors is succeeded; otherwise failed.
+
+State Update history uses sparse `lookup` keys:
+
+```text
+lookupPk: STATE_UPDATE#{appName}#{stageName}
+lookupSk: STATE_UPDATE#{reverse(timeCompleted ?? timeStarted)}#{updateId}
+```
+
+This supports newest-first Stage history and cursor pagination without a scan.
+An update completion rewrites its lookup sort key. Deployment errors are limited
+to 64 KiB of UTF-8 JSON, with source/stored counts and truncation metadata.
+Commands are limited to 8 KiB. Raw update JSON, Pulumi inputs/outputs, State,
+and event-log entries never enter `ConsoleData`.
+
+Future `StateSnapshot` records will use shared update ID and sparse lookup
+chronology index. Future `StateEvent` records will store only diffs of existing
+allowlisted normalized Resource fields. Event-log objects remain source-only.
+
+State, State Update, State Snapshot, and State Event records have no TTL. Reassess
+item size, write capacity, and retained volume after production use before adding
+an explicit retention policy.
+
+This is an incompatible cutover from legacy `StateSnapshot` rows that observed
+mutable `app/` objects. Deploy State-only code, re-sync each Workload Account,
+then have user purge legacy StateSnapshot projection rows. Do not read or retain
+old-shape aliases.
 
 ## ElectroDB usage
 

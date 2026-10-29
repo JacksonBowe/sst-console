@@ -57,17 +57,14 @@ export type Account = {
 	status: AccountStatus;
 };
 
-export type StateSnapshot = {
+export type State = {
 	accountId: string;
 	appName: string;
 	stageName: string;
-	snapshotId: string;
-	reverseTimestamp: string;
 	sourceBucket: string;
 	sourceKey: string;
 	sourceVersion?: string;
-	archiveKey?: string;
-	createdAt: string;
+	observedAt: string;
 };
 
 export type Resource = {
@@ -95,7 +92,7 @@ export type AppStage = {
 	issueMonitoringEnabled: boolean;
 	createdAt: string;
 	updatedAt: string;
-	latestSnapshot: StateSnapshot | null;
+	state: State | null;
 	resourceCount: number;
 };
 
@@ -121,7 +118,7 @@ export type Stage = {
 	issueMonitoringEnabled: boolean;
 	createdAt: string;
 	updatedAt: string;
-	latestSnapshot: StateSnapshot | null;
+	state: State | null;
 	resources: ResourceTree[];
 };
 
@@ -129,7 +126,7 @@ export type AccountStage = {
 	stageName: string;
 	createdAt: string;
 	updatedAt: string;
-	latestSnapshot: StateSnapshot | null;
+	state: State | null;
 	resources: ResourceTree[];
 };
 

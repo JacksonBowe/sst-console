@@ -39,7 +39,7 @@ export type {
 	ResourceTree,
 	Stage,
 	StageSelector,
-	StateSnapshot,
+	State,
 	StageAccountConflict,
 	SyncAccountResult,
 	User,

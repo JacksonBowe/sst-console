@@ -73,19 +73,17 @@ describe("db service", () => {
 		});
 	});
 
-	it("builds state snapshot keys", () => {
-		const snapshot = db.entities.stateSnapshot
+	it("builds current State keys", () => {
+		const state = db.entities.state
 			.get({
 				appName: "console",
-				stageName: "prod",
-				reverseTimestamp: "9999999999999",
-				snapshotId: "state-version"
+				stageName: "prod"
 			})
 			.params();
 
-		expect(snapshot.Key).toEqual({
+		expect(state.Key).toEqual({
 			pk: "APP#console#STAGE#prod",
-			sk: "SNAPSHOT#9999999999999#state-version"
+			sk: "STATE"
 		});
 	});
 

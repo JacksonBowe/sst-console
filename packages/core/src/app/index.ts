@@ -15,8 +15,8 @@ export const inspect = fn(AppKeySchema, async input => App.summary(input));
 /** DEPR: Superseded by Stage.get(). */
 export const inspectStage = fn(StageKeySchema, async input => {
 	const stage = await Stage.get(input);
-	const [snapshot, resources] = await Promise.all([
-		db.entities.stateSnapshot.query.snapshot(input).go({ limit: 1 }),
+	const [state, resources] = await Promise.all([
+		db.entities.state.get(input).go({ consistent: true }),
 		db.entities.resource.query.resource(input).go({ pages: "all" })
 	]);
 	return {
@@ -27,7 +27,7 @@ export const inspectStage = fn(StageKeySchema, async input => {
 		issueMonitoringEnabled: stage.issueMonitoringEnabled,
 		createdAt: stage.createdAt,
 		updatedAt: stage.updatedAt,
-		latestSnapshot: snapshot.data[0] ?? null,
+		state: state.data ?? null,
 		resources: resourceTree(resources.data)
 	};
 });

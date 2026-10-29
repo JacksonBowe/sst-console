@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import {
 	GetObjectCommand,
 	GetBucketNotificationConfigurationCommand,
@@ -16,6 +14,7 @@ import {
 	parseSstState,
 	type NormalizedResource
 } from "../state/sst";
+import * as State from "../state/state";
 import { fn } from "../util/fn";
 import * as Account from "./account";
 import * as Connector from "./connector";
@@ -51,15 +50,13 @@ type ProjectionWrite =
 			now: string;
 	  }
 	| {
-			kind: "snapshot";
+			kind: "state";
 			appName: string;
 			stageName: string;
-			snapshotId: string;
-			reverseTimestamp: string;
 			sourceBucket: string;
 			sourceKey: string;
 			sourceVersion?: string;
-			createdAt: string;
+			observedAt: string;
 	  }
 	| {
 			kind: "deleteResource";
@@ -407,6 +404,9 @@ async function removeStateProjection(input: {
 				"Unable to remove SST state projections"
 			);
 	}
+	// State rows are reachable only from their owning Stage. Delete this
+	// Console-safe history before removing that navigation root.
+	await State.removeStageHistory(input);
 	await db.entities.stage
 		.delete({ appName: input.appName, stageName: input.stageName })
 		.go({ response: "none" });
@@ -521,15 +521,13 @@ async function buildWrites(input: {
 			});
 		}
 		writes.push({
-			kind: "snapshot",
+			kind: "state",
 			appName: state.appName,
 			stageName: state.stageName,
-			snapshotId: snapshotIdFor(state),
-			reverseTimestamp: reverseTimestampFor(state.sourceUpdatedAt),
 			sourceBucket: input.stateBucket,
 			sourceKey: state.key,
 			sourceVersion: state.sourceVersion,
-			createdAt: state.sourceUpdatedAt
+			observedAt: state.sourceUpdatedAt
 		});
 	}
 
@@ -610,7 +608,7 @@ async function writeChunk(
 	writes: ProjectionWrite[]
 ) {
 	const transaction = await db.transaction
-		.write(({ app, resource, stage, stateSnapshot }) =>
+		.write(({ app, resource, stage, state }) =>
 			writes.map(write => {
 				switch (write.kind) {
 					case "app":
@@ -655,18 +653,16 @@ async function writeChunk(
 							})
 							.ifNotExists({ createdAt: write.now })
 							.commit();
-					case "snapshot":
-						return stateSnapshot
+					case "state":
+						return state
 							.upsert({
 								accountId,
 								appName: write.appName,
 								stageName: write.stageName,
-								snapshotId: write.snapshotId,
-								reverseTimestamp: write.reverseTimestamp,
 								sourceBucket: write.sourceBucket,
 								sourceKey: write.sourceKey,
 								sourceVersion: write.sourceVersion,
-								createdAt: write.createdAt
+								observedAt: write.observedAt
 							})
 							.commit();
 					case "deleteResource":
@@ -724,17 +720,6 @@ async function mapWithConcurrency<Input, Output>(
 		Array.from({ length: Math.min(concurrency, items.length) }, worker)
 	);
 	return results;
-}
-
-function snapshotIdFor(state: StateProjection): string {
-	return createHash("sha256")
-		.update(
-			[
-				state.key,
-				state.sourceVersion ?? state.etag ?? state.sourceUpdatedAt
-			].join("#")
-		)
-		.digest("hex");
 }
 
 function reverseTimestampFor(timestamp: string): string {

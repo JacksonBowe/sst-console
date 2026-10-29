@@ -20,8 +20,8 @@ const stageSet = vi.fn();
 const stageUpdateGo = vi.fn();
 const stageDelete = vi.fn();
 const stageDeleteGo = vi.fn();
-const snapshot = vi.fn();
-const snapshotGo = vi.fn();
+const state = vi.fn();
+const stateGo = vi.fn();
 const resource = vi.fn();
 const resourceGo = vi.fn();
 
@@ -41,7 +41,7 @@ vi.mock("../../src/db", () => ({
 				delete: stageDelete,
 				query: { stage: stageByApp }
 			},
-			stateSnapshot: { query: { snapshot } },
+			state: { get: state },
 			resource: { query: { resource } }
 		}
 	}
@@ -78,7 +78,7 @@ describe("App", () => {
 		stagePatch.mockReturnValue({ set: stageSet });
 		stageSet.mockReturnValue({ go: stageUpdateGo });
 		stageDelete.mockReturnValue({ go: stageDeleteGo });
-		snapshot.mockReturnValue({ go: snapshotGo });
+		state.mockReturnValue({ go: stateGo });
 		resource.mockReturnValue({ go: resourceGo });
 	});
 
@@ -100,7 +100,9 @@ describe("App", () => {
 		appGetGo.mockResolvedValue({ data: app });
 		stageGetGo.mockResolvedValue({ data: stage });
 		stageByAppGo.mockResolvedValue({ data: [stage] });
-		snapshotGo.mockResolvedValue({ data: [{ snapshotId: "snapshot" }] });
+		stateGo.mockResolvedValue({
+			data: { sourceKey: "app/console/dev.json" }
+		});
 		resourceGo.mockResolvedValue({ data: [{ resourceId: "bucket" }] });
 
 		await App.Stage.create(stage);
@@ -125,7 +127,7 @@ describe("App", () => {
 					issueMonitoringEnabled: false,
 					createdAt: stage.createdAt,
 					updatedAt: stage.updatedAt,
-					latestSnapshot: { snapshotId: "snapshot" },
+					state: { sourceKey: "app/console/dev.json" },
 					resourceCount: 1
 				}
 			]
@@ -141,7 +143,7 @@ describe("App", () => {
 						issueMonitoringEnabled: false,
 						createdAt: stage.createdAt,
 						updatedAt: stage.updatedAt,
-						latestSnapshot: { snapshotId: "snapshot" },
+						state: { sourceKey: "app/console/dev.json" },
 						resourceCount: 1
 					}
 				]

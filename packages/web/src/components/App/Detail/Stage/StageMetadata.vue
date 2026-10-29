@@ -45,14 +45,11 @@
 				/>
 			</div>
 			<div>
-				<div class="stage-metadata__label">Latest snapshot</div>
-				<div
-					v-if="stage.latestSnapshot"
-					:title="stage.latestSnapshot.snapshotId"
-				>
-					{{ formatTimestamp(stage.latestSnapshot.createdAt) }}
+				<div class="stage-metadata__label">State observed</div>
+				<div v-if="stage.state" :title="stage.state.sourceKey">
+					{{ formatTimestamp(stage.state.observedAt) }}
 				</div>
-				<div v-else class="text-secondary">No snapshot</div>
+				<div v-else class="text-secondary">No state</div>
 			</div>
 		</q-card-section>
 	</q-card>

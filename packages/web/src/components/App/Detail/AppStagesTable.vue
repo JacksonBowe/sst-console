@@ -35,15 +35,12 @@
 			</q-td>
 		</template>
 
-		<template #body-cell-latestSnapshot="props">
+		<template #body-cell-state="props">
 			<q-td :props="props">
-				<span
-					v-if="props.row.latestSnapshot"
-					:title="props.row.latestSnapshot.snapshotId"
-				>
-					{{ formatTimestamp(props.row.latestSnapshot.createdAt) }}
+				<span v-if="props.row.state" :title="props.row.state.sourceKey">
+					{{ formatTimestamp(props.row.state.observedAt) }}
 				</span>
-				<span v-else class="text-secondary">No snapshot</span>
+				<span v-else class="text-secondary">No state</span>
 			</q-td>
 		</template>
 
@@ -146,9 +143,9 @@ const columns: ExtendedQTableColumn[] = [
 		sortable: true
 	},
 	{
-		name: "latestSnapshot",
-		label: "Latest snapshot",
-		field: row => row.latestSnapshot?.createdAt ?? "",
+		name: "state",
+		label: "State observed",
+		field: row => row.state?.observedAt ?? "",
 		align: "left",
 		sortable: true
 	},

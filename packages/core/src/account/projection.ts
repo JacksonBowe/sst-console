@@ -1,5 +1,6 @@
 import { db } from "../db";
 import { ServerError } from "../error";
+import * as State from "../state/state";
 
 const maxTransactionActions = 90;
 
@@ -26,6 +27,16 @@ export async function removeAccountProjections(accountId: string) {
 	).flatMap(result => result.data);
 
 	await deleteResources(resources);
+	// State history keys are Stage-scoped, so account removal must clear each
+	// owned Stage before deleting its primary projection.
+	await Promise.all(
+		stages.data.map(stage =>
+			State.removeStageHistory({
+				appName: stage.appName,
+				stageName: stage.stageName
+			})
+		)
+	);
 	await deleteStages(stages.data);
 	await deleteDiscoveredStages(discoveredStages.data);
 	await removeEmptyApps(stages.data.map(stage => stage.appName));
