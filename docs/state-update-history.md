@@ -38,7 +38,8 @@ One record for one `update/{app}/{stage}/{updateId}.json` object. It stores:
 - `updateId`, App, Stage, and owning Workload Account;
 - source bucket, key, optional object version, and observation time;
 - SST version and original bounded command string;
-- `timeStarted` and optional `timeCompleted`;
+- `timeStarted` and optional `timeCompleted`; force-unlocked updates may omit
+  `timeStarted` when `timeCompleted` is present;
 - embedded deployment errors, capped at 64 KiB total, with source/stored count
   and truncation metadata;
 - aggregate resource counts: created, updated, deleted, and unchanged.
@@ -104,7 +105,10 @@ GSI is required.
 
 `StateUpdate` uses the existing sparse `lookup` GSI for Stage-scoped,
 newest-first history. Its sort order is `timeCompleted`, falling back to
-`timeStarted` while an update remains incomplete.
+`timeStarted` while an update remains incomplete. Ingestion reads the current
+S3 object and conditionally accepts only newer S3 sequencers for the same source
+bucket and key. Duplicate and out-of-order deliveries cannot overwrite a newer
+observation. Force-unlock preserves any previously observed start time.
 
 `StateSnapshot` also uses the existing `lookup` GSI for chronological snapshot
 lookup. This finds predecessor and successor snapshots without scans when
@@ -133,7 +137,7 @@ Required reads and writes must be added to
    Otherwise it runs when the State Update arrives.
 4. Reconciliation compares a snapshot with its chronological predecessor and
    writes aggregate counts plus State Events.
-5. S3 duplicate delivery is idempotent.
+5. S3 duplicate delivery upserts the same State Update.
 6. If an older snapshot arrives after a newer one, reconciliation recomputes the
    arriving snapshot and its immediate successor. Derived State Events and
    aggregate counts are replaced so history converges.
@@ -171,6 +175,10 @@ measurements justify a product-policy change; do not silently expire history.
 When SST removal deletes a Stage's current projection, delete its current State,
 State Updates, State Snapshots, and State Events. Do not retain unreachable
 archived history in v1.
+
+Cleanup runs before deleting the Stage so a failed cleanup can be retried.
+Concurrent ingestion or Stage recreation can race cleanup; manual repair may
+be needed. This initial implementation does not serialize those operations.
 
 ## Existing StateSnapshot cutover
 

@@ -280,14 +280,48 @@ state read succeeds.
 
 ### Event-driven incremental sync
 
-Each connected Workload account forwards S3 `Object Created` and `Object Deleted`
-events for `app/` state keys from its SST state bucket to the Console EventBridge
-bus. The event worker validates the source account and bucket against the Account
-primary-key record, then reads the current S3 object. It never trusts event order:
-an object that exists is reconciled as one App/Stage projection; an absent object
-removes only that Account-owned Stage, Resources, and State history. Duplicate and
-stale events therefore converge on current S3 state. Full account sync remains the connection and
-manual repair path.
+During account sync Console discovers the state bucket, preserves its existing S3
+notification configuration while enabling EventBridge, and uses the Workload
+role to reconcile an installation-scoped EventBridge rule and target. The rule
+matches only the exact discovered bucket and supported event/key pairs:
+`Object Created` and `Object Deleted` for `app/` keys, plus `Object Created` for
+`update/` keys. Sync resolves the Connection stack's publisher role and targets
+the Console bus using that role. Repeat syncs reconcile the same rule, including
+bucket changes; API failures fail sync and can be retried. The central State
+event worker independently validates the source account and exact configured
+state bucket against the Account primary-key record. For current State objects, it then reads the S3
+object. It never trusts event order: an object that exists is reconciled as one
+App/Stage projection; an absent object removes only that Account-owned Stage,
+Resources, and State history. Duplicate and stale events therefore converge on
+current S3 state. Full account sync remains the connection and manual repair path.
+
+The Console subscription uses the same prefix filter. The handler ignores every other
+event/key combination before Account sync code runs. For an update event, it
+strictly parses `update/{app}/{stage}/{updateId}.json`, then requires a connected
+Account, exact configured state bucket, an included sync-policy Stage, and no
+conflicting Stage owner before assuming its Workload role.
+It reads the one update object, selects safe SST Update metadata, records object
+bucket/key/version plus observation time, and idempotently upserts `StateUpdate`.
+Malformed keys or payloads, missing/deleted objects, disconnected Accounts, wrong
+buckets, excluded Stages, and ownership conflicts are ignored without changing
+Stage, Resource, current State, or State Update data. An accepted update can
+create its App and Stage before the current State arrives. Update delete
+events, listing, and replay are not processed.
+
+State Update ingestion reads the current S3 object and verifies Stage ownership
+and the source object's S3 sequencer in its write transaction. Only newer
+sequencers for the same bucket and key can overwrite an observation; missing or
+invalid sequencers are ignored. Sequencers are normalized to 256 uppercase hex
+digits for DynamoDB lexical comparison. Stage
+removal deletes history before the Stage so a failure can be retried; concurrent
+ingestion or recreation can race cleanup and may require manual repair. History
+cleanup reads the Stage partition consistently, not the eventual lookup index.
+Force-unlocked updates can lack a start time; their completion time is used for
+history ordering. API-managed rules are not automatically removed on disconnect
+or stack deletion; cleanup lifecycle is tracked in #74. Shared S3 EventBridge
+notifications are not disabled. Previously deployed CloudFormation-managed
+forwarding rules require separate manual cleanup; they can otherwise continue
+forwarding broad events alongside the API-managed rule.
 
 ### App-first projection cutover
 

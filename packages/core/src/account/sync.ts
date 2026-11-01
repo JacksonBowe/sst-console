@@ -14,10 +14,11 @@ import {
 	parseSstState,
 	type NormalizedResource
 } from "../state/sst";
-import * as State from "../state/state";
+import * as State from "../state";
 import { fn } from "../util/fn";
 import * as Account from "./account";
 import * as Connector from "./connector";
+import { configureForwarding } from "./forwarding";
 import * as Connection from "../connection";
 import {
 	discover,
@@ -84,6 +85,22 @@ export const sync = fn(
 			}),
 			discovery.stateBucket
 		);
+		const busArn = process.env.SST_CONSOLE_BUS_ARN;
+		if (!busArn)
+			throw new ServerError(
+				"missing_bus_arn",
+				"Console event bus ARN is not configured"
+			);
+		await withDisconnectOnAccessFailure(accountId, () =>
+			configureForwarding({
+				accountId,
+				roleArn: discovery.roleArn,
+				region: discovery.region,
+				credentials: discovery.credentials,
+				bucket: discovery.stateBucket,
+				busArn
+			})
+		);
 		const policy = await Connection.getSyncPolicy(accountId);
 		const stateObjects = discovery.states.filter(state =>
 			Connection.Policy.includesStage(policy, state)
@@ -120,14 +137,18 @@ export const sync = fn(
 			completeDiscovery: true
 		});
 		for (const write of writes)
-			if (write.kind === "deleteStage")
+			if (write.kind === "deleteStage") {
 				await removeStageMonitoring({
 					appName: write.appName,
 					stageName: write.stageName
 				});
+			}
 		// 4. Desired upserts precede stale deletes. Chunks stay under DynamoDB
 		// transaction limits; later syncs repair a partially completed run.
 		for (const chunk of chunkWrites(writes)) {
+			for (const write of chunk)
+				if (write.kind === "deleteStage")
+					await State.removeStageHistory(write);
 			await writeChunk(accountId, region, chunk);
 		}
 		await removeEmptyApps(staleAppNames);
@@ -306,6 +327,107 @@ export const syncStateObject = fn(
 	}
 );
 
+export const syncStateUpdateObject = fn(
+	z.object({
+		accountId: z.string().regex(/^\d{12}$/),
+		stateBucket: z.string().min(1),
+		stateKey: z.string().min(1),
+		sequencer: z.string().regex(/^[0-9A-F]{256}$/)
+	}),
+	async ({ accountId, stateBucket, stateKey, sequencer }) => {
+		const updateKey = State.Update.parseObjectKey(stateKey);
+		if (!updateKey)
+			return { accountId, stateKey, status: "ignored" as const };
+
+		const accountData = await Account.find({ accountId });
+		if (
+			accountData?.status !== "connected" ||
+			accountData.stateBucket !== stateBucket
+		)
+			return { accountId, stateKey, status: "ignored" as const };
+
+		const policy = await Connection.getSyncPolicy(accountId);
+		if (!Connection.Policy.includesStage(policy, updateKey))
+			return { accountId, stateKey, status: "ignored" as const };
+
+		const stage = await db.entities.stage
+			.get({
+				appName: updateKey.appName,
+				stageName: updateKey.stageName
+			})
+			.go({ consistent: true });
+		if (stage.data && stage.data.accountId !== accountId)
+			return { accountId, stateKey, status: "ignored" as const };
+
+		const connection = await withDisconnectOnAccessFailure(accountId, () =>
+			Connector.assume({
+				roleArn: accountData.roleArn,
+				region: accountData.region
+			})
+		);
+		const s3 = new S3Client({
+			credentials: connection.credentials,
+			region: accountData.region
+		});
+
+		let object;
+		try {
+			object = await withDisconnectOnAccessFailure(accountId, () =>
+				s3.send(
+					new GetObjectCommand({ Bucket: stateBucket, Key: stateKey })
+				)
+			);
+		} catch (error) {
+			if (isMissingObject(error))
+				return { accountId, stateKey, status: "ignored" as const };
+			throw error;
+		}
+		if (!object.Body)
+			return { accountId, stateKey, status: "ignored" as const };
+
+		const bytes = await object.Body.transformToByteArray();
+		const update = State.Update.parseSstUpdate(
+			new TextDecoder().decode(
+				decodeSstStateBytes(bytes, object.ContentEncoding)
+			)
+		);
+		if (!update || update.updateId !== updateKey.updateId)
+			return { accountId, stateKey, status: "ignored" as const };
+		const { updateId: _, ...updateInput } = update;
+		if (!stage.data) {
+			const now = new Date().toISOString();
+			await writeChunk(accountId, accountData.region, [
+				{ kind: "app", appName: updateKey.appName, now },
+				{
+					kind: "stage",
+					appName: updateKey.appName,
+					stageName: updateKey.stageName,
+					now
+				}
+			]);
+		}
+
+		const persisted = await State.Update.upsert({
+			accountId,
+			appName: updateKey.appName,
+			stageName: updateKey.stageName,
+			updateId: updateKey.updateId,
+			sourceBucket: stateBucket,
+			sourceKey: stateKey,
+			sequencer,
+			...(object.VersionId ? { sourceVersion: object.VersionId } : {}),
+			observedAt: new Date().toISOString(),
+			...updateInput
+		});
+
+		return {
+			accountId,
+			stateKey,
+			status: persisted ? ("synced" as const) : ("ignored" as const)
+		};
+	}
+);
+
 async function enableStateEvents(s3: S3Client, bucket: string): Promise<void> {
 	const existing = await s3.send(
 		new GetBucketNotificationConfigurationCommand({ Bucket: bucket })
@@ -404,8 +526,6 @@ async function removeStateProjection(input: {
 				"Unable to remove SST state projections"
 			);
 	}
-	// State rows are reachable only from their owning Stage. Delete this
-	// Console-safe history before removing that navigation root.
 	await State.removeStageHistory(input);
 	await db.entities.stage
 		.delete({ appName: input.appName, stageName: input.stageName })

@@ -47,6 +47,10 @@ vi.mock("../../src/db", () => ({
 	}
 }));
 
+vi.mock("../../src/state/state", () => ({
+	removeStageHistory: vi.fn().mockResolvedValue(undefined)
+}));
+
 const App = await import("../../src/app");
 
 const app = {

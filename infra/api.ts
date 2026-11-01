@@ -1,5 +1,6 @@
 import { cognitoUserPool, cognitoUserPoolClient, passwordPolicy } from "./auth";
 import { assumeAccountRolePermission, externalId } from "./console";
+import { bus } from "./event-bus";
 import {
 	issueEnvironment,
 	issueIngressQueue,
@@ -20,6 +21,7 @@ export const api = new sst.aws.Function("Api", {
 	],
 	environment: {
 		SST_CONSOLE_EXTERNAL_ID: externalId,
+		SST_CONSOLE_BUS_ARN: bus.arn,
 		SST_CONSOLE_PASSWORD_POLICY: JSON.stringify(passwordPolicy),
 		...issueEnvironment
 	},

@@ -37,8 +37,8 @@ export const get = fn(StateKeySchema, async input => {
 /** Deletes all persisted State projections for one Stage. */
 export const removeStageHistory = fn(StateKeySchema, async input => {
 	const updates = await db.entities.stateUpdate.query
-		.history(input)
-		.go({ pages: "all" });
+		.update(input)
+		.go({ pages: "all", consistent: true });
 	for (const chunk of chunkArray(updates.data, maxTransactionActions)) {
 		const transaction = await db.transaction
 			.write(({ stateUpdate }) =>

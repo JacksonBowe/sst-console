@@ -32,6 +32,7 @@ bus.subscribe(
 		],
 		environment: {
 			SST_CONSOLE_EXTERNAL_ID: externalId,
+			SST_CONSOLE_BUS_ARN: bus.arn,
 			...issueEnvironment
 		},
 		permissions: [assumeAccountRolePermission]
@@ -63,7 +64,9 @@ bus.subscribe(
 		pattern: {
 			source: ["aws.s3"],
 			detailType: ["Object Created", "Object Deleted"],
-			detail: { object: { key: [{ prefix: "app/" }] } }
+			detail: {
+				object: { key: [{ prefix: "app/" }, { prefix: "update/" }] }
+			}
 		}
 	}
 );

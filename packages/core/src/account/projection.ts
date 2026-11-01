@@ -27,8 +27,7 @@ export async function removeAccountProjections(accountId: string) {
 	).flatMap(result => result.data);
 
 	await deleteResources(resources);
-	// State history keys are Stage-scoped, so account removal must clear each
-	// owned Stage before deleting its primary projection.
+	// Keep Stages available for retry if history cleanup fails.
 	await Promise.all(
 		stages.data.map(stage =>
 			State.removeStageHistory({

@@ -1,5 +1,10 @@
 # Agent Notes
 
+## Guiding principles
+
+- Follow a "make it work" > "make it better" approach when implementing new features, instead of attempting to implement a perfect solution first try.
+- This is a small community project - not an enterprise product. Don't overengineer.
+
 ## Work instructions
 
 - Keep replies concise. Load the `caveman` skill before responding.
@@ -16,6 +21,7 @@
 - `sst-env.d.ts` files are quto-generated, never give them any thought
 - Commit messages must use Conventional Commits. Scope is optional; when used, it must be lowercase `package/domain`, for example `feat(core/job): add job helper function` or `docs: update guide`.
 - Before changing DynamoDB, ElectroDB, `ConsoleData`, persistence models, or data migrations, read `docs/architecture/dynamodb.md`.
+- All code should be human readable - with comments where relevant.
 
 ## Tooling
 
