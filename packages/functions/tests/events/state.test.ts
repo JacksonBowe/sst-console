@@ -20,7 +20,7 @@ vi.mock("@console/core/state", () => ({
 	}
 }));
 
-const { handler } = await import("../../src/events/state");
+const { handler } = await import("../../src/events/state-external");
 
 describe("state S3 events", () => {
 	beforeEach(() => vi.clearAllMocks());

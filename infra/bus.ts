@@ -9,6 +9,9 @@ import { consoleConnections, consoleData } from "./storage";
 
 export { bus } from "./event-bus";
 
+// TODO: Investigate restricting internal event subscribers to the Console
+// account and narrowing Workload Account bus permissions to prevent spoofed
+// internal events. Include future internal subscribers in this review.
 bus.subscribe(
 	"AlertEvents",
 	{
@@ -45,7 +48,29 @@ bus.subscribe(
 );
 
 bus.subscribe(
-	"StateObjectEvents",
+	"StateExternalEvents",
+	{
+		handler: "packages/functions/src/events/state-external.handler",
+		link: [
+			bus,
+			consoleConnections,
+			consoleData,
+			issueIngressQueue,
+			issueReconcileQueue
+		],
+		environment: {
+			SST_CONSOLE_EXTERNAL_ID: externalId,
+			...issueEnvironment
+		},
+		permissions: [assumeAccountRolePermission]
+	},
+	{
+		pattern: { source: ["aws.s3"] }
+	}
+);
+
+bus.subscribe(
+	"StateEvents",
 	{
 		handler: "packages/functions/src/events/state.handler",
 		link: [
@@ -60,13 +85,5 @@ bus.subscribe(
 		},
 		permissions: [assumeAccountRolePermission]
 	},
-	{
-		pattern: {
-			source: ["aws.s3"],
-			detailType: ["Object Created", "Object Deleted"],
-			detail: {
-				object: { key: [{ prefix: "app/" }, { prefix: "update/" }] }
-			}
-		}
-	}
+	{ pattern: { detailType: [{ prefix: "state." }] } }
 );

@@ -240,9 +240,10 @@ export const syncStateObject = fn(
 	z.object({
 		accountId: z.string().regex(/^\d{12}$/),
 		stateBucket: z.string().min(1),
-		stateKey: z.string().min(1)
+		stateKey: z.string().min(1),
+		onMissing: z.enum(["remove", "ignore"]).default("remove")
 	}),
-	async ({ accountId, stateBucket, stateKey }) => {
+	async ({ accountId, stateBucket, stateKey, onMissing }) => {
 		const state = parseStateKey(stateKey);
 		if (!state) return { accountId, stateKey, status: "ignored" as const };
 
@@ -273,6 +274,13 @@ export const syncStateObject = fn(
 			);
 		} catch (error) {
 			if (!isMissingObject(error)) throw error;
+			if (onMissing === "ignore") {
+				console.log("Current State not found during refresh", {
+					accountId,
+					stateKey
+				});
+				return { accountId, stateKey, status: "ignored" as const };
+			}
 			await removeDiscoveredStage({ accountId, ...state });
 			await removeStateProjection({ accountId, ...state });
 			return { accountId, stateKey, status: "removed" as const };

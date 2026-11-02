@@ -54,17 +54,7 @@ export async function configureForwarding(input: {
 			State: "ENABLED",
 			EventPattern: JSON.stringify({
 				source: ["aws.s3"],
-				detail: { bucket: { name: [input.bucket] } },
-				$or: [
-					{
-						"detail-type": ["Object Created", "Object Deleted"],
-						detail: { object: { key: [{ prefix: "app/" }] } }
-					},
-					{
-						"detail-type": ["Object Created"],
-						detail: { object: { key: [{ prefix: "update/" }] } }
-					}
-				]
+				detail: { bucket: { name: [input.bucket] } }
 			})
 		})
 	);
