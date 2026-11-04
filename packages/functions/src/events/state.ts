@@ -1,5 +1,5 @@
-import * as Account from "@console/core/account";
 import * as State from "@console/core/state";
+import * as Account from "@console/core/account";
 import { withActor } from "@console/core/actor";
 import { bus } from "sst/aws/bus";
 
@@ -12,18 +12,33 @@ export const handler = bus.subscriber(
 	],
 	async event =>
 		withActor({ type: "system", properties: {} }, async () => {
+			const { accountId, stateBucket } = event.properties;
+			const account = await Account.find({ accountId });
+			if (
+				account?.status !== "connected" ||
+				account.stateBucket !== stateBucket
+			)
+				return;
 			switch (event.type) {
-				case State.Events.UpdateCreated.type:
+				case State.Events.UpdateCreated.type: {
+					const update = State.Update.parseObjectKey(
+						event.properties.stateKey
+					);
+					if (!update) return;
 					console.log(
 						"State Update ingestion complete",
-						await Account.Sync.syncStateUpdateObject(
-							event.properties
-						)
+						await State.receiveUpdate({
+							accountId,
+							appName: update.appName,
+							stageName: update.stageName,
+							updateId: update.updateId,
+							sequencer: event.properties.sequencer
+						})
 					);
 					return;
+				}
 				case State.Events.StateUpdated.type: {
-					const { accountId, stateBucket, stateKey } =
-						event.properties;
+					const { stateKey } = event.properties;
 					const match =
 						/^snapshot\/([^/]+)\/([^/]+)\/([^/]+)\.json$/.exec(
 							stateKey
@@ -31,11 +46,10 @@ export const handler = bus.subscriber(
 					if (!match) return;
 					console.log(
 						"State refresh complete",
-						await Account.Sync.syncStateObject({
+						await State.sync({
 							accountId,
-							stateBucket,
-							stateKey: `app/${match[1]}/${match[2]}.json`,
-							onMissing: "ignore"
+							appName: match[1]!,
+							stageName: match[2]!
 						})
 					);
 					return;

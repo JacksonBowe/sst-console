@@ -140,7 +140,6 @@ export type AccountApp = {
 export type AccountDetail = {
 	account: Account & {
 		stateBucket?: string;
-		lastSyncedAt?: string;
 		lastSyncConflicts?: StageAccountConflict[];
 		createdAt?: string;
 		updatedAt: string;

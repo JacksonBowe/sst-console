@@ -16,7 +16,6 @@ export const accountEntity = new Entity({
 			required: true
 		},
 		stateBucket: { type: "string" },
-		lastSyncedAt: { type: "string" },
 		lastSyncConflicts: { type: "any" },
 		createdAt: { type: "string" },
 		updatedAt: { type: "string", required: true },

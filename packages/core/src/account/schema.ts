@@ -11,7 +11,6 @@ export const AccountSchema = AccountKeySchema.extend({
 	roleArn: z.string().min(1),
 	status: z.enum(["connected", "disconnected"]),
 	stateBucket: z.string().min(1).optional(),
-	lastSyncedAt: z.iso.datetime().optional(),
 	lastSyncConflicts: z.unknown().optional(),
 	createdAt: z.iso.datetime(),
 	updatedAt: z.iso.datetime()
@@ -22,7 +21,6 @@ export const AccountUpdateSchema = AccountKeySchema.extend({
 	roleArn: z.string().min(1).optional(),
 	status: z.enum(["connected", "disconnected"]).optional(),
 	stateBucket: z.string().min(1).optional(),
-	lastSyncedAt: z.iso.datetime().optional(),
 	lastSyncConflicts: z.unknown().optional(),
 	updatedAt: z.iso.datetime().optional()
 }).refine(
@@ -31,7 +29,6 @@ export const AccountUpdateSchema = AccountKeySchema.extend({
 		input.roleArn !== undefined ||
 		input.status !== undefined ||
 		input.stateBucket !== undefined ||
-		input.lastSyncedAt !== undefined ||
 		input.lastSyncConflicts !== undefined ||
 		input.updatedAt !== undefined,
 	"At least one Account field must be updated"

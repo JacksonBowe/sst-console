@@ -28,16 +28,14 @@ vi.mock("../../src/connection", () => ({
 	getSyncPolicy: mocks.policy,
 	Policy: { includesStage: mocks.includes }
 }));
-vi.mock("../../src/state", () => ({
-	Update: {
-		parseObjectKey: () => ({
-			appName: "app",
-			stageName: "dev",
-			updateId: "id"
-		}),
-		parseSstUpdate: mocks.parse,
-		upsert: mocks.upsert
-	}
+vi.mock("../../src/state/state.update", () => ({
+	parseObjectKey: () => ({
+		appName: "app",
+		stageName: "dev",
+		updateId: "id"
+	}),
+	parseSstUpdate: mocks.parse,
+	upsert: mocks.upsert
 }));
 vi.mock("../../src/db", () => ({
 	db: {
@@ -47,11 +45,12 @@ vi.mock("../../src/db", () => ({
 }));
 vi.mock("../../src/issue/monitoring", () => ({}));
 
-const { syncStateUpdateObject } = await import("../../src/account/sync");
+const { receiveUpdate } = await import("../../src/state/ingestion");
 const input = {
 	accountId: "123456789012",
-	stateBucket: "bucket",
-	stateKey: "update/app/dev/id.json",
+	appName: "app",
+	stageName: "dev",
+	updateId: "id",
 	sequencer: "0".repeat(255) + "1"
 };
 
@@ -69,7 +68,10 @@ describe("State Update sync", () => {
 		mocks.stageGet.mockReturnValue({
 			go: vi.fn().mockResolvedValue({ data: null })
 		});
-		mocks.assume.mockResolvedValue({ credentials: {} });
+		mocks.assume.mockResolvedValue({
+			accountId: input.accountId,
+			credentials: {}
+		});
 		mocks.send.mockResolvedValue({
 			ContentEncoding: "gzip",
 			Body: { transformToByteArray: async () => gzipSync('{"id":"id"}') }
@@ -88,7 +90,7 @@ describe("State Update sync", () => {
 	});
 
 	it("creates a Stage and ingests a compressed update before current State exists", async () => {
-		await expect(syncStateUpdateObject(input)).resolves.toMatchObject({
+		await expect(receiveUpdate(input)).resolves.toMatchObject({
 			status: "synced"
 		});
 		expect(mocks.parse).toHaveBeenCalledWith('{"id":"id"}');
@@ -108,20 +110,17 @@ describe("State Update sync", () => {
 				.fn()
 				.mockResolvedValue({ data: { accountId: "999999999999" } })
 		});
-		await expect(syncStateUpdateObject(input)).resolves.toMatchObject({
+		await expect(receiveUpdate(input)).resolves.toMatchObject({
 			status: "ignored"
 		});
-		expect(mocks.assume).not.toHaveBeenCalled();
+		expect(mocks.send).not.toHaveBeenCalled();
 	});
 
-	it("ignores excluded Stages and incorrect buckets", async () => {
+	it("ignores excluded Stages", async () => {
 		mocks.includes.mockReturnValue(false);
-		await expect(syncStateUpdateObject(input)).resolves.toMatchObject({
+		await expect(receiveUpdate(input)).resolves.toMatchObject({
 			status: "ignored"
 		});
-		await expect(
-			syncStateUpdateObject({ ...input, stateBucket: "wrong" })
-		).resolves.toMatchObject({ status: "ignored" });
-		expect(mocks.assume).not.toHaveBeenCalled();
+		expect(mocks.send).not.toHaveBeenCalled();
 	});
 });

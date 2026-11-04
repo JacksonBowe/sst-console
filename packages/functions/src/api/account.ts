@@ -1,6 +1,7 @@
 import { zValidator } from "@console/core/error";
 import * as Account from "@console/core/account";
 import * as Connection from "@console/core/connection";
+import * as State from "@console/core/state";
 import { AccountSyncPolicySchema } from "@console/core/connection";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -33,8 +34,7 @@ export const accountRoutes = new Hono()
 	.post(
 		"/:accountId/discovery",
 		zValidator("param", AccountIdParamSchema),
-		async c =>
-			c.json(await Account.Sync.refreshDiscovery(c.req.valid("param")))
+		async c => c.json(await State.discover(c.req.valid("param").accountId))
 	)
 	.put(
 		"/:accountId/sync-policy",

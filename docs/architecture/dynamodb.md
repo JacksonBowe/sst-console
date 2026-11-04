@@ -2,6 +2,26 @@
 
 ## Purpose
 
+### State ingestion reset
+
+State discovery reconciles DiscoveredStage inventory after a complete S3 listing.
+Account orchestration syncs selected Stages sequentially, then removes stale
+account-owned projections only when discovery and required Stage syncs succeed.
+Successful Stage syncs may already have changed their own Resources if a later
+Stage fails. Live sync maintains inventory and reconciles monitoring. Concurrent
+sync and policy changes remain uncoordinated. Cleanup and monitoring failure
+outcome ordering remains a TODO.
+
+Before the next release, resolve event spoofing and unchecked internal event
+publication failures and verify the two-consumer flow. Existing workload event
+forwarding rules pick up changes on account sync. Historical Update artifacts are
+not replayed.
+
+Account `lastSyncedAt` and the write-only SyncRun entity are removed. Existing
+attributes and SyncRun items remain unused; no purge or resync is required solely
+for their removal. Only the user may perform optional database cleanup. Account
+`lastSyncConflicts` records the most recent completed account-wide reconciliation.
+
 `ConsoleData` is one DynamoDB table for SST Console operational data. It is an
 index of Console-safe SST state, not a replica of full SST state. Raw SST state
 remains in S3. Console navigation is App-first: one global SST app groups its
@@ -40,7 +60,7 @@ packages/core/src/
   app/
     app.dynamo.ts          # App, Stage, Resource entities
 	state/
-		state.dynamo.ts        # State, StateUpdate, SyncRun, DiscoveredStage entities
+		state.dynamo.ts        # State, StateUpdate, DiscoveredStage entities
 		state.ts               # Current State contract and CRUD
 		state.update.ts        # State Update contract and CRUD
   db/
@@ -107,7 +127,6 @@ construct themselves.
 | StateUpdate             | `APP#{appName}#STAGE#{stageName}`                         | `STATE_UPDATE#{updateId}`                   |
 | StateSnapshot (planned) | `APP#{appName}#STAGE#{stageName}`                         | `STATE_SNAPSHOT#{updateId}`                 |
 | StateEvent (planned)    | `APP#{appName}#STAGE#{stageName}#STATE_UPDATE#{updateId}` | `STATE_EVENT#{resourceId}`                  |
-| SyncRun                 | `ACCOUNT#{accountId}`                                     | `SYNC#{reverseTimestamp}#{syncRunId}`       |
 | DiscoveredStage         | `ACCOUNT#{accountId}`                                     | `DISCOVERY#{appName}#STAGE#{stageName}`     |
 | Connection              | `CONNECTIONS`                                             | `ACCOUNT#{accountId}`                       |
 | User                    | `USER#{id}`                                               | `USER`                                      |
@@ -146,7 +165,7 @@ inferred from key encoding. Component group rows have no ARN; only physical reso
 | Get one account                               | `db.entities.account.get({ accountId })`                             | primary-key get                                                               | Implemented |
 | List accounts                                 | `db.entities.account.query.byType({})`                               | `entitiesByType` query                                                        | Implemented |
 | Register/update connector                     | `db.entities.account.upsert(...)`                                    | primary-key update                                                            | Implemented |
-| Persist successful sync                       | Account patch + SyncRun create                                       | `TransactWriteItems`                                                          | Implemented |
+| Persist account sync conflicts                | Account patch                                                        | primary-key update                                                            | Implemented |
 | Mark disconnected after remote access denial  | `db.entities.account.patch({ accountId })`                           | primary-key update                                                            | Implemented |
 | Home → App list                               | name ascending                                                       | `entitiesByType` query                                                        | Implemented |
 | App detail                                    | app name                                                             | App primary-key get                                                           | Model ready |
@@ -163,7 +182,6 @@ inferred from key encoding. Component group rows have no ARN; only physical reso
 | Find State Snapshot neighbors                 | future reconciliation: app, stage, observed time                     | `lookup` range query on StateSnapshot chronology partition                    | Planned     |
 | List State Events                             | future update-detail API: app, stage, update ID                      | StateEvent primary-key query                                                  | Planned     |
 | Delete State history with Stage               | stage removal/account purge: app, stage                              | State get/delete; StateUpdate history query then batched primary-key deletes  | Implemented |
-| Account sync history                          | account partition, descending sync prefix                            | primary-key query                                                             | Planned     |
 | Durable connection registry                   | `Connection.list()`                                                  | `ConsoleConnections` primary-key query                                        | Implemented |
 | Workload app management inventory             | authenticated `GET /accounts/{id}/manage-apps`                       | DiscoveredStage account primary-key query                                     | Implemented |
 | Refresh Workload discovery                    | authenticated `POST /accounts/{id}/discovery`                        | S3 list, then DiscoveredStage account reconciliation                          | Implemented |
@@ -198,8 +216,8 @@ different Workload account, sync skips that state projection. It never overwrite
 or deletes owning Workload's Stage, Resources, or State history. Other projections
 from Workload continue syncing.
 
-`Account.lastSyncConflicts` and matching SyncRun `conflicts` record skipped app,
-stage, and owning account ID. SyncRun status is `completed_with_conflicts`.
+`Account.lastSyncConflicts` records skipped app, stage, and owning account ID
+after account-wide reconciliation. Live Stage sync does not overwrite this list.
 
 ### Workload sync policy and discovery
 
@@ -245,8 +263,8 @@ authenticated `POST /accounts/recover` to restore it.
 
 ## SST state projection sync
 
-`Account.sync()` lists every current `app/` object in the SST state bucket,
-downloads each object, and parses SST v4's Pulumi versioned checkpoint. State
+Account sync discovers current `app/` objects in the SST state bucket, then
+syncs selected Stages sequentially and parses SST v4's Pulumi versioned checkpoint. State
 objects with `Content-Encoding: gzip` are decompressed before parsing.
 
 Only Console-safe projections are stored in DynamoDB:
@@ -261,16 +279,14 @@ Only Console-safe projections are stored in DynamoDB:
 Secrets are redacted before normalization. Persisted summaries are allowlisted;
 raw Pulumi inputs and outputs are never written to `ConsoleData`.
 
-Reconciliation begins only after every listed object was fetched and parsed.
-It upserts desired projections, then deletes resource, State history, and Stage projections
-absent from complete discovery output for that account. After all Stage deletes
-commit, it deletes an App only when no Stages remain in any account. This order
-means incomplete discovery cannot delete existing data.
+Each successful Stage sync updates its own Resources. Account-wide stale cleanup
+starts only after complete discovery and every required Stage sync succeeds; it
+removes excluded or absent account-owned Stages, Resources, and State history.
+An App is removed only when no Stages remain in any account.
 
 Projection writes are ordered and split into transactions of at most 90 actions
 and 3 MiB of estimated payload, below DynamoDB's 100-action/4-MB limits. A
-partial write is repaired by next successful sync; `Account.lastSyncedAt` and
-successful `SyncRun` are written only after all projection chunks succeed.
+partial write can be repaired by the next successful sync.
 
 When a sync receives an AWS authorization failure while assuming the connector
 role or reading SSM/S3 state, it patches the existing Account to `disconnected`
@@ -283,17 +299,15 @@ state read succeeds.
 During account sync Console discovers the state bucket, preserves its existing S3
 notification configuration while enabling EventBridge, and uses the Workload
 role to reconcile an installation-scoped EventBridge rule and target. The rule
-matches only the exact discovered bucket and supported event/key pairs:
-`Object Created` and `Object Deleted` for `app/` keys, plus `Object Created` for
-`update/` keys. Sync resolves the Connection stack's publisher role and targets
+matches the exact discovered bucket; the consumers filter supported event/key
+pairs. Sync resolves the Connection stack's publisher role and targets
 the Console bus using that role. Repeat syncs reconcile the same rule, including
 bucket changes; API failures fail sync and can be retried. The central State
 event worker independently validates the source account and exact configured
 state bucket against the Account primary-key record. For current State objects, it then reads the S3
-object. It never trusts event order: an object that exists is reconciled as one
-App/Stage projection; an absent object removes only that Account-owned Stage,
-Resources, and State history. Duplicate and stale events therefore converge on
-current S3 state. Full account sync remains the connection and manual repair path.
+object. Snapshot-triggered refresh ignores missing current State. Direct app/
+deletion verifies that the object is absent before removing the account-owned
+Stage, Resources, and State history. Full account sync remains the repair path.
 
 The Console subscription uses the same prefix filter. The handler ignores every other
 event/key combination before Account sync code runs. For an update event, it
@@ -409,9 +423,8 @@ Use the service transaction API for atomic write sets:
 
 ```ts
 const result = await db.transaction
-	.write(({ account, syncRun }) => [
-		account.patch({ accountId }).set(changes).commit(),
-		syncRun.create(syncRun).commit()
+	.write(({ account }) => [
+		account.patch({ accountId }).set(changes).commit()
 	])
 	.go();
 

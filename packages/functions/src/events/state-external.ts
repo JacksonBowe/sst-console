@@ -14,6 +14,7 @@ type S3StateEvent = {
 };
 
 export async function handler(event: S3StateEvent): Promise<void> {
+	// TODO: Verify event provenance against spoofing before the next release.
 	const accountId = event.account;
 	const stateBucket = event.detail?.bucket?.name;
 	const stateKey = event.detail?.object?.key;
@@ -30,7 +31,7 @@ export async function handler(event: S3StateEvent): Promise<void> {
 			// TODO: Move Stage deletion to the State event consumer when its lifecycle is reviewed.
 			console.log(
 				"State object reconciliation complete",
-				await Account.Sync.syncStateObject(input)
+				await Account.Sync.handleStateDeletion(input)
 			);
 			return;
 		}

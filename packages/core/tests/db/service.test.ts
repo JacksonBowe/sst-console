@@ -159,33 +159,4 @@ describe("db service", () => {
 			accountSk: "DISCOVERY#console#prod"
 		});
 	});
-
-	it("builds atomic account sync persistence", () => {
-		const accountId = "123456789012";
-		const now = "2026-09-25T00:00:00.000Z";
-		const transaction = db.transaction
-			.write(({ account, syncRun }) => [
-				account
-					.patch({ accountId })
-					.set({
-						status: "connected",
-						stateBucket: "sst-state",
-						lastSyncedAt: now,
-						updatedAt: now
-					})
-					.commit(),
-				syncRun
-					.create({
-						accountId,
-						syncRunId: "sync-1",
-						reverseTimestamp: "9999999999999",
-						status: "succeeded",
-						startedAt: now
-					})
-					.commit()
-			])
-			.params();
-
-		expect(transaction.TransactItems).toHaveLength(2);
-	});
 });

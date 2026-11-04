@@ -4,9 +4,7 @@ import { z } from "zod";
 
 import { db } from "../db";
 import { ServerError } from "../error";
-import * as Account from "./account";
-import * as Connector from "./connector";
-import { accountErrors } from "./errors";
+import { connect, withDisconnectOnAccessFailure } from "../account/access";
 
 const maxTransactionActions = 90;
 
@@ -21,30 +19,13 @@ export type StateObject = {
 
 type AccountDiscovery = {
 	accountId: string;
-	arn: string;
-	region: string;
-	roleArn: string;
 	stateBucket: string;
 	states: StateObject[];
 };
 
-export async function discover(accountId: string): Promise<
-	AccountDiscovery & {
-		credentials: Awaited<
-			ReturnType<typeof Connector.assume>
-		>["credentials"];
-	}
-> {
-	const account = await Account.find({ accountId });
-	const roleArn = account?.roleArn;
-	const region = account?.region;
-	if (!roleArn || !region) throw accountErrors.notFound();
-
-	const connection = await withDisconnectOnAccessFailure(accountId, () =>
-		Connector.assume({ roleArn, region })
-	);
-	if (connection.accountId !== accountId)
-		throw accountErrors.verificationFailed();
+export async function discover(accountId: string): Promise<AccountDiscovery> {
+	const { account, connection } = await connect(accountId);
+	const { region } = account;
 
 	const ssm = new SSMClient({ credentials: connection.credentials, region });
 	const bootstrapParameter = await withDisconnectOnAccessFailure(
@@ -70,53 +51,7 @@ export async function discover(accountId: string): Promise<
 		listStateObjects(s3, bootstrap.data.state)
 	);
 	await reconcileDiscovery(accountId, bootstrap.data.state, states);
-	return { ...connection, stateBucket: bootstrap.data.state, states };
-}
-
-export async function withDisconnectOnAccessFailure<T>(
-	accountId: string,
-	operation: () => Promise<T>
-): Promise<T> {
-	try {
-		return await operation();
-	} catch (error) {
-		if (isRemoteAccessFailure(error)) {
-			try {
-				await Account.update({
-					accountId,
-					status: "disconnected",
-					updatedAt: new Date().toISOString()
-				});
-			} catch (persistenceError) {
-				console.error(
-					"Unable to mark account disconnected after access failure",
-					{ accountId },
-					persistenceError
-				);
-			}
-		}
-		throw error;
-	}
-}
-
-function isRemoteAccessFailure(error: unknown): boolean {
-	if (typeof error !== "object" || error === null) return false;
-	const awsError = error as {
-		name?: unknown;
-		$metadata?: { httpStatusCode?: unknown };
-	};
-	const code = typeof awsError.name === "string" ? awsError.name : "";
-	return (
-		[
-			"AccessDenied",
-			"AccessDeniedException",
-			"UnauthorizedOperation",
-			"NoSuchEntity",
-			"NoSuchEntityException",
-			"InvalidClientTokenId",
-			"UnrecognizedClientException"
-		].includes(code) || awsError.$metadata?.httpStatusCode === 403
-	);
+	return { accountId, stateBucket: bootstrap.data.state, states };
 }
 
 async function listStateObjects(

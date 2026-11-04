@@ -18,9 +18,6 @@ export const create = fn(AccountSchema, async input => {
 			...(input.stateBucket === undefined
 				? {}
 				: { stateBucket: input.stateBucket }),
-			...(input.lastSyncedAt === undefined
-				? {}
-				: { lastSyncedAt: input.lastSyncedAt }),
 			...(input.lastSyncConflicts === undefined
 				? {}
 				: { lastSyncConflicts: input.lastSyncConflicts }),
