@@ -1,4 +1,3 @@
-import * as Account from "@console/core/account";
 import * as State from "@console/core/state";
 import { withActor } from "@console/core/actor";
 import { Resource } from "sst";
@@ -31,7 +30,7 @@ export async function handler(event: S3StateEvent): Promise<void> {
 			// TODO: Move Stage deletion to the State event consumer when its lifecycle is reviewed.
 			console.log(
 				"State object reconciliation complete",
-				await Account.Sync.handleStateDeletion(input)
+				await State.handleStateDeletion(input)
 			);
 			return;
 		}

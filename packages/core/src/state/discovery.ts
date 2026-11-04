@@ -1,10 +1,11 @@
 import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
-import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
-import { z } from "zod";
+import { SSMClient } from "@aws-sdk/client-ssm";
 
 import { db } from "../db";
-import { ServerError } from "../error";
-import { connect, withDisconnectOnAccessFailure } from "../account/access";
+import { stateErrors } from "./errors";
+import { connect } from "../account/connector";
+import { chunkArray } from "../util/chunk";
+import { getBootstrapBucket, parseStateKey } from "./sst";
 
 const maxTransactionActions = 90;
 
@@ -28,30 +29,13 @@ export async function discover(accountId: string): Promise<AccountDiscovery> {
 	const { region } = account;
 
 	const ssm = new SSMClient({ credentials: connection.credentials, region });
-	const bootstrapParameter = await withDisconnectOnAccessFailure(
-		accountId,
-		() => ssm.send(new GetParameterCommand({ Name: "/sst/bootstrap" }))
-	);
-	if (!bootstrapParameter.Parameter?.Value)
-		throw new ServerError(
-			"missing_sst_bootstrap",
-			"SST bootstrap metadata is empty"
-		);
-	const bootstrap = z
-		.object({ state: z.string().min(1) })
-		.safeParse(JSON.parse(bootstrapParameter.Parameter.Value));
-	if (!bootstrap.success)
-		throw new ServerError(
-			"invalid_sst_bootstrap",
-			"SST bootstrap metadata does not contain state bucket"
-		);
+	const stateBucket = await getBootstrapBucket(ssm);
+	if (!stateBucket) throw stateErrors.missingBootstrap();
 
 	const s3 = new S3Client({ credentials: connection.credentials, region });
-	const states = await withDisconnectOnAccessFailure(accountId, () =>
-		listStateObjects(s3, bootstrap.data.state)
-	);
-	await reconcileDiscovery(accountId, bootstrap.data.state, states);
-	return { accountId, stateBucket: bootstrap.data.state, states };
+	const states = await listStateObjects(s3, stateBucket);
+	await reconcileDiscovery(accountId, stateBucket, states);
+	return { accountId, stateBucket, states };
 }
 
 async function listStateObjects(
@@ -70,12 +54,10 @@ async function listStateObjects(
 		);
 		for (const object of page.Contents ?? []) {
 			if (!object.Key) continue;
-			const match = /^app\/([^/]+)\/(.+)\.json$/.exec(object.Key);
-			if (!match) continue;
+			const state = parseStateKey(object.Key);
+			if (!state) continue;
 			states.push({
-				appName: match[1]!,
-				stageName: match[2]!,
-				key: object.Key,
+				...state,
 				lastModified: object.LastModified?.toISOString(),
 				size: object.Size,
 				etag: object.ETag
@@ -135,20 +117,11 @@ async function reconcileDiscovery(
 			)
 			.go();
 		if (transaction.canceled)
-			throw new ServerError(
-				"discovery_persistence_failed",
-				"Unable to persist discovered SST state entries"
-			);
+			throw stateErrors.discoveryPersistenceFailed();
 	}
 }
 
-function chunkArray<T>(items: T[], size: number): T[][] {
-	const chunks: T[][] = [];
-	for (let index = 0; index < items.length; index += size)
-		chunks.push(items.slice(index, index + size));
-	return chunks;
-}
-
+// TODO: Does this need to be here is should it live in a shared helper?
 function stageKey(appName: string, stageName: string): string {
 	return `${appName}\u0000${stageName}`;
 }

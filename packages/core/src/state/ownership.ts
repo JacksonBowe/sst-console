@@ -1,3 +1,4 @@
+/** One discovered Stage that is already owned by another Workload Account. */
 export type StageAccountConflict = {
 	appName: string;
 	stageName: string;

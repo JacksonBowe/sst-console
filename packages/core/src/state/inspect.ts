@@ -1,17 +1,19 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
+import { SSMClient } from "@aws-sdk/client-ssm";
 import { z } from "zod";
 
-import { ServerError } from "../error";
+import { stateErrors } from "./errors";
 import {
 	decodeSstStateBytes,
+	getBootstrapBucket,
 	parseSstState,
 	redactSstState
-} from "../state/sst";
+} from "./sst";
 import { fn } from "../util/fn";
-import * as Account from "./account";
-import * as Connector from "./connector";
+import * as Account from "../account/account";
+import * as Connector from "../account/connector";
 
+// TODO: This needs for docs/comments about what it's doing
 // Safe state inventory. It exposes structure required to diagnose
 // normalizers, but never raw inputs, outputs, or secret values.
 export const inspectState = fn(
@@ -30,35 +32,18 @@ export const inspectState = fn(
 			credentials: connection.credentials,
 			region: account.region
 		});
-		const parameter = await ssm.send(
-			new GetParameterCommand({ Name: "/sst/bootstrap" })
-		);
-		const bootstrap = z
-			.object({ state: z.string().min(1) })
-			.safeParse(
-				parameter.Parameter?.Value
-					? JSON.parse(parameter.Parameter.Value)
-					: undefined
-			);
-		if (!bootstrap.success) {
-			throw new ServerError(
-				"invalid_sst_bootstrap",
-				"SST bootstrap metadata does not contain state bucket"
-			);
-		}
+		const stateBucket = await getBootstrapBucket(ssm);
+		if (!stateBucket) throw stateErrors.invalidBootstrap();
 		const key = `app/${appName}/${stageName}.json`;
 		const s3 = new S3Client({
 			credentials: connection.credentials,
 			region: account.region
 		});
 		const object = await s3.send(
-			new GetObjectCommand({ Bucket: bootstrap.data.state, Key: key })
+			new GetObjectCommand({ Bucket: stateBucket, Key: key })
 		);
 		if (!object.Body) {
-			throw new ServerError(
-				"empty_sst_state",
-				"SST state object is empty"
-			);
+			throw stateErrors.empty();
 		}
 		const state = parseSstState(
 			decodeSstStateBytes(
@@ -69,7 +54,7 @@ export const inspectState = fn(
 		const redacted = redactSstState(state) as typeof state;
 
 		return {
-			bucket: bootstrap.data.state,
+			bucket: stateBucket,
 			key,
 			resourceCount: redacted.checkpoint.latest.resources.length,
 			resources: redacted.checkpoint.latest.resources.map(resource => ({

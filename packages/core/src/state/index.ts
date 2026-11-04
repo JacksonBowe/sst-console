@@ -3,6 +3,9 @@
 export * from "./state";
 export * as Update from "./state.update";
 export { discover } from "./discovery";
-export { sync, receiveUpdate } from "./ingestion";
+export { sync, receiveUpdate, handleStateDeletion } from "./sync";
+export { inspectState } from "./inspect";
+export { cleanupStale } from "./projection";
+export type { StageAccountConflict } from "./ownership";
 export { Events } from "./events";
 export { stateErrors } from "./errors";

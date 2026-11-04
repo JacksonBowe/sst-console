@@ -1,19 +1,20 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { db } from "../db";
-import { ServerError } from "../error";
+import { stateErrors } from "./errors";
 import {
 	decodeSstStateBytes,
 	normalizeSstState,
 	parseSstState,
 	type NormalizedResource
-} from "../state/sst";
-import { removeStageHistory } from "../state/state";
+} from "./sst";
+import { removeStageHistory } from "./state";
 import { removeStageMonitoring } from "../issue/monitoring";
 import {
 	partitionStageOwnership,
 	type StageAccountConflict
 } from "./ownership";
-import type { StateObject } from "../state/discovery";
+import type { StateObject } from "./discovery";
+import { chunkArray } from "../util/chunk";
 
 const maxTransactionActions = 90;
 const maxTransactionBytes = 3 * 1024 * 1024;
@@ -50,6 +51,7 @@ export type ProjectionWrite =
 			resourceId: string;
 	  };
 
+// TODO: Add high level comments
 export async function loadProjection(
 	s3: S3Client,
 	bucket: string,
@@ -59,7 +61,7 @@ export async function loadProjection(
 		new GetObjectCommand({ Bucket: bucket, Key: state.key })
 	);
 	if (!object.Body) {
-		throw new ServerError("empty_sst_state", "SST state object is empty");
+		throw stateErrors.empty();
 	}
 	const bytes = await object.Body.transformToByteArray();
 	const parsed = parseSstState(
@@ -77,25 +79,7 @@ export async function loadProjection(
 	};
 }
 
-export function parseStateKey(key: string): StateObject | undefined {
-	const match = /^app\/([^/]+)\/(.+)\.json$/.exec(key);
-	if (!match) return;
-	return { appName: match[1]!, stageName: match[2]!, key };
-}
-
-export function isMissingObject(error: unknown): boolean {
-	if (typeof error !== "object" || error === null) return false;
-	const awsError = error as {
-		name?: unknown;
-		$metadata?: { httpStatusCode?: unknown };
-	};
-	return (
-		awsError.name === "NoSuchKey" ||
-		awsError.name === "NotFound" ||
-		awsError.$metadata?.httpStatusCode === 404
-	);
-}
-
+// TODO: Add high level comments
 export async function removeStateProjection(input: {
 	accountId: string;
 	appName: string;
@@ -125,8 +109,7 @@ export async function removeStateProjection(input: {
 			)
 			.go();
 		if (transaction.canceled)
-			throw new ServerError(
-				"sync_persistence_failed",
+			throw stateErrors.syncPersistenceFailed(
 				"Unable to remove SST state projections"
 			);
 	}
@@ -151,6 +134,7 @@ export async function removeDiscoveredStage(input: {
 		.go({ response: "none" });
 }
 
+// TODO: This desperately needs comments and docs about what it's doing and why
 export async function buildWrites(input: {
 	accountId: string;
 	region: string;
@@ -267,6 +251,7 @@ export async function buildWrites(input: {
 	};
 }
 
+// TODO: This needs comments and docs about what it's doing and why. Possible that chunkWrite can be made generic like chunkArray in util/chunk.ts?
 export function chunkWrites(writes: ProjectionWrite[]): ProjectionWrite[][] {
 	const chunks: ProjectionWrite[][] = [];
 	let chunk: ProjectionWrite[] = [];
@@ -274,10 +259,7 @@ export function chunkWrites(writes: ProjectionWrite[]): ProjectionWrite[][] {
 	for (const write of writes) {
 		const writeBytes = Buffer.byteLength(JSON.stringify(write));
 		if (writeBytes > maxTransactionBytes) {
-			throw new ServerError(
-				"state_projection_too_large",
-				"SST state projection exceeds DynamoDB transaction limits"
-			);
+			throw stateErrors.projectionTooLarge();
 		}
 		if (
 			chunk.length === maxTransactionActions ||
@@ -294,6 +276,7 @@ export function chunkWrites(writes: ProjectionWrite[]): ProjectionWrite[][] {
 	return chunks;
 }
 
+// TODO: Comments + possible shared helper for DDB chunk writing?
 export async function writeChunk(
 	accountId: string,
 	region: string,
@@ -370,20 +353,153 @@ export async function writeChunk(
 		)
 		.go();
 	if (transaction.canceled) {
-		throw new ServerError(
-			"sync_persistence_failed",
+		throw stateErrors.syncPersistenceFailed(
 			"Unable to persist SST state projections"
 		);
 	}
 }
 
-export async function removeEmptyApps(appNames: string[]) {
-	for (const appName of appNames) {
+// TODO: High level comments
+async function removeEmptyApps(appNames: string[]) {
+	for (const appName of new Set(appNames)) {
 		const stages = await db.entities.stage.query
 			.stage({ appName })
 			.go({ limit: 1 });
 		if (stages.data.length > 0) continue;
 		await db.entities.app.delete({ appName }).go({ response: "none" });
+	}
+}
+
+// TODO: Add high level comments
+/** Caller supplies the complete policy-selected list after all required syncs succeed. */
+export async function cleanupStale(input: {
+	accountId: string;
+	stages: Array<{ appName: string; stageName: string }>;
+}) {
+	const desired = new Set(
+		input.stages.map(stage => `${stage.appName}\u0000${stage.stageName}`)
+	);
+	const existing = await db.entities.stage.query
+		.byAwsAccount({ accountId: input.accountId })
+		.go({ pages: "all" });
+	for (const stage of existing.data) {
+		if (!desired.has(`${stage.appName}\u0000${stage.stageName}`))
+			await removeStateProjection({
+				accountId: input.accountId,
+				appName: stage.appName,
+				stageName: stage.stageName
+			});
+	}
+}
+
+/** Removes account projections on disconnect without changing Stage monitoring behavior. */
+export async function removeAccountProjections(accountId: string) {
+	const [stages, discoveredStages] = await Promise.all([
+		db.entities.stage.query
+			.byAwsAccount({ accountId })
+			.go({ pages: "all" }),
+		db.entities.discoveredStage.query
+			.discovery({ accountId })
+			.go({ pages: "all" })
+	]);
+	const resources = (
+		await Promise.all(
+			stages.data.map(stage =>
+				db.entities.resource.query
+					.resource({
+						appName: stage.appName,
+						stageName: stage.stageName
+					})
+					.go({ pages: "all" })
+			)
+		)
+	).flatMap(result => result.data);
+
+	await deleteResources(resources);
+	// Keep Stages available for retry if history cleanup fails.
+	await Promise.all(
+		stages.data.map(stage =>
+			removeStageHistory({
+				appName: stage.appName,
+				stageName: stage.stageName
+			})
+		)
+	);
+	await deleteStages(stages.data);
+	await deleteDiscoveredStages(discoveredStages.data);
+	await removeEmptyApps(stages.data.map(stage => stage.appName));
+}
+
+// TODO: Add high level comments
+async function deleteResources(
+	resources: Array<{ appName: string; stageName: string; resourceId: string }>
+) {
+	for (const chunk of chunkArray(resources, maxTransactionActions)) {
+		const transaction = await db.transaction
+			.write(({ resource }) =>
+				chunk.map(item =>
+					resource
+						.delete({
+							appName: item.appName,
+							stageName: item.stageName,
+							resourceId: item.resourceId
+						})
+						.commit()
+				)
+			)
+			.go();
+		if (transaction.canceled)
+			throw stateErrors.projectionRemovalFailed(
+				"Unable to remove account resource projections"
+			);
+	}
+}
+
+// TODO: Add high level comments
+async function deleteStages(
+	stages: Array<{ appName: string; stageName: string }>
+) {
+	for (const chunk of chunkArray(stages, maxTransactionActions)) {
+		const transaction = await db.transaction
+			.write(({ stage }) =>
+				chunk.map(item =>
+					stage
+						.delete({
+							appName: item.appName,
+							stageName: item.stageName
+						})
+						.commit()
+				)
+			)
+			.go();
+		if (transaction.canceled)
+			throw stateErrors.projectionRemovalFailed(
+				"Unable to remove account stage projections"
+			);
+	}
+}
+
+async function deleteDiscoveredStages(
+	stages: Array<{ accountId: string; appName: string; stageName: string }>
+) {
+	for (const chunk of chunkArray(stages, maxTransactionActions)) {
+		const transaction = await db.transaction
+			.write(({ discoveredStage }) =>
+				chunk.map(item =>
+					discoveredStage
+						.delete({
+							accountId: item.accountId,
+							appName: item.appName,
+							stageName: item.stageName
+						})
+						.commit()
+				)
+			)
+			.go();
+		if (transaction.canceled)
+			throw stateErrors.projectionRemovalFailed(
+				"Unable to remove account discovery projections"
+			);
 	}
 }
 
@@ -397,11 +513,4 @@ function resourceKey(
 	resourceId: string
 ): string {
 	return `${stageKey(appName, stageName)}\u0000${resourceId}`;
-}
-
-function chunkArray<T>(items: T[], size: number): T[][] {
-	const chunks: T[][] = [];
-	for (let index = 0; index < items.length; index += size)
-		chunks.push(items.slice(index, index + size));
-	return chunks;
 }

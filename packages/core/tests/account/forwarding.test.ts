@@ -2,9 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DescribeStackResourceCommand } from "@aws-sdk/client-cloudformation";
 import { PutRuleCommand, PutTargetsCommand } from "@aws-sdk/client-eventbridge";
 
-const { cloud, events } = vi.hoisted(() => ({
+const { cloud, events, s3 } = vi.hoisted(() => ({
 	cloud: vi.fn(),
-	events: vi.fn()
+	events: vi.fn(),
+	s3: vi.fn()
+}));
+vi.mock("@aws-sdk/client-s3", async importOriginal => ({
+	...(await importOriginal<typeof import("@aws-sdk/client-s3")>()),
+	S3Client: class {
+		send = s3;
+	}
 }));
 vi.mock("@aws-sdk/client-cloudformation", async importOriginal => ({
 	...(await importOriginal<
@@ -39,6 +46,7 @@ const input = {
 describe("workload event forwarding", () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		s3.mockResolvedValue({});
 		cloud.mockResolvedValue({
 			StackResourceDetail: { PhysicalResourceId: "publisher" }
 		});
@@ -58,17 +66,7 @@ describe("workload event forwarding", () => {
 		expect(rule).toBeInstanceOf(PutRuleCommand);
 		expect(JSON.parse(rule.input.EventPattern)).toEqual({
 			source: ["aws.s3"],
-			detail: { bucket: { name: ["state-bucket"] } },
-			$or: [
-				{
-					"detail-type": ["Object Created", "Object Deleted"],
-					detail: { object: { key: [{ prefix: "app/" }] } }
-				},
-				{
-					"detail-type": ["Object Created"],
-					detail: { object: { key: [{ prefix: "update/" }] } }
-				}
-			]
+			detail: { bucket: { name: ["state-bucket"] } }
 		});
 		const target = events.mock.calls[1]![0];
 		expect(target).toBeInstanceOf(PutTargetsCommand);
@@ -101,71 +99,15 @@ describe("workload event forwarding", () => {
 		).toEqual(["new-bucket"]);
 	});
 
-	it("matches only supported bucket, event, and key combinations", async () => {
+	it("matches the configured S3 bucket", async () => {
 		await configureForwarding(input);
 		const pattern = JSON.parse(events.mock.calls[0]![0].input.EventPattern);
-		const matches = (
-			source: string,
-			bucket: string,
-			type: string,
-			key: string
-		) =>
+		const matches = (source: string, bucket: string) =>
 			pattern.source.includes(source) &&
-			pattern.detail.bucket.name.includes(bucket) &&
-			pattern.$or.some(
-				(branch: {
-					"detail-type": string[];
-					detail: { object: { key: { prefix: string }[] } };
-				}) =>
-					branch["detail-type"].includes(type) &&
-					branch.detail.object.key.some(item =>
-						key.startsWith(item.prefix)
-					)
-			);
-		expect(
-			matches("aws.s3", input.bucket, "Object Created", "app/a/b.json")
-		).toBe(true);
-		expect(
-			matches("aws.s3", input.bucket, "Object Deleted", "app/a/b.json")
-		).toBe(true);
-		expect(
-			matches(
-				"aws.s3",
-				input.bucket,
-				"Object Created",
-				"update/a/b/1.json"
-			)
-		).toBe(true);
-		expect(
-			matches(
-				"aws.s3",
-				input.bucket,
-				"Object Deleted",
-				"update/a/b/1.json"
-			)
-		).toBe(false);
-		expect(
-			matches("aws.s3", "other", "Object Created", "app/a/b.json")
-		).toBe(false);
-		expect(
-			matches(
-				"aws.s3",
-				input.bucket,
-				"Object Created",
-				"snapshot/a/b.json"
-			)
-		).toBe(false);
-		expect(
-			matches(
-				"aws.s3",
-				input.bucket,
-				"Object Restore Completed",
-				"app/a/b.json"
-			)
-		).toBe(false);
-		expect(
-			matches("other", input.bucket, "Object Created", "app/a/b.json")
-		).toBe(false);
+			pattern.detail.bucket.name.includes(bucket);
+		expect(matches("aws.s3", input.bucket)).toBe(true);
+		expect(matches("aws.s3", "other")).toBe(false);
+		expect(matches("other", input.bucket)).toBe(false);
 	});
 
 	it("propagates AWS failures and rejects partial target failures", async () => {

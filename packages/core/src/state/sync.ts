@@ -1,21 +1,27 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+	GetObjectCommand,
+	HeadObjectCommand,
+	S3Client
+} from "@aws-sdk/client-s3";
 import { z } from "zod";
 import { db } from "../db";
 import { fn } from "../util/fn";
-import { connect, withDisconnectOnAccessFailure } from "../account/access";
+import { connect } from "../account/connector";
 import { accountErrors } from "../account/errors";
+import * as Account from "../account/account";
 import * as Connection from "../connection";
 import { requestReconcile } from "../issue/monitoring";
 import {
 	buildWrites,
 	chunkWrites,
-	isMissingObject,
 	loadProjection,
+	removeDiscoveredStage,
 	removeStateProjection,
 	writeChunk,
 	type StateProjection
-} from "../account/sync-projection";
-import { decodeSstStateBytes } from "./sst";
+} from "./projection";
+import { decodeSstStateBytes, parseStateKey } from "./sst";
+import { isMissingObject } from "../util/s3";
 import * as Update from "./state.update";
 
 export const sync = fn(
@@ -39,9 +45,7 @@ export const sync = fn(
 
 		let projection: StateProjection;
 		try {
-			projection = await withDisconnectOnAccessFailure(accountId, () =>
-				loadProjection(s3, stateBucket, state)
-			);
+			projection = await loadProjection(s3, stateBucket, state);
 		} catch (error) {
 			if (!isMissingObject(error)) throw error;
 			return { accountId, stateKey, status: "missing" as const };
@@ -88,6 +92,54 @@ export const sync = fn(
 	}
 );
 
+/** Reconciles a direct app/ deletion without trusting the event's ordering. */
+export const handleStateDeletion = fn(
+	z.object({
+		accountId: z.string().regex(/^\d{12}$/),
+		stateBucket: z.string().min(1),
+		stateKey: z.string().min(1)
+	}),
+	async input => {
+		const state = parseStateKey(input.stateKey);
+		if (!state) return { ...input, status: "ignored" as const };
+		const account = await Account.find({ accountId: input.accountId });
+		if (
+			account?.status !== "connected" ||
+			account.stateBucket !== input.stateBucket
+		)
+			return { ...input, status: "ignored" as const };
+		const { connection } = await connect(input.accountId);
+		const s3 = new S3Client({
+			credentials: connection.credentials,
+			region: account.region
+		});
+		try {
+			await s3.send(
+				new HeadObjectCommand({
+					Bucket: input.stateBucket,
+					Key: input.stateKey
+				})
+			);
+		} catch (error) {
+			if (!isMissingObject(error)) throw error;
+			await removeDiscoveredStage({
+				accountId: input.accountId,
+				...state
+			});
+			await removeStateProjection({
+				accountId: input.accountId,
+				...state
+			});
+			return { ...input, status: "removed" as const };
+		}
+		return sync({
+			accountId: input.accountId,
+			appName: state.appName,
+			stageName: state.stageName
+		});
+	}
+);
+
 export const receiveUpdate = fn(
 	z.object({
 		accountId: z.string().regex(/^\d{12}$/),
@@ -123,10 +175,8 @@ export const receiveUpdate = fn(
 
 		let object;
 		try {
-			object = await withDisconnectOnAccessFailure(accountId, () =>
-				s3.send(
-					new GetObjectCommand({ Bucket: stateBucket, Key: stateKey })
-				)
+			object = await s3.send(
+				new GetObjectCommand({ Bucket: stateBucket, Key: stateKey })
 			);
 		} catch (error) {
 			if (isMissingObject(error))

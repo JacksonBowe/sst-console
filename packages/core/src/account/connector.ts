@@ -8,11 +8,11 @@ import { bus } from "sst/aws/bus";
 import { z } from "zod";
 
 import * as Connection from "../connection";
-import { InputError, ServerError } from "../error";
 import { defineEvent } from "../event";
 import { fn } from "../util/fn";
 import * as Account from "./account";
-import { removeAccountProjections } from "./projection";
+import { accountErrors, isRemoteAccessFailure } from "./errors";
+import { removeAccountProjections } from "../state/projection";
 import {
 	ConnectorCallbackSchema,
 	ConnectorRoleArnPattern,
@@ -29,13 +29,37 @@ export const Events = {
 
 export type RegisterInput = z.input<typeof ConnectorCallbackSchema>;
 
+/** Marks an Account disconnected on role-assumption authorization failure. */
+async function withDisconnectOnAccessFailure<T>(
+	accountId: string,
+	operation: () => Promise<T>
+): Promise<T> {
+	try {
+		return await operation();
+	} catch (error) {
+		if (isRemoteAccessFailure(error)) {
+			try {
+				await Account.update({
+					accountId,
+					status: "disconnected",
+					updatedAt: new Date().toISOString()
+				});
+			} catch (persistenceError) {
+				console.error(
+					"Unable to mark account disconnected after access failure",
+					{ accountId },
+					persistenceError
+				);
+			}
+		}
+		throw error;
+	}
+}
+
 export const assume = fn(ConnectorSchema, async input => {
 	const externalId = process.env.SST_CONSOLE_EXTERNAL_ID;
 	if (!externalId) {
-		throw new ServerError(
-			"missing_external_id",
-			"SST Console external ID is not configured"
-		);
+		throw accountErrors.missingExternalId();
 	}
 
 	const assumed = await sts.send(
@@ -46,19 +70,13 @@ export const assume = fn(ConnectorSchema, async input => {
 		})
 	);
 	if (!assumed.Credentials) {
-		throw new ServerError(
-			"missing_assumed_credentials",
-			"AWS did not return target account credentials"
-		);
+		throw accountErrors.missingCredentials();
 	}
 
 	const accessKeyId = assumed.Credentials.AccessKeyId;
 	const secretAccessKey = assumed.Credentials.SecretAccessKey;
 	if (!accessKeyId || !secretAccessKey) {
-		throw new ServerError(
-			"invalid_assumed_credentials",
-			"AWS returned incomplete target account credentials"
-		);
+		throw accountErrors.invalidCredentials();
 	}
 	const credentials = {
 		accessKeyId,
@@ -69,10 +87,7 @@ export const assume = fn(ConnectorSchema, async input => {
 	const target = new STSClient({ credentials, region: input.region });
 	const identity = await target.send(new GetCallerIdentityCommand({}));
 	if (!identity.Account || !identity.Arn) {
-		throw new ServerError(
-			"invalid_target_identity",
-			"AWS did not return target account identity"
-		);
+		throw accountErrors.invalidTargetIdentity();
 	}
 
 	return {
@@ -83,6 +98,19 @@ export const assume = fn(ConnectorSchema, async input => {
 		roleArn: input.roleArn
 	};
 });
+
+/** Connects a registered Workload Account and verifies the assumed identity. */
+export async function connect(accountId: string) {
+	const account = await Account.find({ accountId });
+	if (!account || account.status !== "connected")
+		throw accountErrors.notFound();
+	const connection = await withDisconnectOnAccessFailure(accountId, () =>
+		assume({ roleArn: account.roleArn, region: account.region })
+	);
+	if (connection.accountId !== accountId)
+		throw accountErrors.verificationFailed();
+	return { account, connection };
+}
 
 export const verify = fn(ConnectorSchema, async input => {
 	const connection = await assume(input);
@@ -98,10 +126,7 @@ export const verify = fn(ConnectorSchema, async input => {
 export const register = fn(ConnectorCallbackSchema, async input => {
 	const roleMatch = ConnectorRoleArnPattern.exec(input.roleArn);
 	if (roleMatch?.groups?.accountId !== input.accountId) {
-		throw new InputError(
-			"invalid_role_arn",
-			"Connector role ARN does not belong to supplied account"
-		);
+		throw accountErrors.invalidRoleArn();
 	}
 
 	const status =
@@ -112,10 +137,7 @@ export const register = fn(ConnectorCallbackSchema, async input => {
 			roleArn: input.roleArn
 		});
 		if (connection.accountId !== input.accountId) {
-			throw new ServerError(
-				"account_verification_failed",
-				"Connector role does not belong to supplied account"
-			);
+			throw accountErrors.verificationFailed();
 		}
 	}
 

@@ -1,7 +1,33 @@
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
+import { GetParameterCommand, type SSMClient } from "@aws-sdk/client-ssm";
 
 import { z } from "zod";
+import { stateErrors } from "./errors";
+
+/** Reads SST bootstrap metadata; callers decide how to handle an empty value. */
+export async function getBootstrapBucket(
+	ssm: SSMClient
+): Promise<string | undefined> {
+	const parameter = await ssm.send(
+		new GetParameterCommand({ Name: "/sst/bootstrap" })
+	);
+	if (!parameter.Parameter?.Value) return;
+	const bootstrap = z
+		.object({ state: z.string().min(1) })
+		.safeParse(JSON.parse(parameter.Parameter.Value));
+	if (!bootstrap.success) throw stateErrors.invalidBootstrap();
+	return bootstrap.data.state;
+}
+
+/** Parses a current SST State object key. */
+export function parseStateKey(
+	key: string
+): { appName: string; stageName: string; key: string } | undefined {
+	const match = /^app\/([^/]+)\/(.+)\.json$/.exec(key);
+	if (!match) return;
+	return { appName: match[1]!, stageName: match[2]!, key };
+}
 
 const pulumiSecretSignature = "4dabf18193072939515e22adb298388d";
 const sensitiveKey =

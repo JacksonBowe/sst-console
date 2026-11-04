@@ -55,6 +55,10 @@ export type Account = {
 	region: string;
 	roleArn: string;
 	status: AccountStatus;
+	stateBucket?: string;
+	lastSyncConflicts?: StageAccountConflict[];
+	createdAt: string;
+	updatedAt: string;
 };
 
 export type State = {
@@ -122,36 +126,8 @@ export type Stage = {
 	resources: ResourceTree[];
 };
 
-export type AccountStage = {
-	stageName: string;
-	createdAt: string;
-	updatedAt: string;
-	state: State | null;
-	resources: ResourceTree[];
-};
-
-export type AccountApp = {
-	appName: string;
-	createdAt: string;
-	updatedAt: string;
-	stages: AccountStage[];
-};
-
-export type AccountDetail = {
-	account: Account & {
-		stateBucket?: string;
-		lastSyncConflicts?: StageAccountConflict[];
-		createdAt?: string;
-		updatedAt: string;
-	};
-	apps: AccountApp[];
-};
-
 export type SyncAccountResult = {
 	accountId: string;
-	arn: string;
-	region: string;
-	roleArn: string;
 	stateBucket: string;
 	states: Array<{
 		app: string;
@@ -160,7 +136,6 @@ export type SyncAccountResult = {
 		lastModified?: string;
 		size?: number;
 	}>;
-	statesTruncated: boolean;
 	skippedStages: StageAccountConflict[];
 };
 
@@ -309,7 +284,7 @@ export const consoleMethods = (request: RequestFn) => ({
 		}),
 	listAccounts: (): Promise<Account[]> =>
 		request({ method: "GET", url: "accounts" }),
-	getAccount: (accountId: string): Promise<AccountDetail> =>
+	getAccount: (accountId: string): Promise<Account> =>
 		request({
 			method: "GET",
 			url: `accounts/${encodeURIComponent(accountId)}`

@@ -61,6 +61,7 @@ export const remove = fn(AccountKeySchema, async input => {
 });
 
 /** Lists every Console account. */
+// TODO: Paginate account listing and adapt all consumers, including connection backup.
 export async function list(): Promise<Account[]> {
 	const result = await db.entities.account.query
 		.byType({})

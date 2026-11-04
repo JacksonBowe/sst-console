@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	find: vi.fn(),
+	updateAccount: vi.fn(),
 	assume: vi.fn(),
 	policy: vi.fn(),
 	includes: vi.fn(),
@@ -22,8 +23,16 @@ vi.mock("@aws-sdk/client-s3", async importOriginal => {
 		}
 	};
 });
-vi.mock("../../src/account/account", () => ({ find: mocks.find }));
-vi.mock("../../src/account/connector", () => ({ assume: mocks.assume }));
+vi.mock("../../src/account/account", () => ({
+	find: mocks.find,
+	update: mocks.updateAccount
+}));
+vi.mock("../../src/account/connector", () => ({
+	connect: async () => ({
+		account: await mocks.find(),
+		connection: await mocks.assume()
+	})
+}));
 vi.mock("../../src/connection", () => ({
 	getSyncPolicy: mocks.policy,
 	Policy: { includesStage: mocks.includes }
@@ -45,7 +54,7 @@ vi.mock("../../src/db", () => ({
 }));
 vi.mock("../../src/issue/monitoring", () => ({}));
 
-const { receiveUpdate } = await import("../../src/state/ingestion");
+const { receiveUpdate } = await import("../../src/state/sync");
 const input = {
 	accountId: "123456789012",
 	appName: "app",
@@ -116,11 +125,19 @@ describe("State Update sync", () => {
 		expect(mocks.send).not.toHaveBeenCalled();
 	});
 
-	it("ignores excluded Stages", async () => {
+	it("ignores excluded Stages and propagates S3 permission errors", async () => {
 		mocks.includes.mockReturnValue(false);
 		await expect(receiveUpdate(input)).resolves.toMatchObject({
 			status: "ignored"
 		});
 		expect(mocks.send).not.toHaveBeenCalled();
+
+		mocks.includes.mockReturnValue(true);
+		const denied = Object.assign(new Error("S3 access denied"), {
+			name: "AccessDenied"
+		});
+		mocks.send.mockRejectedValueOnce(denied);
+		await expect(receiveUpdate(input)).rejects.toBe(denied);
+		expect(mocks.updateAccount).not.toHaveBeenCalled();
 	});
 });

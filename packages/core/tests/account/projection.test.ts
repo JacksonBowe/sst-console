@@ -51,9 +51,11 @@ vi.mock("../../src/db", () => ({
 vi.mock("../../src/state/state", () => ({
 	removeStageHistory
 }));
+vi.mock("../../src/issue/monitoring", () => ({
+	removeStageMonitoring: vi.fn()
+}));
 
-const { removeAccountProjections } =
-	await import("../../src/account/projection");
+const { removeAccountProjections } = await import("../../src/state/projection");
 
 describe("account projection removal", () => {
 	beforeEach(() => {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "../db";
 import { ServerError } from "../error";
 import { fn } from "../util/fn";
+import { chunkArray } from "../util/chunk";
 
 const maxTransactionActions = 90;
 
@@ -61,10 +62,3 @@ export const removeStageHistory = fn(StateKeySchema, async input => {
 	}
 	await db.entities.state.delete(input).go({ response: "none" });
 });
-
-function chunkArray<T>(items: T[], size: number): T[][] {
-	const chunks: T[][] = [];
-	for (let index = 0; index < items.length; index += size)
-		chunks.push(items.slice(index, index + size));
-	return chunks;
-}
