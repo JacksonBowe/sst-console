@@ -1,3 +1,4 @@
+import { AccountIdSchema } from "../util/aws";
 import { z } from "zod";
 import * as Connection from "../connection";
 import * as State from "../state";
@@ -8,7 +9,7 @@ import { connect } from "./connector";
 import { configureForwarding } from "./forwarding";
 
 export const sync = fn(
-	z.object({ accountId: z.string().regex(/^\d{12}$/) }),
+	z.object({ accountId: AccountIdSchema }),
 	async ({ accountId }) => {
 		const discovery = await State.discover(accountId);
 		const { account, connection } = await connect(accountId);

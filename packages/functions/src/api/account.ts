@@ -1,3 +1,4 @@
+import { AccountIdSchema } from "@console/core/util/aws";
 import { zValidator } from "@console/core/error";
 import * as Account from "@console/core/account";
 import * as Connection from "@console/core/connection";
@@ -7,7 +8,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 const AccountIdParamSchema = z.object({
-	accountId: z.string().regex(/^\d{12}$/)
+	accountId: AccountIdSchema
 });
 
 const StateResourcesParamSchema = AccountIdParamSchema.extend({

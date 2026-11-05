@@ -21,13 +21,13 @@ export const handler = bus.subscriber(
 				return;
 			switch (event.type) {
 				case State.Events.UpdateCreated.type: {
-					const update = State.Update.parseObjectKey(
+					const update = State.Keys.parseUpdateKey(
 						event.properties.stateKey
 					);
 					if (!update) return;
 					console.log(
 						"State Update ingestion complete",
-						await State.receiveUpdate({
+						await State.Update.receiveUpdate({
 							accountId,
 							appName: update.appName,
 							stageName: update.stageName,

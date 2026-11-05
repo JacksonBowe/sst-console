@@ -1,38 +1,29 @@
-import {
-	GetObjectCommand,
-	HeadObjectCommand,
-	S3Client
-} from "@aws-sdk/client-s3";
+import { AccountIdSchema } from "../util/aws";
+import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { z } from "zod";
-import { db } from "../db";
 import { fn } from "../util/fn";
 import { connect } from "../account/connector";
 import { accountErrors } from "../account/errors";
 import * as Account from "../account/account";
 import * as Connection from "../connection";
 import { requestReconcile } from "../issue/monitoring";
-import {
-	loadProjection,
-	removeDiscoveredStage,
-	requestProjectionRemoval,
-	type StateProjection
-} from "./projection";
+import { requestProjectionRemoval } from "./cleanup";
 import { reconcile } from "../app/projection";
-import * as Stage from "../app/app.stage";
 import * as CurrentState from "./state";
-import { decodeSstStateBytes, parseStateKey } from "./sst";
+import { parseStateKey, stateObjectKey } from "./keys";
+import { remove, upsertEntry, type StateObject } from "./discovery";
+import { fetchState, normalizeSstState, type NormalizedResource } from "./sst";
 import { isMissingObject } from "../util/s3";
-import * as Update from "./update";
-import * as StageUpdate from "./state.update";
 
+/** Syncs current State into discovery, App projections, and State metadata. */
 export const sync = fn(
 	z.object({
-		accountId: z.string().regex(/^\d{12}$/),
+		accountId: AccountIdSchema,
 		appName: z.string().min(1),
 		stageName: z.string().min(1)
 	}),
 	async ({ accountId, appName, stageName }) => {
-		const stateKey = `app/${appName}/${stageName}.json`;
+		const stateKey = stateObjectKey(appName, stageName);
 		const state = { appName, stageName, key: stateKey };
 		const { account: accountData, connection } = await connect(accountId);
 		const stateBucket = accountData.stateBucket;
@@ -46,23 +37,21 @@ export const sync = fn(
 
 		let projection: StateProjection;
 		try {
-			projection = await loadProjection(s3, stateBucket, state);
+			projection = await fetchProjection(s3, stateBucket, state);
 		} catch (error) {
 			if (!isMissingObject(error)) throw error;
 			return { accountId, stateKey, status: "missing" as const };
 		}
 
-		await db.entities.discoveredStage
-			.upsert({
-				accountId,
-				appName: state.appName,
-				stageName: state.stageName,
-				stateBucket,
-				stateKey,
-				lastModified: projection.sourceUpdatedAt,
-				discoveredAt: now
-			})
-			.go({ response: "none" });
+		await upsertEntry({
+			accountId,
+			appName: state.appName,
+			stageName: state.stageName,
+			stateBucket,
+			stateKey,
+			lastModified: projection.sourceUpdatedAt,
+			discoveredAt: now
+		});
 
 		if (!Connection.Policy.includesStage(policy, state)) {
 			await requestProjectionRemoval({ accountId, ...state });
@@ -105,7 +94,7 @@ export const sync = fn(
 /** Reconciles a direct app/ deletion without trusting the event's ordering. */
 export const handleStateDeletion = fn(
 	z.object({
-		accountId: z.string().regex(/^\d{12}$/),
+		accountId: AccountIdSchema,
 		stateBucket: z.string().min(1),
 		stateKey: z.string().min(1)
 	}),
@@ -132,7 +121,7 @@ export const handleStateDeletion = fn(
 			);
 		} catch (error) {
 			if (!isMissingObject(error)) throw error;
-			await removeDiscoveredStage({
+			await remove({
 				accountId: input.accountId,
 				...state
 			});
@@ -150,89 +139,31 @@ export const handleStateDeletion = fn(
 	}
 );
 
-export const receiveUpdate = fn(
-	z.object({
-		accountId: z.string().regex(/^\d{12}$/),
-		appName: z.string().min(1),
-		stageName: z.string().min(1),
-		updateId: z.string().min(1),
-		sequencer: z.string().regex(/^[0-9A-F]{256}$/)
-	}),
-	async ({ accountId, appName, stageName, updateId, sequencer }) => {
-		const stateKey = `update/${appName}/${stageName}/${updateId}.json`;
-		const updateKey = { appName, stageName, updateId };
-		const { account: accountData, connection } = await connect(accountId);
-		const stateBucket = accountData.stateBucket;
-		if (!stateBucket) throw accountErrors.notFound();
+type StateProjection = StateObject & {
+	resources: NormalizedResource[];
+	sourceVersion?: string;
+	sourceUpdatedAt: string;
+};
 
-		const policy = await Connection.getSyncPolicy(accountId);
-		if (!Connection.Policy.includesStage(policy, updateKey))
-			return { accountId, stateKey, status: "ignored" as const };
-
-		const stage = await db.entities.stage
-			.get({
-				appName: updateKey.appName,
-				stageName: updateKey.stageName
-			})
-			.go({ consistent: true });
-		if (stage.data && stage.data.accountId !== accountId)
-			return { accountId, stateKey, status: "ignored" as const };
-
-		const s3 = new S3Client({
-			credentials: connection.credentials,
-			region: accountData.region
-		});
-
-		let object;
-		try {
-			object = await s3.send(
-				new GetObjectCommand({ Bucket: stateBucket, Key: stateKey })
-			);
-		} catch (error) {
-			if (isMissingObject(error))
-				return { accountId, stateKey, status: "ignored" as const };
-			throw error;
-		}
-		if (!object.Body)
-			return { accountId, stateKey, status: "ignored" as const };
-
-		const bytes = await object.Body.transformToByteArray();
-		const update = Update.parseSstUpdate(
-			new TextDecoder().decode(
-				decodeSstStateBytes(bytes, object.ContentEncoding)
-			)
-		);
-		if (!update || update.updateId !== updateKey.updateId)
-			return { accountId, stateKey, status: "ignored" as const };
-		const { updateId: _, ...updateInput } = update;
-		if (!stage.data) {
-			const now = new Date().toISOString();
-			await Stage.upsert({
-				accountId,
-				region: accountData.region,
-				appName,
-				stageName,
-				now
-			});
-		}
-
-		const persisted = await StageUpdate.upsert({
-			accountId,
-			appName: updateKey.appName,
-			stageName: updateKey.stageName,
-			updateId: updateKey.updateId,
-			sourceBucket: stateBucket,
-			sourceKey: stateKey,
-			sequencer,
-			...(object.VersionId ? { sourceVersion: object.VersionId } : {}),
-			observedAt: new Date().toISOString(),
-			...updateInput
-		});
-
-		return {
-			accountId,
-			stateKey,
-			status: persisted ? ("synced" as const) : ("ignored" as const)
-		};
-	}
-);
+/** Fetches and normalizes one current SST State artifact. */
+async function fetchProjection(
+	s3: S3Client,
+	bucket: string,
+	state: StateObject
+): Promise<StateProjection> {
+	const { state: parsed, sourceVersion } = await fetchState(
+		s3,
+		bucket,
+		state.key
+	);
+	const sourceUpdatedAt =
+		state.lastModified ??
+		parsed.checkpoint.latest.manifest?.time ??
+		new Date().toISOString();
+	return {
+		...state,
+		resources: normalizeSstState(parsed).resources,
+		sourceVersion,
+		sourceUpdatedAt
+	};
+}

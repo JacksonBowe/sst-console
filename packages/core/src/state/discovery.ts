@@ -1,3 +1,6 @@
+import { AccountIdSchema } from "../util/aws";
+// TODO: Should this entire file live in state.ts?
+
 import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import { SSMClient } from "@aws-sdk/client-ssm";
 
@@ -5,15 +8,16 @@ import { db } from "../db";
 import { stateErrors } from "./errors";
 import { connect } from "../account/connector";
 import { chunkArray } from "../util/chunk";
-import { getBootstrapBucket, parseStateKey } from "./sst";
+import { getBootstrapBucket } from "./sst";
+import { parseStateKey, stageKey } from "./keys";
 import { z } from "zod";
 import { fn } from "../util/fn";
 
 const maxTransactionActions = 90;
 
 /** Lists account discovery identities for disconnect cleanup. */
-export const listForAccount = fn(
-	z.object({ accountId: z.string().regex(/^\d{12}$/) }),
+export const list = fn(
+	z.object({ accountId: AccountIdSchema }),
 	async input => {
 		const result = await db.entities.discoveredStage.query
 			.discovery(input)
@@ -26,16 +30,23 @@ export const listForAccount = fn(
 	}
 );
 
-/** Removes discovery inventory without changing App projections. */
-export const removeEntries = fn(
-	z.array(
-		z.object({
-			accountId: z.string().regex(/^\d{12}$/),
-			appName: z.string().min(1),
-			stageName: z.string().min(1)
-		})
-	),
-	async stages => {
+const DiscoveryKeySchema = z.object({
+	accountId: AccountIdSchema,
+	appName: z.string().min(1),
+	stageName: z.string().min(1)
+});
+
+/** Removes one or more discovery entries without changing App projections. */
+export const remove = fn(
+	z.union([DiscoveryKeySchema, z.array(DiscoveryKeySchema)]),
+	async input => {
+		if (!Array.isArray(input)) {
+			await db.entities.discoveredStage
+				.delete(input)
+				.go({ response: "none" });
+			return;
+		}
+		const stages = input;
 		for (const chunk of chunkArray(stages, maxTransactionActions)) {
 			const result = await db.transaction
 				.write(({ discoveredStage }) =>
@@ -49,6 +60,19 @@ export const removeEntries = fn(
 		}
 	}
 );
+
+/** Upserts one observed State object in the discovery inventory. */
+export async function upsertEntry(input: {
+	accountId: string;
+	appName: string;
+	stageName: string;
+	stateBucket: string;
+	stateKey: string;
+	lastModified: string;
+	discoveredAt: string;
+}) {
+	await db.entities.discoveredStage.upsert(input).go({ response: "none" });
+}
 
 export type StateObject = {
 	appName: string;
@@ -65,6 +89,7 @@ type AccountDiscovery = {
 	states: StateObject[];
 };
 
+/** Discovers current State objects and reconciles the account's inventory. */
 export async function discover(accountId: string): Promise<AccountDiscovery> {
 	const { account, connection } = await connect(accountId);
 	const { region } = account;
@@ -79,6 +104,7 @@ export async function discover(accountId: string): Promise<AccountDiscovery> {
 	return { accountId, stateBucket, states };
 }
 
+/** Lists current State objects and their S3 metadata across all pages. */
 async function listStateObjects(
 	s3: S3Client,
 	bucket: string
@@ -109,6 +135,7 @@ async function listStateObjects(
 	return states;
 }
 
+/** Updates discovery records to match the complete current object listing. */
 async function reconcileDiscovery(
 	accountId: string,
 	stateBucket: string,
@@ -160,9 +187,4 @@ async function reconcileDiscovery(
 		if (transaction.canceled)
 			throw stateErrors.discoveryPersistenceFailed();
 	}
-}
-
-// TODO: Does this need to be here is should it live in a shared helper?
-function stageKey(appName: string, stageName: string): string {
-	return `${appName}\u0000${stageName}`;
 }

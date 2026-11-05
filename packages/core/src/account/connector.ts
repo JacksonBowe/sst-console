@@ -1,3 +1,4 @@
+import { AccountIdSchema } from "../util/aws";
 import {
 	AssumeRoleCommand,
 	GetCallerIdentityCommand,
@@ -23,7 +24,7 @@ const sts = new STSClient({});
 export const Events = {
 	Connected: defineEvent(
 		"account.connected",
-		z.object({ accountId: z.string().regex(/^\d{12}$/) })
+		z.object({ accountId: AccountIdSchema })
 	)
 };
 

@@ -1,8 +1,9 @@
+import { AccountIdSchema } from "../util/aws";
 import { z } from "zod";
 import { defineEvent } from "../event";
 
 const source = z.object({
-	accountId: z.string().regex(/^\d{12}$/),
+	accountId: AccountIdSchema,
 	stateBucket: z.string().min(1),
 	stateKey: z.string().min(1)
 });

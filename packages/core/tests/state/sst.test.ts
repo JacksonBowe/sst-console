@@ -1,16 +1,49 @@
 import { gzipSync } from "node:zlib";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { S3Client } from "@aws-sdk/client-s3";
 
 import fixture from "./fixtures/sst-v4-bucket-state.json" with { type: "json" };
 import {
 	decodeSstStateBytes,
+	fetchState,
 	normalizeSstState,
 	parseSstState,
 	redactSstState
 } from "../../src/state/sst";
 
 describe("SST state", () => {
+	it("fetches and decodes current State with its source version", async () => {
+		const send = vi.fn().mockResolvedValue({
+			ContentEncoding: "gzip",
+			VersionId: "version-1",
+			Body: {
+				transformToByteArray: async () =>
+					gzipSync(JSON.stringify(fixture))
+			}
+		});
+		const result = await fetchState(
+			{ send } as unknown as S3Client,
+			"bucket",
+			"app/shop/prod.json"
+		);
+		expect(result.state.checkpoint.latest.resources).toHaveLength(17);
+		expect(result.sourceVersion).toBe("version-1");
+		expect(send.mock.calls[0]![0].input).toEqual({
+			Bucket: "bucket",
+			Key: "app/shop/prod.json"
+		});
+	});
+
+	it("rejects an empty State object", async () => {
+		const s3 = {
+			send: vi.fn().mockResolvedValue({})
+		} as unknown as S3Client;
+		await expect(fetchState(s3, "bucket", "key")).rejects.toMatchObject({
+			code: "state.empty"
+		});
+	});
+
 	it("parses an SST v4 Pulumi checkpoint", () => {
 		const parsed = parseSstState(JSON.stringify(fixture));
 		expect(parsed.checkpoint.latest.resources).toHaveLength(17);

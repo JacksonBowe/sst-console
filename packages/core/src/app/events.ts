@@ -1,9 +1,9 @@
-import { z } from "zod";
+import { AccountIdSchema } from "../util/aws";
 import { defineEvent } from "../event";
 import { StageKeySchema } from "./schema";
 
 const stage = StageKeySchema.extend({
-	accountId: z.string().regex(/^\d{12}$/)
+	accountId: AccountIdSchema
 });
 
 export const Events = {

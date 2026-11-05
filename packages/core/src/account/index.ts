@@ -5,7 +5,6 @@ export * as Sync from "./sync";
 export { accountErrors } from "./errors";
 export {
 	AccountSchema,
-	AccountIdSchema,
 	AccountKeySchema,
 	AccountUpdateSchema,
 	StateObjectKeySchema

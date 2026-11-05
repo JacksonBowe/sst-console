@@ -1,21 +1,18 @@
+import { AccountIdSchema } from "../util/aws";
 import { z } from "zod";
 
 import { db } from "../db";
-import { ServerError } from "../error";
 import { fn } from "../util/fn";
-import { chunkArray } from "../util/chunk";
 
-const maxTransactionActions = 90;
+import { StateKeySchema } from "./schema";
+import * as Update from "./update";
+
+export { StateKeySchema } from "./schema";
 
 // Public State contract carries only its S3 locator and observation metadata.
 // It is never a transport for raw checkpoint data.
-export const StateKeySchema = z.object({
-	appName: z.string().min(1),
-	stageName: z.string().min(1)
-});
-
 export const StateSchema = StateKeySchema.extend({
-	accountId: z.string().regex(/^\d{12}$/),
+	accountId: AccountIdSchema,
 	sourceBucket: z.string().min(1),
 	sourceKey: z.string().min(1),
 	sourceVersion: z.string().min(1).optional(),
@@ -25,11 +22,13 @@ export const StateSchema = StateKeySchema.extend({
 export type State = z.infer<typeof StateSchema>;
 
 // Current State is mutable because SST repeatedly writes app/{app}/{stage}.json.
+/** Upserts the locator and observation metadata for current State. */
 export const upsert = fn(StateSchema, async input => {
 	await db.entities.state.upsert(input).go({ response: "none" });
 });
 
 // Reads current source metadata only; callers fetch raw State from S3 when needed.
+/** Reads current State source metadata without fetching the artifact from S3. */
 export const get = fn(StateKeySchema, async input => {
 	const result = await db.entities.state.get(input).go({ consistent: true });
 	return result.data ? StateSchema.parse(result.data) : null;
@@ -37,28 +36,6 @@ export const get = fn(StateKeySchema, async input => {
 
 /** Deletes all persisted State projections for one Stage. */
 export const removeStageHistory = fn(StateKeySchema, async input => {
-	const updates = await db.entities.stateUpdate.query
-		.update(input)
-		.go({ pages: "all", consistent: true });
-	for (const chunk of chunkArray(updates.data, maxTransactionActions)) {
-		const transaction = await db.transaction
-			.write(({ stateUpdate }) =>
-				chunk.map(update =>
-					stateUpdate
-						.delete({
-							appName: update.appName,
-							stageName: update.stageName,
-							updateId: update.updateId
-						})
-						.commit()
-				)
-			)
-			.go();
-		if (transaction.canceled)
-			throw new ServerError(
-				"state_history_removal_failed",
-				"Unable to remove State Update history"
-			);
-	}
+	await Update.removeForStage(input);
 	await db.entities.state.delete(input).go({ response: "none" });
 });

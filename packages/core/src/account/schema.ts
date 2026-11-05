@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const AccountIdSchema = z.string().regex(/^\d{12}$/);
+import { AccountIdSchema } from "../util/aws";
 export const ConnectorRoleArnPattern =
 	/^arn:(?:aws|aws-cn|aws-us-gov):iam::(?<accountId>\d{12}):role\/SSTConsoleRole-\d{12}-[a-f0-9]{16}$/;
 

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { GetParameterCommand, type SSMClient } from "@aws-sdk/client-ssm";
+import { GetObjectCommand, type S3Client } from "@aws-sdk/client-s3";
 
 import { z } from "zod";
 import { stateErrors } from "./errors";
@@ -20,13 +21,19 @@ export async function getBootstrapBucket(
 	return bootstrap.data.state;
 }
 
-/** Parses a current SST State object key. */
-export function parseStateKey(
-	key: string
-): { appName: string; stageName: string; key: string } | undefined {
-	const match = /^app\/([^/]+)\/(.+)\.json$/.exec(key);
-	if (!match) return;
-	return { appName: match[1]!, stageName: match[2]!, key };
+/** Fetches and parses current State from a workload's SST bucket. */
+export async function fetchState(s3: S3Client, bucket: string, key: string) {
+	const object = await s3.send(
+		new GetObjectCommand({ Bucket: bucket, Key: key })
+	);
+	if (!object.Body) throw stateErrors.empty();
+	const bytes = await object.Body.transformToByteArray();
+	return {
+		state: parseSstState(
+			decodeSstStateBytes(bytes, object.ContentEncoding)
+		),
+		sourceVersion: object.VersionId
+	};
 }
 
 const pulumiSecretSignature = "4dabf18193072939515e22adb298388d";
@@ -83,6 +90,7 @@ export type NormalizedState = {
 
 // SST now stores state objects compressed by default. S3 tells us when to
 // decompress through Content-Encoding; callers then pass plain JSON to parser.
+/** Decompresses SST artifact bytes when S3 reports gzip encoding. */
 export function decodeSstStateBytes(
 	input: Uint8Array,
 	contentEncoding?: string
@@ -93,6 +101,7 @@ export function decodeSstStateBytes(
 	return input;
 }
 
+/** Parses and validates a supported SST State checkpoint. */
 export function parseSstState(input: string | Uint8Array): SstState {
 	const text =
 		typeof input === "string" ? input : new TextDecoder().decode(input);
@@ -112,8 +121,10 @@ export function parseSstState(input: string | Uint8Array): SstState {
 	return parsed.data;
 }
 
+// TODO: Investigate this. How robust is it? If it's not robust, or relies on users building in a certain way then it may as well not exist and we should remove.
 // State must never reach ConsoleData unfiltered. Pulumi's secret envelope and
 // conventional sensitive property names both become an irreversible marker.
+/** Recursively redacts Pulumi secrets and sensitive property values. */
 export function redactSstState(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(redactSstState);
 	if (!isRecord(value)) return value;
@@ -127,6 +138,7 @@ export function redactSstState(value: unknown): unknown {
 	);
 }
 
+/** Redacts a checkpoint and normalizes its resources for Console projections. */
 export function normalizeSstState(state: SstState): NormalizedState {
 	const redacted = redactSstState(state) as SstState;
 	const resources = redacted.checkpoint.latest.resources;
@@ -140,6 +152,7 @@ export function normalizeSstState(state: SstState): NormalizedState {
 
 // An SST component is Console's identity. Physical components use their owned
 // Pulumi child for AWS fields; other SST components become tree group rows.
+/** Converts a supported SST component into a Console resource projection. */
 function normalizeResource(
 	component: SstState["checkpoint"]["latest"]["resources"][number],
 	resources: SstState["checkpoint"]["latest"]["resources"]
@@ -240,6 +253,7 @@ function normalizeResource(
 	];
 }
 
+/** Finds a Pulumi child by its parent URN and resource type. */
 function findChild(
 	parent: string,
 	type: string,
@@ -250,6 +264,7 @@ function findChild(
 	);
 }
 
+/** Builds the common fields for a physical resource projection. */
 function baseResource(
 	component: SstState["checkpoint"]["latest"]["resources"][number],
 	resourceType: NormalizedResource["resourceType"],
@@ -269,6 +284,7 @@ function baseResource(
 	};
 }
 
+/** Resolves an SST component's projected parent from its Pulumi parent URN. */
 function parentIdFor(
 	parentUrn: string | undefined,
 	resources: SstState["checkpoint"]["latest"]["resources"]
@@ -281,6 +297,7 @@ function parentIdFor(
 
 // SST creates subscription components beside their owners, rather than as
 // Pulumi children. Their owned AWS resources identify the managed resource.
+/** Resolves the projected owner of a subscription or subscriber component. */
 function semanticParentIdFor(
 	component: SstState["checkpoint"]["latest"]["resources"][number],
 	resources: SstState["checkpoint"]["latest"]["resources"]
@@ -320,6 +337,7 @@ function semanticParentIdFor(
 	return parent ? resourceIdFor(parent.urn) : undefined;
 }
 
+/** Returns owner lookup rules for supported subscription component types. */
 function subscriptionOwner(type: string):
 	| {
 			input: "eventBusName" | "bucket";
@@ -354,28 +372,34 @@ function subscriptionOwner(type: string):
 	}
 }
 
+/** Derives a stable resource ID from its URN. */
 function resourceIdFor(urn: string): string {
 	return createHash("sha256").update(urn).digest("hex");
 }
 
+/** Returns the first nonempty string among the supplied values. */
 function firstString(...values: unknown[]): string | undefined {
 	return values.find(
 		value => typeof value === "string" && value.length > 0
 	) as string | undefined;
 }
 
+/** Returns the value when it is a string. */
 function optionalString(value: unknown): string | undefined {
 	return typeof value === "string" ? value : undefined;
 }
 
+/** Returns the value when it is a number. */
 function optionalNumber(value: unknown): number | undefined {
 	return typeof value === "number" ? value : undefined;
 }
 
+/** Returns the value when it is a boolean. */
 function optionalBoolean(value: unknown): boolean | undefined {
 	return typeof value === "boolean" ? value : undefined;
 }
 
+/** Identifies a Pulumi secret envelope. */
 function isPulumiSecret(value: Record<string, unknown>): boolean {
 	return (
 		Object.keys(value).length === 1 &&
@@ -383,10 +407,12 @@ function isPulumiSecret(value: Record<string, unknown>): boolean {
 	);
 }
 
+/** Checks whether a value is a non-null object. */
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
 }
 
+/** Extracts the resource name from a Pulumi URN. */
 function nameFromUrn(urn: string): string {
 	return urn.split("::").at(-1) ?? urn;
 }

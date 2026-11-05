@@ -1,3 +1,4 @@
+import { AccountIdSchema } from "../util/aws";
 import { z } from "zod";
 
 import { db } from "../db";
@@ -17,7 +18,7 @@ export const create = fn(StageSchema, async input => {
 /** Upserts the parent App and Stage without changing their Resources. */
 export const upsert = fn(
 	StageKeySchema.extend({
-		accountId: z.string().regex(/^\d{12}$/),
+		accountId: AccountIdSchema,
 		region: z.string().min(1),
 		now: z.iso.datetime()
 	}),
@@ -68,7 +69,7 @@ export const list = fn(AppKeySchema, async input => {
 
 /** Lists Stage identities owned by one Workload Account. */
 export const listByAccount = fn(
-	z.object({ accountId: z.string().regex(/^\d{12}$/) }),
+	z.object({ accountId: AccountIdSchema }),
 	async input => {
 		const result = await db.entities.stage.query
 			.byAwsAccount(input)

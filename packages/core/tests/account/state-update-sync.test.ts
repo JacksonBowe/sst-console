@@ -9,8 +9,6 @@ const mocks = vi.hoisted(() => ({
 	includes: vi.fn(),
 	stageGet: vi.fn(),
 	send: vi.fn(),
-	parse: vi.fn(),
-	upsert: vi.fn(),
 	write: vi.fn()
 }));
 
@@ -37,15 +35,6 @@ vi.mock("../../src/connection", () => ({
 	getSyncPolicy: mocks.policy,
 	Policy: { includesStage: mocks.includes }
 }));
-vi.mock("../../src/state/update", () => ({
-	parseObjectKey: () => ({
-		appName: "app",
-		stageName: "dev",
-		updateId: "id"
-	}),
-	parseSstUpdate: mocks.parse
-}));
-vi.mock("../../src/state/state.update", () => ({ upsert: mocks.upsert }));
 vi.mock("../../src/db", () => ({
 	db: {
 		entities: { stage: { get: mocks.stageGet } },
@@ -54,7 +43,7 @@ vi.mock("../../src/db", () => ({
 }));
 vi.mock("../../src/issue/monitoring", () => ({}));
 
-const { receiveUpdate } = await import("../../src/state/sync");
+const { receiveUpdate } = await import("../../src/state/update");
 const input = {
 	accountId: "123456789012",
 	appName: "app",
@@ -83,16 +72,19 @@ describe("State Update sync", () => {
 		});
 		mocks.send.mockResolvedValue({
 			ContentEncoding: "gzip",
-			Body: { transformToByteArray: async () => gzipSync('{"id":"id"}') }
+			Body: {
+				transformToByteArray: async () =>
+					gzipSync(
+						JSON.stringify({
+							id: "id",
+							version: "4",
+							command: "deploy",
+							timeStarted: "2026-01-01T00:00:00Z",
+							errors: []
+						})
+					)
+			}
 		});
-		mocks.parse.mockReturnValue({
-			updateId: "id",
-			sstVersion: "4",
-			command: "deploy",
-			timeStarted: "2026-01-01T00:00:00Z",
-			errors: []
-		});
-		mocks.upsert.mockResolvedValue(true);
 		mocks.write.mockReturnValue({
 			go: vi.fn().mockResolvedValue({ canceled: false })
 		});
@@ -102,15 +94,7 @@ describe("State Update sync", () => {
 		await expect(receiveUpdate(input)).resolves.toMatchObject({
 			status: "synced"
 		});
-		expect(mocks.parse).toHaveBeenCalledWith('{"id":"id"}');
-		expect(mocks.write).toHaveBeenCalledOnce();
-		expect(mocks.upsert).toHaveBeenCalledWith(
-			expect.objectContaining({
-				appName: "app",
-				stageName: "dev",
-				updateId: "id"
-			})
-		);
+		expect(mocks.write).toHaveBeenCalledTimes(2);
 	});
 
 	it("ignores a Stage owned by another account", async () => {

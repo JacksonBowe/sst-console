@@ -1,3 +1,4 @@
+import { AccountIdSchema } from "../util/aws";
 import { db } from "../db";
 import { appErrors } from "./errors";
 import { z } from "zod";
@@ -277,7 +278,7 @@ function resourceKey(
 /** Reconciles a complete current SST observation into App projections. */
 export const reconcile = fn(
 	z.object({
-		accountId: z.string().regex(/^\d{12}$/),
+		accountId: AccountIdSchema,
 		region: z.string().min(1),
 		projections: z.array(observationSchema),
 		now: z.iso.datetime()

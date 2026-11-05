@@ -7,9 +7,8 @@ vi.mock("sst", () => ({
 	}
 }));
 
-const { parseSstUpdate, normalizeSequencer } =
+const { parseSstUpdate, normalizeSequencer, upsert } =
 	await import("../../src/state/update");
-const { upsert } = await import("../../src/state/state.update");
 const { dynamo } = await import("../../src/db/client");
 const { db } = await import("../../src/db");
 
