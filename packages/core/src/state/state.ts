@@ -36,6 +36,6 @@ export const get = fn(StateKeySchema, async input => {
 
 /** Deletes all persisted State projections for one Stage. */
 export const removeStageHistory = fn(StateKeySchema, async input => {
-	await Update.removeForStage(input);
+	await Update.remove(input);
 	await db.entities.state.delete(input).go({ response: "none" });
 });

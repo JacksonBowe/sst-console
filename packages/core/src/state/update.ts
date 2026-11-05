@@ -6,7 +6,7 @@ import * as Connection from "../connection";
 import * as Stage from "../app/app.stage";
 import { isMissingObject } from "../util/s3";
 import { chunkArray } from "../util/chunk";
-import { ServerError } from "../error";
+import { stateErrors } from "./errors";
 import { decodeSstStateBytes } from "./sst";
 import { updateObjectKey } from "./keys";
 
@@ -362,9 +362,8 @@ export const receiveUpdate = fn(
 	}
 );
 
-// TODO: This should be called remove()
 /** Deletes all persisted Update records for a Stage. */
-export const removeForStage = fn(StateKeySchema, async input => {
+export const remove = fn(StateKeySchema, async input => {
 	const updates = await db.entities.stateUpdate.query
 		.update(input)
 		.go({ pages: "all", consistent: true });
@@ -382,11 +381,6 @@ export const removeForStage = fn(StateKeySchema, async input => {
 				)
 			)
 			.go();
-		if (transaction.canceled)
-			// TODO: This needs to follow codebase error pattern, see errors.ts
-			throw new ServerError(
-				"state_history_removal_failed",
-				"Unable to remove State Update history"
-			);
+		if (transaction.canceled) throw stateErrors.historyRemovalFailed();
 	}
 });

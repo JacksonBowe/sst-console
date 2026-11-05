@@ -1,6 +1,4 @@
 import { AccountIdSchema } from "../util/aws";
-// TODO: Should this entire file live in state.ts?
-
 import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import { SSMClient } from "@aws-sdk/client-ssm";
 

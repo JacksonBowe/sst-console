@@ -35,6 +35,12 @@ export const stateErrors = {
 	/** Reports failure to remove State projections. */
 	projectionRemovalFailed: (message: string) =>
 		new ServerError("state.projection_removal_failed", message),
+	/** Reports failure to remove State Update history. */
+	historyRemovalFailed: () =>
+		new ServerError(
+			"state_history_removal_failed",
+			"Unable to remove State Update history"
+		),
 	/** Reports failure to persist a State sync. */
 	syncPersistenceFailed: (message: string) =>
 		new ServerError("state.sync_persistence_failed", message),
