@@ -1,6 +1,7 @@
 import { z } from "zod";
 import * as Connection from "../connection";
 import * as State from "../state";
+import type { StageAccountConflict } from "../app/ownership";
 import { fn } from "../util/fn";
 import * as Account from "./account";
 import { connect } from "./connector";
@@ -28,7 +29,7 @@ export const sync = fn(
 		const selected = discovery.states.filter(state =>
 			Connection.Policy.includesStage(policy, state)
 		);
-		const conflicts: State.StageAccountConflict[] = [];
+		const conflicts: StageAccountConflict[] = [];
 		for (const state of selected) {
 			const result = await State.sync({
 				accountId,

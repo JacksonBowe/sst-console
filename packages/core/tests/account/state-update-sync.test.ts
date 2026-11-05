@@ -37,15 +37,15 @@ vi.mock("../../src/connection", () => ({
 	getSyncPolicy: mocks.policy,
 	Policy: { includesStage: mocks.includes }
 }));
-vi.mock("../../src/state/state.update", () => ({
+vi.mock("../../src/state/update", () => ({
 	parseObjectKey: () => ({
 		appName: "app",
 		stageName: "dev",
 		updateId: "id"
 	}),
-	parseSstUpdate: mocks.parse,
-	upsert: mocks.upsert
+	parseSstUpdate: mocks.parse
 }));
+vi.mock("../../src/state/state.update", () => ({ upsert: mocks.upsert }));
 vi.mock("../../src/db", () => ({
 	db: {
 		entities: { stage: { get: mocks.stageGet } },

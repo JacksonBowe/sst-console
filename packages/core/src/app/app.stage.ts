@@ -1,10 +1,11 @@
 import { z } from "zod";
 
 import { db } from "../db";
-import * as State from "../state/state";
 import { fn } from "../util/fn";
 import { appErrors } from "./errors";
+import { chunkArray } from "../util/chunk";
 import { AppKeySchema, StageKeySchema, StageSchema } from "./schema";
+import { writeChunk } from "./projection";
 
 export type Stage = z.infer<typeof StageSchema>;
 
@@ -12,6 +13,26 @@ export type Stage = z.infer<typeof StageSchema>;
 export const create = fn(StageSchema, async input => {
 	await db.entities.stage.create(input).go({ response: "none" });
 });
+
+/** Upserts the parent App and Stage without changing their Resources. */
+export const upsert = fn(
+	StageKeySchema.extend({
+		accountId: z.string().regex(/^\d{12}$/),
+		region: z.string().min(1),
+		now: z.iso.datetime()
+	}),
+	async input => {
+		await writeChunk(input.accountId, input.region, [
+			{ kind: "app", appName: input.appName, now: input.now },
+			{
+				kind: "stage",
+				appName: input.appName,
+				stageName: input.stageName,
+				now: input.now
+			}
+		]);
+	}
+);
 
 /** Updates mutable fields on an existing App Stage projection. */
 export const update = fn(
@@ -36,6 +57,7 @@ export const update = fn(
 	}
 );
 
+// TODO: Combine all list() methods. They should take optional filters eg list() => return all stages, list({ appName }) => return all stages for one app, list({ accountId }) => return all stages for one account, etc. This will reduce the number of queries and simplify the API.
 /** Lists every Stage in one App. */
 export const list = fn(AppKeySchema, async input => {
 	const result = await db.entities.stage.query
@@ -44,6 +66,43 @@ export const list = fn(AppKeySchema, async input => {
 	return result.data.map(stage => StageSchema.parse(stage));
 });
 
+/** Lists Stage identities owned by one Workload Account. */
+export const listByAccount = fn(
+	z.object({ accountId: z.string().regex(/^\d{12}$/) }),
+	async input => {
+		const result = await db.entities.stage.query
+			.byAwsAccount(input)
+			.go({ pages: "all" });
+		return result.data.map(({ appName, stageName }) => ({
+			appName,
+			stageName
+		}));
+	}
+);
+
+/** Deletes Stage records after dependent data has been removed. */
+export const remove = fn(
+	z.union([StageKeySchema, z.array(StageKeySchema)]),
+	async input => {
+		if (!Array.isArray(input)) {
+			await db.entities.stage.delete(input).go({ response: "none" });
+			return;
+		}
+		const stages = input;
+		for (const chunk of chunkArray(stages, 90)) {
+			const result = await db.transaction
+				.write(({ stage }) =>
+					chunk.map(input => stage.delete(input).commit())
+				)
+				.go();
+			if (result.canceled)
+				throw appErrors.accountProjectionRemovalFailed(
+					"Unable to remove account stage projections"
+				);
+		}
+	}
+);
+
 /** Gets one App Stage projection or throws when it does not exist. */
 export const get = fn(StageKeySchema, async input => {
 	const result = await db.entities.stage.get(input).go({ consistent: true });
@@ -51,11 +110,10 @@ export const get = fn(StageKeySchema, async input => {
 	return StageSchema.parse(result.data);
 });
 
-/** Deletes one App Stage projection. */
-export const remove = fn(StageKeySchema, async input => {
-	// Direct Stage deletion follows same history-retention policy as sync removal.
-	await State.removeStageHistory(input);
-	await db.entities.stage.delete(input).go({ response: "none" });
+/** Finds a Stage without treating absence as an error. */
+export const find = fn(StageKeySchema, async input => {
+	const result = await db.entities.stage.get(input).go({ consistent: true });
+	return result.data ? StageSchema.parse(result.data) : null;
 });
 
 /** Returns summary data used by App listings. */

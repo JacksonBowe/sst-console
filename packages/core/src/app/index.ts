@@ -5,6 +5,9 @@ import * as Stage from "./app.stage";
 import { AppKeySchema, StageKeySchema } from "./schema";
 
 export * from "./app";
+export * as Resource from "./resource";
+export { Events } from "./events";
+export type { StageAccountConflict } from "./ownership";
 export * as Stage from "./app.stage";
 export { appErrors } from "./errors";
 export { AppKeySchema, AppSchema, StageKeySchema, StageSchema } from "./schema";

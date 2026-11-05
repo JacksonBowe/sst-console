@@ -6,8 +6,49 @@ import { stateErrors } from "./errors";
 import { connect } from "../account/connector";
 import { chunkArray } from "../util/chunk";
 import { getBootstrapBucket, parseStateKey } from "./sst";
+import { z } from "zod";
+import { fn } from "../util/fn";
 
 const maxTransactionActions = 90;
+
+/** Lists account discovery identities for disconnect cleanup. */
+export const listForAccount = fn(
+	z.object({ accountId: z.string().regex(/^\d{12}$/) }),
+	async input => {
+		const result = await db.entities.discoveredStage.query
+			.discovery(input)
+			.go({ pages: "all" });
+		return result.data.map(({ accountId, appName, stageName }) => ({
+			accountId,
+			appName,
+			stageName
+		}));
+	}
+);
+
+/** Removes discovery inventory without changing App projections. */
+export const removeEntries = fn(
+	z.array(
+		z.object({
+			accountId: z.string().regex(/^\d{12}$/),
+			appName: z.string().min(1),
+			stageName: z.string().min(1)
+		})
+	),
+	async stages => {
+		for (const chunk of chunkArray(stages, maxTransactionActions)) {
+			const result = await db.transaction
+				.write(({ discoveredStage }) =>
+					chunk.map(input => discoveredStage.delete(input).commit())
+				)
+				.go();
+			if (result.canceled)
+				throw stateErrors.projectionRemovalFailed(
+					"Unable to remove account discovery projections"
+				);
+		}
+	}
+);
 
 export type StateObject = {
 	appName: string;

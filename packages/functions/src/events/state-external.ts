@@ -22,12 +22,11 @@ export async function handler(event: S3StateEvent): Promise<void> {
 
 	const input = { accountId, stateBucket, stateKey };
 	await withActor({ type: "system", properties: {} }, async () => {
-		// Stage deletion still uses the existing direct path until its lifecycle is reviewed.
+		// Verify the source deletion before scheduling Stage projection removal.
 		if (
 			event["detail-type"] === "Object Deleted" &&
 			stateKey.startsWith("app/")
 		) {
-			// TODO: Move Stage deletion to the State event consumer when its lifecycle is reviewed.
 			console.log(
 				"State object reconciliation complete",
 				await State.handleStateDeletion(input)

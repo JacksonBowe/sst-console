@@ -12,7 +12,7 @@ import { defineEvent } from "../event";
 import { fn } from "../util/fn";
 import * as Account from "./account";
 import { accountErrors, isRemoteAccessFailure } from "./errors";
-import { removeAccountProjections } from "../state/projection";
+import { removeAccountProjections } from "./projection";
 import {
 	ConnectorCallbackSchema,
 	ConnectorRoleArnPattern,

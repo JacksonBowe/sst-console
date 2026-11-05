@@ -22,16 +22,18 @@ attributes and SyncRun items remain unused; no purge or resync is required solel
 for their removal. Only the user may perform optional database cleanup. Account
 `lastSyncConflicts` records the most recent completed account-wide reconciliation.
 
-Account detail now reads only the Account item. State owns account-scoped stale
-projection cleanup, disconnect projection cleanup, and individual State deletion
-reconciliation; their existing queries and deletion behavior remain unchanged.
+Account detail reads only the Account item. State schedules account-scoped stale
+projection cleanup and individual State deletion reconciliation. App event handlers
+coordinate Stage removal. Account coordinates its separate disconnect cleanup
+using App projection and State artifact operations.
 Account orchestration supplies the complete policy-selected Stage identities only
 after discovery and required Stage syncs succeed. No data migration is required.
 
 `ConsoleData` is one DynamoDB table for SST Console operational data. It is an
-index of Console-safe SST state, not a replica of full SST state. Raw SST state
-remains in S3. Console navigation is App-first: one global SST app groups its
-Stages across connected AWS accounts.
+index of Console-safe SST state, not a replica of full SST state. State owns SST
+artifact references and useful queryable metadata; App owns current App, Stage,
+and Resource projections. Raw SST state remains in S3. Console navigation is
+App-first: one global SST app groups its Stages across connected AWS accounts.
 
 This document is required reading before changing DynamoDB infrastructure,
 ElectroDB models, persistence use cases, access patterns, or data migrations.
@@ -65,10 +67,10 @@ packages/core/src/
     account.dynamo.ts      # Account entity
   app/
     app.dynamo.ts          # App, Stage, Resource entities
-	state/
-		state.dynamo.ts        # State, StateUpdate, DiscoveredStage entities
-		state.ts               # Current State contract and CRUD
-		state.update.ts        # State Update contract and CRUD
+  state/
+    state.dynamo.ts        # State, StateUpdate, DiscoveredStage entities
+    state.ts               # Current State contract and CRUD
+    state.update.ts        # State Update contract and CRUD
   db/
     client.ts              # DynamoDBDocumentClient
     service.ts             # ElectroDB Service composition
@@ -285,14 +287,18 @@ Only Console-safe projections are stored in DynamoDB:
 Secrets are redacted before normalization. Persisted summaries are allowlisted;
 raw Pulumi inputs and outputs are never written to `ConsoleData`.
 
-Each successful Stage sync updates its own Resources. Account-wide stale cleanup
-starts only after complete discovery and every required Stage sync succeeds; it
-removes excluded or absent account-owned Stages, Resources, and State history.
-An App is removed only when no Stages remain in any account.
+Each successful Stage sync reconciles its Resources through App and separately
+writes the current State locator. Account-wide stale cleanup is scheduled only
+after complete discovery and every required Stage sync succeeds. App event
+handlers remove excluded or absent account-owned Stages, Resources, and State
+history, then publish a Stage removed event. A subsequent handler removes the
+App only when no Stages remain in any account. Account sync returns after the
+removal requests are published, not after cleanup completes.
 
-Projection writes are ordered and split into transactions of at most 90 actions
-and 3 MiB of estimated payload, below DynamoDB's 100-action/4-MB limits. A
-partial write can be repaired by the next successful sync.
+App projection writes are ordered and split into transactions of at most 90
+actions and 3 MiB of estimated payload, below DynamoDB's 100-action/4-MB
+limits. The current State locator is written separately after App reconciliation.
+A partial write can be repaired by the next successful sync.
 
 When role assumption receives a recognized AWS authorization failure, Console
 patches the existing Account to `disconnected` and rethrows the original error.
@@ -313,8 +319,9 @@ bucket changes; API failures fail sync and can be retried. The central State
 event worker independently validates the source account and exact configured
 state bucket against the Account primary-key record. For current State objects, it then reads the S3
 object. Snapshot-triggered refresh ignores missing current State. Direct app/
-deletion verifies that the object is absent before removing the account-owned
-Stage, Resources, and State history. Full account sync remains the repair path.
+deletion verifies that the object is absent before scheduling removal of the
+account-owned Stage, Resources, and State history. Full account sync remains a
+repair path, though lost events or orphaned data can require manual repair.
 
 The Console subscription uses the same prefix filter. The handler ignores every other
 event/key combination before Account sync code runs. For an update event, it

@@ -51,11 +51,13 @@ vi.mock("../../src/db", () => ({
 vi.mock("../../src/state/state", () => ({
 	removeStageHistory
 }));
+vi.mock("../../src/account/connector", () => ({ connect: vi.fn() }));
 vi.mock("../../src/issue/monitoring", () => ({
 	removeStageMonitoring: vi.fn()
 }));
 
-const { removeAccountProjections } = await import("../../src/state/projection");
+const { removeAccountProjections } =
+	await import("../../src/account/projection");
 
 describe("account projection removal", () => {
 	beforeEach(() => {
@@ -93,7 +95,20 @@ describe("account projection removal", () => {
 		});
 		queryStagesByApp.mockImplementation(({ appName }) => ({
 			go: vi.fn().mockResolvedValue({
-				data: appName === "shared" ? [{ stageName: "other" }] : []
+				data:
+					appName === "shared"
+						? [
+								{
+									appName,
+									stageName: "other",
+									accountId: "111111111111",
+									region: "us-east-1",
+									issueMonitoringEnabled: false,
+									createdAt: "2026-01-01T00:00:00.000Z",
+									updatedAt: "2026-01-01T00:00:00.000Z"
+								}
+							]
+						: []
 			})
 		}));
 		for (const operation of [

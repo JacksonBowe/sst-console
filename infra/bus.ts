@@ -28,6 +28,7 @@ bus.subscribe(
 	{
 		handler: "packages/functions/src/events/account.handler",
 		link: [
+			bus,
 			consoleConnections,
 			consoleData,
 			issueIngressQueue,
@@ -74,6 +75,7 @@ bus.subscribe(
 	{
 		handler: "packages/functions/src/events/state.handler",
 		link: [
+			bus,
 			consoleConnections,
 			consoleData,
 			issueIngressQueue,
@@ -86,4 +88,24 @@ bus.subscribe(
 		permissions: [assumeAccountRolePermission]
 	},
 	{ pattern: { detailType: [{ prefix: "state." }] } }
+);
+
+bus.subscribe(
+	"AppEvents",
+	{
+		handler: "packages/functions/src/events/app.handler",
+		link: [
+			bus,
+			consoleConnections,
+			consoleData,
+			issueIngressQueue,
+			issueReconcileQueue
+		],
+		environment: {
+			SST_CONSOLE_EXTERNAL_ID: externalId,
+			...issueEnvironment
+		},
+		permissions: [assumeAccountRolePermission]
+	},
+	{ pattern: { detailType: [{ prefix: "app." }] } }
 );

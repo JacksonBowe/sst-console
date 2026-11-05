@@ -9,6 +9,8 @@ const appByTypeGo = vi.fn();
 const appPatch = vi.fn();
 const appSet = vi.fn();
 const appUpdateGo = vi.fn();
+const appDelete = vi.fn();
+const appDeleteGo = vi.fn();
 const stageCreate = vi.fn();
 const stageCreateGo = vi.fn();
 const stageGet = vi.fn();
@@ -32,6 +34,7 @@ vi.mock("../../src/db", () => ({
 				create: appCreate,
 				get: appGet,
 				patch: appPatch,
+				delete: appDelete,
 				query: { byType: appByType }
 			},
 			stage: {
@@ -45,10 +48,6 @@ vi.mock("../../src/db", () => ({
 			resource: { query: { resource } }
 		}
 	}
-}));
-
-vi.mock("../../src/state/state", () => ({
-	removeStageHistory: vi.fn().mockResolvedValue(undefined)
 }));
 
 const App = await import("../../src/app");
@@ -76,6 +75,7 @@ describe("App", () => {
 		appByType.mockReturnValue({ go: appByTypeGo });
 		appPatch.mockReturnValue({ set: appSet });
 		appSet.mockReturnValue({ go: appUpdateGo });
+		appDelete.mockReturnValue({ go: appDeleteGo });
 		stageCreate.mockReturnValue({ go: stageCreateGo });
 		stageGet.mockReturnValue({ go: stageGetGo });
 		stageByApp.mockReturnValue({ go: stageByAppGo });
@@ -173,6 +173,17 @@ describe("App", () => {
 			code: "app.not_found",
 			status: 404
 		});
+	});
+
+	it("removes an App only when Stage.list returns no Stages", async () => {
+		stageByAppGo
+			.mockResolvedValueOnce({ data: [stage] })
+			.mockResolvedValueOnce({ data: [] });
+		await App.removeIfEmpty({ appName: app.appName });
+		expect(appDelete).not.toHaveBeenCalled();
+		await App.removeIfEmpty({ appName: app.appName });
+		expect(stageByAppGo).toHaveBeenCalledWith({ pages: "all" });
+		expect(appDelete).toHaveBeenCalledWith({ appName: app.appName });
 	});
 
 	it("throws domain error for missing Stage projections", async () => {
