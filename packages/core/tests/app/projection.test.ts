@@ -31,6 +31,44 @@ const input = {
 };
 
 describe("App projection reconciliation", () => {
+	it("preserves creation time when replacing a complete resource projection", async () => {
+		stageGet.mockReturnValue({
+			go: async () => ({ data: { accountId: input.accountId } })
+		});
+		resourceQuery.mockReturnValue({
+			go: async () => ({
+				data: [
+					{
+						appName: "shop",
+						stageName: "prod",
+						resourceId: "one",
+						createdAt: "earlier"
+					}
+				]
+			})
+		});
+		const result = await buildWrites({
+			...input,
+			projections: [
+				{
+					...observation,
+					resources: [
+						{
+							resourceId: "one",
+							resourceKind: "component",
+							resourceType: "sst.aws.Bus",
+							urn: "urn:bus",
+							name: "bus"
+						}
+					]
+				}
+			]
+		});
+		expect(result.writes).toContainEqual(
+			expect.objectContaining({ kind: "resource", createdAt: "earlier" })
+		);
+	});
+
 	it("removes Resources absent from a complete observation", async () => {
 		stageGet.mockReturnValue({
 			go: async () => ({ data: { accountId: input.accountId } })

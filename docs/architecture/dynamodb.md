@@ -145,6 +145,8 @@ event access patterns are described in [State Update history](../state-update-hi
   `ConsoleData`; persist only Console-safe projections and source references.
 - Use `upsert` for partial create/update, `patch` when an item must exist, and
   `create` when duplicates must fail. `put` replaces the entire item.
+- Resource reconciliation uses `put` for complete projections so removed parent,
+  ARN, and summary fields do not linger; it preserves the previously read creation time.
 - Keep ElectroDB `model.version` at `"1"` for normal evolution. Change persisted
   `schemaVersion` only for incompatible item-shape migrations. Document required
   user-run migrations; do not add old-shape aliases or dual reads/writes.

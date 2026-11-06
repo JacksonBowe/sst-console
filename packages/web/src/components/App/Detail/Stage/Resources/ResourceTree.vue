@@ -9,16 +9,37 @@
 		"
 		@keydown="handleKeydown"
 	>
-		<ResourceTreeItem
-			v-for="resource in resources"
-			:key="resource.resourceId"
-			:resource="resource"
-			:depth="0"
-			:expanded-ids="expandedIds"
-			:selected-id="selectedId"
-			@select="$emit('select', $event)"
-			@toggle="$emit('toggle', $event)"
-		/>
+		<div v-for="group in groups" :key="group.label">
+			<button
+				v-if="group.support"
+				type="button"
+				class="resource-tree__group"
+				:aria-expanded="supportExpanded || searching"
+				@click="supportExpanded = !supportExpanded"
+			>
+				<q-icon
+					:name="
+						supportExpanded || searching
+							? 'sym_r_expand_more'
+							: 'sym_r_chevron_right'
+					"
+				/>
+				{{ group.label }}
+			</button>
+			<div v-else class="resource-tree__group">{{ group.label }}</div>
+			<template v-if="!group.support || supportExpanded || searching">
+				<ResourceTreeItem
+					v-for="resource in group.resources"
+					:key="resource.resourceId"
+					:resource="resource"
+					:depth="0"
+					:expanded-ids="expandedIds"
+					:selected-id="selectedId"
+					@select="$emit('select', $event)"
+					@toggle="$emit('toggle', $event)"
+				/>
+			</template>
+		</div>
 	</div>
 </template>
 
@@ -31,6 +52,7 @@ import ResourceTreeItem from "./ResourceTreeItem.vue";
 const props = defineProps<{
 	expandedIds: ReadonlySet<string>;
 	resources: ResourceTree[];
+	searching: boolean;
 	selectedId?: string | undefined;
 }>();
 
@@ -40,6 +62,44 @@ const emit = defineEmits<{
 }>();
 
 const treeElement = ref<HTMLElement>();
+const supportExpanded = ref(false);
+const supportTypes = new Set([
+	"sst:sst:LinkRef",
+	"sst:sst:Linkable",
+	"sst:sst:Secret",
+	"sst:sst:DevCommand",
+	"sst:sst:Version"
+]);
+const groups = computed(() => {
+	const result = new Map<string, ResourceTree[]>();
+	for (const resource of props.resources) {
+		const label = supportTypes.has(resource.resourceType)
+			? "SST support entries"
+			: resource.resourceType.startsWith("sst.aws.")
+				? "SST components"
+				: resource.resourceType.split(":")[0] || "Other";
+		const items = result.get(label) ?? [];
+		items.push(resource);
+		result.set(label, items);
+	}
+	return [...result.entries()]
+		.sort(([a], [b]) =>
+			a === "SST components"
+				? -1
+				: b === "SST components"
+					? 1
+					: a === "SST support entries"
+						? 1
+						: b === "SST support entries"
+							? -1
+							: a.localeCompare(b)
+		)
+		.map(([label, resources]) => ({
+			label,
+			resources,
+			support: label === "SST support entries"
+		}));
+});
 
 const visibleResources = computed(() => {
 	const result: ResourceTree[] = [];
@@ -48,7 +108,10 @@ const visibleResources = computed(() => {
 		if (props.expandedIds.has(resource.resourceId))
 			resource.children.forEach(visit);
 	};
-	props.resources.forEach(visit);
+	groups.value.forEach(group => {
+		if (!group.support || supportExpanded.value || props.searching)
+			group.resources.forEach(visit);
+	});
 	return result;
 });
 
@@ -118,6 +181,13 @@ function handleKeydown(event: KeyboardEvent) {
 <style scoped lang="scss">
 .resource-tree {
 	overflow: auto;
+	padding: 0.5rem;
+}
+.resource-tree__group {
+	background: none;
+	border: 0;
+	color: inherit;
+	font-weight: 600;
 	padding: 0.5rem;
 }
 </style>

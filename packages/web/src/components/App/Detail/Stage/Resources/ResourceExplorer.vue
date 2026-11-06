@@ -4,7 +4,7 @@
 			class="row items-center justify-between q-pa-md q-pb-sm q-gutter-sm"
 		>
 			<div class="text-subtitle1 text-weight-medium"
-				>Resources ({{ resourceCount }})</div
+				>Entries ({{ resourceCount }})</div
 			>
 			<q-input
 				v-model="search"
@@ -31,6 +31,7 @@
 					v-else
 					:resources="filteredResources"
 					:expanded-ids="visibleExpandedIds"
+					:searching="Boolean(search.trim())"
 					:selected-id="selectedResource?.resourceId"
 					@select="selectedResource = $event"
 					@toggle="toggle"

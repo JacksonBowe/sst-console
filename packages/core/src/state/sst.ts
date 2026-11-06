@@ -44,6 +44,7 @@ const resourceSchema = z.object({
 	urn: z.string().min(1),
 	type: z.string().min(1),
 	parent: z.string().optional(),
+	custom: z.boolean().optional(),
 	inputs: z.record(z.string(), z.unknown()).default({}),
 	outputs: z.record(z.string(), z.unknown()).default({})
 });
@@ -143,23 +144,22 @@ export function normalizeSstState(state: SstState): NormalizedState {
 	const redacted = redactSstState(state) as SstState;
 	const resources = redacted.checkpoint.latest.resources;
 
-	return {
-		resources: resources.flatMap(component =>
-			normalizeResource(component, resources)
-		)
-	};
+	const projected = resources.flatMap(resource =>
+		normalizeResource(resource, resources)
+	);
+	return { resources: projected };
 }
 
-// An SST component is Console's identity. Physical components use their owned
-// Pulumi child for AWS fields; other SST components become tree group rows.
-/** Converts a supported SST component into a Console resource projection. */
+// SST components retain their identity and selected AWS summaries. Other
+// checkpoint resources contribute identity and hierarchy, never raw properties.
+/** Converts a checkpoint entry into a safe Console resource projection. */
 function normalizeResource(
 	component: SstState["checkpoint"]["latest"]["resources"][number],
 	resources: SstState["checkpoint"]["latest"]["resources"]
 ): NormalizedResource[] {
 	const parentResourceId =
-		parentIdFor(component.parent, resources) ??
-		semanticParentIdFor(component, resources);
+		semanticParentIdFor(component, resources) ??
+		parentIdFor(component.parent, resources);
 	if (component.type === "sst:aws:Bucket") {
 		const child = findChild(
 			component.urn,
@@ -172,7 +172,8 @@ function normalizeResource(
 			component.outputs.bucket,
 			child?.outputs.bucket
 		);
-		if (!arn || !bucketName || !arn.startsWith("arn:")) return [];
+		if (!arn || !bucketName || !arn.startsWith("arn:"))
+			return [componentResource(component, parentResourceId)];
 		return [
 			baseResource(
 				component,
@@ -195,7 +196,8 @@ function normalizeResource(
 			component.outputs.name,
 			child?.outputs.name
 		);
-		if (!arn || !functionName || !arn.startsWith("arn:")) return [];
+		if (!arn || !functionName || !arn.startsWith("arn:"))
+			return [componentResource(component, parentResourceId)];
 		return [
 			baseResource(
 				component,
@@ -223,7 +225,8 @@ function normalizeResource(
 			component.outputs.name,
 			child?.outputs.name
 		);
-		if (!arn || !tableName || !arn.startsWith("arn:")) return [];
+		if (!arn || !tableName || !arn.startsWith("arn:"))
+			return [componentResource(component, parentResourceId)];
 		return [
 			baseResource(
 				component,
@@ -239,18 +242,41 @@ function normalizeResource(
 		];
 	}
 
-	if (!component.type.startsWith("sst:aws:")) return [];
+	if (isStructuralResource(component.type)) return [];
+	if (component.type.startsWith("sst:aws:"))
+		return [componentResource(component, parentResourceId)];
 	return [
 		{
 			resourceId: resourceIdFor(component.urn),
 			parentResourceId,
-			resourceKind: "component",
-			resourceType: component.type.replaceAll(":", "."),
+			resourceKind: component.custom === false ? "component" : "physical",
+			resourceType: component.type,
 			urn: component.urn,
 			name: nameFromUrn(component.urn),
 			summary: undefined
 		}
 	];
+}
+
+function componentResource(
+	component: SstState["checkpoint"]["latest"]["resources"][number],
+	parentResourceId?: string
+): NormalizedResource {
+	return {
+		resourceId: resourceIdFor(component.urn),
+		parentResourceId,
+		resourceKind: "component",
+		resourceType: component.type.replaceAll(":", "."),
+		urn: component.urn,
+		name: nameFromUrn(component.urn),
+		summary: undefined
+	};
+}
+
+function isStructuralResource(type: string): boolean {
+	return (
+		type === "pulumi:pulumi:Stack" || type.startsWith("pulumi:providers:")
+	);
 }
 
 /** Finds a Pulumi child by its parent URN and resource type. */
@@ -284,13 +310,13 @@ function baseResource(
 	};
 }
 
-/** Resolves an SST component's projected parent from its Pulumi parent URN. */
+/** Resolves a projected parent, treating the stack and providers as structural. */
 function parentIdFor(
 	parentUrn: string | undefined,
 	resources: SstState["checkpoint"]["latest"]["resources"]
 ): string | undefined {
 	const parent = resources.find(resource => resource.urn === parentUrn);
-	return parent?.type.startsWith("sst:aws:")
+	return parent && !isStructuralResource(parent.type)
 		? resourceIdFor(parent.urn)
 		: undefined;
 }
@@ -311,7 +337,7 @@ function semanticParentIdFor(
 					`${nameFromUrn(resource.urn)}Subscriber`
 				)
 		);
-		const [owner] = owners;
+		const owner = owners.length === 1 ? owners[0] : undefined;
 		return owner ? resourceIdFor(owner.urn) : undefined;
 	}
 
@@ -326,7 +352,7 @@ function semanticParentIdFor(
 	const ownerName = optionalString(subscription?.inputs[owner.input]);
 	if (!ownerName) return undefined;
 
-	const parent = resources.find(resource => {
+	const parents = resources.filter(resource => {
 		if (resource.type !== owner.type) return false;
 		const child = findChild(resource.urn, owner.childType, resources);
 		return (
@@ -334,7 +360,7 @@ function semanticParentIdFor(
 			ownerName
 		);
 	});
-	return parent ? resourceIdFor(parent.urn) : undefined;
+	return parents.length === 1 ? resourceIdFor(parents[0]!.urn) : undefined;
 }
 
 /** Returns owner lookup rules for supported subscription component types. */

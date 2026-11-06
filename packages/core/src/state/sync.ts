@@ -156,10 +156,16 @@ async function fetchProjection(
 		bucket,
 		state.key
 	);
-	const sourceUpdatedAt =
+	const timestamp =
 		state.lastModified ??
 		parsed.checkpoint.latest.manifest?.time ??
 		new Date().toISOString();
+	if (!z.iso.datetime({ offset: true }).safeParse(timestamp).success)
+		throw new Error("Invalid SST state timestamp");
+	const date = new Date(timestamp);
+	if (Number.isNaN(date.getTime()))
+		throw new Error("Invalid SST state timestamp");
+	const sourceUpdatedAt = date.toISOString();
 	return {
 		...state,
 		resources: normalizeSstState(parsed).resources,

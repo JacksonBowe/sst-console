@@ -35,15 +35,32 @@ export const inspectStage = fn(StageKeySchema, async input => {
 	};
 });
 
-function resourceTree<
+export function resourceTree<
 	T extends { resourceId: string; parentResourceId?: string }
 >(resources: T[]): Array<T & { children: Array<T & { children: T[] }> }> {
+	const byId = new Map(
+		resources.map(resource => [resource.resourceId, resource])
+	);
+	// Promote missing parents and cycles to roots so no projection disappears.
+	const parentOf = (resource: T): string | undefined => {
+		const parent = resource.parentResourceId;
+		if (!parent || !byId.has(parent)) return undefined;
+		const seen = new Set([resource.resourceId]);
+		let current: string | undefined = parent;
+		while (current && byId.has(current)) {
+			if (seen.has(current)) return undefined;
+			seen.add(current);
+			current = byId.get(current)?.parentResourceId;
+		}
+		return parent;
+	};
 	const children = new Map<string, T[]>();
 	for (const resource of resources) {
-		if (!resource.parentResourceId) continue;
-		const current = children.get(resource.parentResourceId) ?? [];
+		const parent = parentOf(resource);
+		if (!parent) continue;
+		const current = children.get(parent) ?? [];
 		current.push(resource);
-		children.set(resource.parentResourceId, current);
+		children.set(parent, current);
 	}
 	const build = (
 		resource: T
@@ -51,5 +68,5 @@ function resourceTree<
 		...resource,
 		children: (children.get(resource.resourceId) ?? []).map(build)
 	});
-	return resources.filter(resource => !resource.parentResourceId).map(build);
+	return resources.filter(resource => !parentOf(resource)).map(build);
 }

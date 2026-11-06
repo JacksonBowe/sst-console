@@ -69,7 +69,7 @@ describe("SST state", () => {
 		expect(redacted).toContain("[REDACTED]");
 	});
 
-	it("normalizes supported components, not their Pulumi children", () => {
+	it("normalizes components and their Pulumi children", () => {
 		const normalized = normalizeSstState(
 			parseSstState(JSON.stringify(fixture))
 		);
@@ -112,7 +112,7 @@ describe("SST state", () => {
 				})
 			])
 		);
-		expect(normalized.resources).toHaveLength(9);
+		expect(normalized.resources).toHaveLength(16);
 		const realtime = normalized.resources.find(
 			resource => resource.name === "Realtime"
 		);
@@ -143,5 +143,119 @@ describe("SST state", () => {
 		expect(busSubscriber?.parentResourceId).toBe(bus?.resourceId);
 		expect(bucketNotification?.parentResourceId).toBe(bucket?.resourceId);
 		expect(externalSubscriber?.parentResourceId).toBeUndefined();
+		expect(
+			normalized.resources.find(
+				resource => resource.name === "UploadsBucket"
+			)?.parentResourceId
+		).toBe(bucket?.resourceId);
+	});
+
+	it("projects provider-neutral resources while hiding stack and providers", () => {
+		const stack = "urn:pulumi:prod::app::pulumi:pulumi:Stack::app";
+		const bucket = "urn:pulumi:prod::app::sst:aws:Bucket::Bucket";
+		const resource = (
+			urn: string,
+			type: string,
+			parent?: string,
+			custom?: boolean
+		) => ({ urn, type, parent, custom });
+		const state = parseSstState(
+			JSON.stringify({
+				version: 3,
+				checkpoint: {
+					latest: {
+						resources: [
+							resource(stack, "pulumi:pulumi:Stack"),
+							resource(
+								"urn:provider",
+								"pulumi:providers:neon",
+								undefined,
+								true
+							),
+							resource(bucket, "sst:aws:Bucket", stack, false),
+							resource(
+								"urn:bucket-child",
+								"aws:s3/bucket:Bucket",
+								bucket,
+								true
+							),
+							resource(
+								"urn:policy",
+								"aws:s3/bucketPolicy:BucketPolicy",
+								bucket,
+								true
+							),
+							resource(
+								"urn:queue",
+								"aws:sqs/queue:Queue",
+								stack,
+								true
+							),
+							resource(
+								"urn:neon",
+								"neon:index/branch:Branch",
+								stack,
+								true
+							),
+							resource(
+								"urn:component",
+								"example:index:Component",
+								stack,
+								false
+							),
+							resource(
+								"urn:nested",
+								"stripe:index/product:Product",
+								"urn:component",
+								true
+							)
+						]
+					}
+				}
+			})
+		);
+		const result = normalizeSstState(state).resources;
+		expect(result).toHaveLength(7);
+		const parent = result.find(item => item.urn === bucket)!;
+		expect(parent.resourceKind).toBe("component");
+		expect(
+			result.find(item => item.urn === "urn:policy")?.parentResourceId
+		).toBe(parent.resourceId);
+		expect(
+			result.find(item => item.urn === "urn:neon")?.parentResourceId
+		).toBeUndefined();
+		expect(
+			result.find(item => item.urn === "urn:component")?.resourceKind
+		).toBe("component");
+		expect(
+			result.find(item => item.urn === "urn:nested")?.parentResourceId
+		).toBe(result.find(item => item.urn === "urn:component")?.resourceId);
+	});
+
+	it("does not infer an owner when Realtime names match multiple components", () => {
+		const resources = [
+			{
+				urn: "urn:pulumi:prod::app::sst:aws:Realtime::Chat",
+				type: "sst:aws:Realtime"
+			},
+			{
+				urn: "urn:pulumi:prod::app::sst:aws:Realtime::ChatSubscriber",
+				type: "sst:aws:Realtime"
+			},
+			{
+				urn: "urn:pulumi:prod::app::sst:aws:RealtimeLambdaSubscriber::ChatSubscriberSubscriber",
+				type: "sst:aws:RealtimeLambdaSubscriber"
+			}
+		];
+		const state = parseSstState(
+			JSON.stringify({
+				version: 3,
+				checkpoint: { latest: { resources } }
+			})
+		);
+		const subscriber = normalizeSstState(state).resources.find(
+			item => item.resourceType === "sst.aws.RealtimeLambdaSubscriber"
+		);
+		expect(subscriber?.parentResourceId).toBeUndefined();
 	});
 });

@@ -55,6 +55,7 @@ export type ProjectionWrite =
 			stageName: string;
 			resource: z.output<typeof resourceSchema>;
 			now: string;
+			createdAt: string;
 	  }
 	| {
 			kind: "deleteResource";
@@ -123,6 +124,16 @@ export async function buildWrites(input: {
 		)
 	);
 	const resources = resourceResults.flatMap(result => result.data);
+	const existingResources = new Map(
+		resources.map(resource => [
+			resourceKey(
+				resource.appName,
+				resource.stageName,
+				resource.resourceId
+			),
+			resource
+		])
+	);
 
 	const writes: ProjectionWrite[] = [];
 	for (const appName of desiredApps)
@@ -140,7 +151,15 @@ export async function buildWrites(input: {
 				appName: state.appName,
 				stageName: state.stageName,
 				resource,
-				now: input.now
+				now: input.now,
+				createdAt:
+					existingResources.get(
+						resourceKey(
+							state.appName,
+							state.stageName,
+							resource.resourceId
+						)
+					)?.createdAt ?? input.now
 			});
 		}
 	}
@@ -230,7 +249,7 @@ export async function writeChunk(
 							.commit();
 					case "resource":
 						return resource
-							.upsert({
+							.put({
 								accountId,
 								appName: write.appName,
 								stageName: write.stageName,
@@ -243,9 +262,9 @@ export async function writeChunk(
 								normalizedArn: write.resource.normalizedArn,
 								name: write.resource.name,
 								summary: write.resource.summary,
+								createdAt: write.createdAt,
 								updatedAt: write.now
 							})
-							.ifNotExists({ createdAt: write.now })
 							.commit();
 					case "deleteResource":
 						return resource
