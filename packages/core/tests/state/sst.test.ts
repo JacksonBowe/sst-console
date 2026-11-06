@@ -77,6 +77,7 @@ describe("SST state", () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					resourceType: "sst.aws.Bucket",
+					resourceKind: "component",
 					name: "Uploads",
 					urn: "urn:pulumi:prod::console::sst:aws:Bucket::Uploads",
 					normalizedArn: "arn:aws:s3:::console-prod-uploads-abc123",
@@ -84,6 +85,7 @@ describe("SST state", () => {
 				}),
 				expect.objectContaining({
 					resourceType: "sst.aws.Function",
+					resourceKind: "component",
 					name: "Api",
 					normalizedArn:
 						"arn:aws:lambda:ap-southeast-2:123456789012:function:console-prod-api",
@@ -96,6 +98,7 @@ describe("SST state", () => {
 				}),
 				expect.objectContaining({
 					resourceType: "sst.aws.Dynamo",
+					resourceKind: "component",
 					name: "Users",
 					normalizedArn:
 						"arn:aws:dynamodb:ap-southeast-2:123456789012:table/console-prod-users",
@@ -224,12 +227,33 @@ describe("SST state", () => {
 		expect(
 			result.find(item => item.urn === "urn:neon")?.parentResourceId
 		).toBeUndefined();
+		expect(result.find(item => item.urn === "urn:neon")?.resourceKind).toBe(
+			"resource"
+		);
 		expect(
 			result.find(item => item.urn === "urn:component")?.resourceKind
 		).toBe("component");
 		expect(
 			result.find(item => item.urn === "urn:nested")?.parentResourceId
 		).toBe(result.find(item => item.urn === "urn:component")?.resourceId);
+	});
+
+	it("treats a non-SST entry with no custom flag as a resource", () => {
+		const state = parseSstState(
+			JSON.stringify({
+				version: 3,
+				checkpoint: {
+					latest: {
+						resources: [
+							{ urn: "urn:unknown", type: "example:index:Item" }
+						]
+					}
+				}
+			})
+		);
+		expect(normalizeSstState(state).resources[0]?.resourceKind).toBe(
+			"resource"
+		);
 	});
 
 	it("does not infer an owner when Realtime names match multiple components", () => {

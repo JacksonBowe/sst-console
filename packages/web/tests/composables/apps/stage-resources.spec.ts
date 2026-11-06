@@ -4,11 +4,46 @@ import {
 	functionResourcesFor,
 	getStageResourceCategory,
 	resourcesForStageCategory,
-	stageResourceCategoriesFor
+	stageResourceCategoriesFor,
+	stageResourceCounts
 } from "@/composables/apps/stage-resources";
 import { stageResources } from "../../fixtures/stage-resources";
 
 describe("stage resource navigation", () => {
+	it("counts nested components and resources, with support entries only as resources", () => {
+		const component = stageResources[0]!;
+		const child = {
+			...component.children[0]!,
+			resourceKind: "resource" as const
+		};
+		const nested = {
+			...component,
+			children: [
+				child,
+				{ ...component, resourceId: "nested", children: [] }
+			]
+		};
+		const standalone = { ...child, resourceId: "standalone", children: [] };
+		const support = {
+			...child,
+			resourceId: "support",
+			resourceKind: "component" as const,
+			resourceType: "sst:sst:LinkRef",
+			children: []
+		};
+		nested.children.push({ ...support, resourceId: "nested-support" });
+		const supportResource = {
+			...support,
+			resourceId: "support-resource",
+			resourceKind: "resource" as const
+		};
+		expect(
+			stageResourceCounts([nested, standalone, support, supportResource])
+		).toEqual({
+			resources: 5,
+			components: 2
+		});
+	});
 	it("lists only discovered resource categories with a supported contract", () => {
 		expect(
 			stageResourceCategoriesFor(stageResources).map(item => item.key)

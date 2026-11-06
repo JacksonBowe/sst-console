@@ -77,7 +77,7 @@ export type Resource = {
 	stageName: string;
 	resourceId: string;
 	parentResourceId?: string;
-	resourceKind: "component" | "physical";
+	resourceKind: "component" | "resource";
 	resourceType: string;
 	urn: string;
 	normalizedArn?: string;

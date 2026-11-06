@@ -107,7 +107,25 @@ describe("App", () => {
 		stateGo.mockResolvedValue({
 			data: { sourceKey: "app/console/dev.json" }
 		});
-		resourceGo.mockResolvedValue({ data: [{ resourceId: "bucket" }] });
+		resourceGo.mockResolvedValue({
+			data: [
+				{
+					resourceId: "bucket",
+					resourceKind: "resource",
+					resourceType: "aws:s3/bucket:Bucket"
+				},
+				{
+					resourceId: "link",
+					resourceKind: "component",
+					resourceType: "sst:sst:LinkRef"
+				},
+				{
+					resourceId: "function",
+					resourceKind: "component",
+					resourceType: "sst.aws.Function"
+				}
+			]
+		});
 
 		await App.Stage.create(stage);
 		await App.Stage.update({
@@ -132,7 +150,7 @@ describe("App", () => {
 					createdAt: stage.createdAt,
 					updatedAt: stage.updatedAt,
 					state: { sourceKey: "app/console/dev.json" },
-					resourceCount: 1
+					resourceCount: 2
 				}
 			]
 		});
@@ -148,7 +166,7 @@ describe("App", () => {
 						createdAt: stage.createdAt,
 						updatedAt: stage.updatedAt,
 						state: { sourceKey: "app/console/dev.json" },
-						resourceCount: 1
+						resourceCount: 2
 					}
 				]
 			}

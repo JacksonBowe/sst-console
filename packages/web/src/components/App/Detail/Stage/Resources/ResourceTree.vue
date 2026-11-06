@@ -46,6 +46,7 @@
 <script setup lang="ts">
 import type { ResourceTree } from "@sst-console/sdk";
 import { computed, ref } from "vue";
+import { isSupportResource } from "@/composables/apps/stage-resources";
 
 import ResourceTreeItem from "./ResourceTreeItem.vue";
 
@@ -63,17 +64,14 @@ const emit = defineEmits<{
 
 const treeElement = ref<HTMLElement>();
 const supportExpanded = ref(false);
-const supportTypes = new Set([
-	"sst:sst:LinkRef",
-	"sst:sst:Linkable",
-	"sst:sst:Secret",
-	"sst:sst:DevCommand",
-	"sst:sst:Version"
-]);
+const nameOrder = new Intl.Collator(undefined, {
+	sensitivity: "base",
+	numeric: true
+});
 const groups = computed(() => {
 	const result = new Map<string, ResourceTree[]>();
 	for (const resource of props.resources) {
-		const label = supportTypes.has(resource.resourceType)
+		const label = isSupportResource(resource)
 			? "SST support entries"
 			: resource.resourceType.startsWith("sst.aws.")
 				? "SST components"
@@ -96,7 +94,12 @@ const groups = computed(() => {
 		)
 		.map(([label, resources]) => ({
 			label,
-			resources,
+			resources: resources.sort((a, b) =>
+				nameOrder.compare(
+					a.name || a.resourceId,
+					b.name || b.resourceId
+				)
+			),
 			support: label === "SST support entries"
 		}));
 });

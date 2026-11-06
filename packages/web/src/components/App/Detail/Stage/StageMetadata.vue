@@ -31,7 +31,11 @@
 			</div>
 			<div>
 				<div class="stage-metadata__label">Resources</div>
-				<div>{{ resourceCount }}</div>
+				<div>{{ counts.resources }}</div>
+			</div>
+			<div>
+				<div class="stage-metadata__label">Components</div>
+				<div>{{ counts.components }}</div>
 			</div>
 			<div>
 				<div class="stage-metadata__label">Monitoring</div>
@@ -56,21 +60,15 @@
 </template>
 
 <script setup lang="ts">
-import type { ResourceTree, Stage } from "@sst-console/sdk";
+import type { Stage } from "@sst-console/sdk";
 import { computed } from "vue";
 
 import { formatDateTime } from "@/components/ui/format";
+import { stageResourceCounts } from "@/composables/apps/stage-resources";
 
 const props = defineProps<{ stage: Stage }>();
 
-const resourceCount = computed(() => countResources(props.stage.resources));
-
-function countResources(resources: ResourceTree[]): number {
-	return resources.reduce(
-		(count, resource) => count + 1 + countResources(resource.children),
-		0
-	);
-}
+const counts = computed(() => stageResourceCounts(props.stage.resources));
 
 function formatTimestamp(value: string) {
 	if (Number.isNaN(new Date(value).getTime())) return "Unavailable";
@@ -81,7 +79,7 @@ function formatTimestamp(value: string) {
 <style scoped lang="scss">
 .stage-metadata {
 	display: grid;
-	grid-template-columns: repeat(6, minmax(0, 1fr));
+	grid-template-columns: repeat(7, minmax(0, 1fr));
 	gap: 1rem;
 }
 

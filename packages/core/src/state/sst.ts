@@ -64,7 +64,7 @@ export type SstState = z.output<typeof checkpointSchema>;
 export type NormalizedResource = {
 	resourceId: string;
 	parentResourceId?: string;
-	resourceKind: "component" | "physical";
+	resourceKind: "component" | "resource";
 	resourceType: string;
 	urn: string;
 	normalizedArn?: string;
@@ -249,7 +249,7 @@ function normalizeResource(
 		{
 			resourceId: resourceIdFor(component.urn),
 			parentResourceId,
-			resourceKind: component.custom === false ? "component" : "physical",
+			resourceKind: component.custom === false ? "component" : "resource",
 			resourceType: component.type,
 			urn: component.urn,
 			name: nameFromUrn(component.urn),
@@ -290,7 +290,7 @@ function findChild(
 	);
 }
 
-/** Builds the common fields for a physical resource projection. */
+/** Builds an SST component projection with its underlying AWS summary. */
 function baseResource(
 	component: SstState["checkpoint"]["latest"]["resources"][number],
 	resourceType: NormalizedResource["resourceType"],
@@ -301,7 +301,7 @@ function baseResource(
 	return {
 		resourceId: resourceIdFor(component.urn),
 		parentResourceId,
-		resourceKind: "physical",
+		resourceKind: "component",
 		resourceType,
 		urn: component.urn,
 		normalizedArn: arn.trim(),

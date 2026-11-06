@@ -13,7 +13,7 @@ const maxTransactionBytes = 3 * 1024 * 1024;
 const resourceSchema = z.object({
 	resourceId: z.string().min(1),
 	parentResourceId: z.string().optional(),
-	resourceKind: z.enum(["component", "physical"]),
+	resourceKind: z.enum(["component", "resource"]),
 	resourceType: z.string(),
 	urn: z.string(),
 	normalizedArn: z.string().optional(),

@@ -115,7 +115,7 @@ export const resourceEntity = new Entity({
 		resourceId: { type: "string", required: true },
 		parentResourceId: { type: "string" },
 		resourceKind: {
-			type: ["component", "physical"] as const,
+			type: ["component", "resource"] as const,
 			required: true
 		},
 		resourceType: { type: "string", required: true },
@@ -125,7 +125,7 @@ export const resourceEntity = new Entity({
 		summary: { type: "any" },
 		createdAt: { type: "string", required: true },
 		updatedAt: { type: "string", required: true },
-		schemaVersion: { type: "string", default: "2" }
+		schemaVersion: { type: "string", default: "3" }
 	},
 	indexes: {
 		resource: {

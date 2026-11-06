@@ -24,6 +24,39 @@ function resource(
 }
 
 describe("resource tree groups", () => {
+	it("sorts roots naturally within each heading without reordering children", () => {
+		const wrapper = mount(ResourceTree, {
+			props: {
+				resources: [
+					resource("zeta", "sst.aws.Function", [
+						resource("z-child", "aws:role:Role"),
+						resource("a-child", "aws:role:Role")
+					]),
+					resource("Pool10", "aws:cognito:Pool"),
+					resource("Alpha", "sst.aws.Function"),
+					resource("pool2", "aws:cognito:Pool"),
+					resource("LinkZ", "sst:sst:LinkRef"),
+					resource("LinkA", "sst:sst:LinkRef")
+				],
+				expandedIds: new Set(["zeta"]),
+				searching: true
+			},
+			global: { stubs: { QIcon: true } }
+		});
+		expect(
+			wrapper.findAll('[role="treeitem"]').map(item => item.text())
+		).toEqual([
+			"Alpha",
+			"zeta",
+			"z-child",
+			"a-child",
+			"pool2",
+			"Pool10",
+			"LinkA",
+			"LinkZ"
+		]);
+	});
+
 	it("groups root resources and keeps support entries collapsed until searched", () => {
 		const wrapper = mount(ResourceTree, {
 			props: {

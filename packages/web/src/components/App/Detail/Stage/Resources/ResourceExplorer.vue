@@ -3,9 +3,15 @@
 		<div
 			class="row items-center justify-between q-pa-md q-pb-sm q-gutter-sm"
 		>
-			<div class="text-subtitle1 text-weight-medium"
-				>Entries ({{ resourceCount }})</div
-			>
+			<div>
+				<div class="text-subtitle1 text-weight-medium"
+					>Resource inspector</div
+				>
+				<div class="text-caption text-secondary">
+					{{ counts.resources }} resources ·
+					{{ counts.components }} components
+				</div>
+			</div>
 			<q-input
 				v-model="search"
 				dense
@@ -48,6 +54,7 @@
 <script setup lang="ts">
 import type { ResourceTree } from "@sst-console/sdk";
 import { computed, ref } from "vue";
+import { stageResourceCounts } from "@/composables/apps/stage-resources";
 
 import ResourceDetails from "./ResourceDetails.vue";
 import ResourceTreeView from "./ResourceTree.vue";
@@ -58,7 +65,7 @@ const search = ref("");
 const expandedIds = ref(new Set<string>());
 const selectedResource = ref<ResourceTree>();
 
-const resourceCount = computed(() => countResources(props.resources));
+const counts = computed(() => stageResourceCounts(props.resources));
 const filteredResources = computed(() =>
 	filterResources(props.resources, search.value)
 );
@@ -75,13 +82,6 @@ function toggle(resourceId: string) {
 	if (next.has(resourceId)) next.delete(resourceId);
 	else next.add(resourceId);
 	expandedIds.value = next;
-}
-
-function countResources(resources: ResourceTree[]): number {
-	return resources.reduce(
-		(count, resource) => count + 1 + countResources(resource.children),
-		0
-	);
 }
 
 function resourceMatches(resource: ResourceTree, query: string) {

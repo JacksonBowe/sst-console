@@ -1,5 +1,33 @@
 import type { ResourceTree } from "@sst-console/sdk";
 
+const supportTypes = new Set([
+	"sst:sst:LinkRef",
+	"sst:sst:Linkable",
+	"sst:sst:Secret",
+	"sst:sst:DevCommand",
+	"sst:sst:Version"
+]);
+
+export function isSupportResource(resource: ResourceTree): boolean {
+	return supportTypes.has(resource.resourceType);
+}
+
+export function stageResourceCounts(resources: ResourceTree[]) {
+	const entries = flattenResources(resources);
+	return {
+		resources: entries.filter(
+			resource =>
+				resource.resourceKind === "resource" ||
+				isSupportResource(resource)
+		).length,
+		components: entries.filter(
+			resource =>
+				resource.resourceKind === "component" &&
+				!isSupportResource(resource)
+		).length
+	};
+}
+
 export const stageResourceCategories = [
 	{
 		key: "functions",

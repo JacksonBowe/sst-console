@@ -152,6 +152,17 @@ event access patterns are described in [State Update history](../state-update-hi
   user-run migrations; do not add old-shape aliases or dual reads/writes.
 - The user performs database and cloud actions.
 
+### Resource classification migration
+
+Resource schema version `3` classifies SST Function, Bucket, and Dynamo rows as
+`component`, and uses `resource` instead of `physical` for Pulumi resources.
+After deploying this change, the user must run **Sync all** on the Accounts page
+to reproject each included Stage from its current SST State. No table or index
+changes are required. Until a Stage is synced, its counts and Function monitoring
+may be incorrect. Excluded Stages are not projected; sync them if included later.
+Non-SST checkpoint entries without Pulumi's `custom` flag are classified as
+resources because their component status is unknown.
+
 ## Adding an access pattern
 
 Before implementation, document the caller, inputs, sort order, expected

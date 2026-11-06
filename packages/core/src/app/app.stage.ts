@@ -135,6 +135,16 @@ export async function summary(stage: Stage) {
 		createdAt: stage.createdAt,
 		updatedAt: stage.updatedAt,
 		state: state.data ?? null,
-		resourceCount: resources.data.length
+		resourceCount: resources.data.filter(
+			resource =>
+				resource.resourceKind === "resource" ||
+				[
+					"sst:sst:LinkRef",
+					"sst:sst:Linkable",
+					"sst:sst:Secret",
+					"sst:sst:DevCommand",
+					"sst:sst:Version"
+				].includes(resource.resourceType)
+		).length
 	};
 }

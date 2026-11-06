@@ -37,7 +37,7 @@ export function reconciliationAction(
 	return hasSubscriptions ? "disconnect" : "noop";
 }
 
-/** Derives a Lambda log-group target from a physical SST Function resource. */
+/** Derives a Lambda log-group target from an SST Function component. */
 export function lambdaFromResource(resource: {
 	accountId: string;
 	appName: string;
@@ -47,7 +47,7 @@ export function lambdaFromResource(resource: {
 	normalizedArn?: string;
 }): LambdaResource | undefined {
 	if (
-		resource.resourceKind !== "physical" ||
+		resource.resourceKind !== "component" ||
 		resource.resourceType !== "sst.aws.Function" ||
 		!resource.normalizedArn
 	)
