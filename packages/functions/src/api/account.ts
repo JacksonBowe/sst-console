@@ -3,6 +3,7 @@ import { zValidator } from "@console/core/error";
 import * as Account from "@console/core/account";
 import * as Connection from "@console/core/connection";
 import * as State from "@console/core/state";
+import { Stage } from "@console/core/app";
 import { AccountSyncPolicySchema } from "@console/core/connection";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -14,6 +15,21 @@ const AccountIdParamSchema = z.object({
 const StateResourcesParamSchema = AccountIdParamSchema.extend({
 	appName: z.string().min(1),
 	stageName: z.string().min(1)
+});
+
+const StateBackfillParamSchema = AccountIdParamSchema.extend({
+	appName: z
+		.string()
+		.min(1)
+		.regex(/^[^/]+$/),
+	stageName: z
+		.string()
+		.min(1)
+		.regex(/^[^/]+$/)
+});
+
+const StateProcessParamSchema = StateBackfillParamSchema.extend({
+	updateId: z.string().min(1)
 });
 
 const AccountSyncPolicyJsonSchema = z.object({
@@ -97,6 +113,43 @@ export const accountRoutes = new Hono()
 		"/:accountId/state/:appName/:stageName/resources",
 		zValidator("param", StateResourcesParamSchema),
 		async c => c.json(await State.inspectState(c.req.valid("param")))
+	)
+	.post(
+		"/:accountId/state/:appName/:stageName/backfill",
+		zValidator("param", StateBackfillParamSchema),
+		async c => c.json(await State.backfill(c.req.valid("param")))
+	)
+	.get(
+		"/:accountId/state/:appName/:stageName/updates",
+		zValidator("param", StateBackfillParamSchema),
+		async c => {
+			const input = c.req.valid("param");
+			await Stage.assertStageOwnership(input);
+			return c.json(await State.Update.list(input));
+		}
+	)
+	.post(
+		"/:accountId/state/:appName/:stageName/updates/:updateId/process",
+		zValidator("param", StateProcessParamSchema),
+		async c => c.json(await State.processHistory(c.req.valid("param")))
+	)
+	.get(
+		"/:accountId/state/:appName/:stageName/snapshots",
+		zValidator("param", StateBackfillParamSchema),
+		async c => {
+			const input = c.req.valid("param");
+			await Stage.assertStageOwnership(input);
+			return c.json(await State.Snapshot.list(input));
+		}
+	)
+	.get(
+		"/:accountId/state/:appName/:stageName/event-logs",
+		zValidator("param", StateBackfillParamSchema),
+		async c => {
+			const input = c.req.valid("param");
+			await Stage.assertStageOwnership(input);
+			return c.json(await State.EventLog.list(input));
+		}
 	)
 	.post(
 		"/:accountId/sync",

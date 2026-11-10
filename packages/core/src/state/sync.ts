@@ -14,6 +14,7 @@ import { parseStateKey, stateObjectKey } from "./keys";
 import { remove, upsertEntry, type StateObject } from "./discovery";
 import { fetchState, normalizeSstState, type NormalizedResource } from "./sst";
 import { isMissingObject } from "../util/s3";
+import { stateErrors } from "./errors";
 
 /** Syncs current State into discovery, App projections, and State metadata. */
 export const sync = fn(
@@ -161,10 +162,9 @@ async function fetchProjection(
 		parsed.checkpoint.latest.manifest?.time ??
 		new Date().toISOString();
 	if (!z.iso.datetime({ offset: true }).safeParse(timestamp).success)
-		throw new Error("Invalid SST state timestamp");
+		throw stateErrors.invalidTimestamp();
 	const date = new Date(timestamp);
-	if (Number.isNaN(date.getTime()))
-		throw new Error("Invalid SST state timestamp");
+	if (Number.isNaN(date.getTime())) throw stateErrors.invalidTimestamp();
 	const sourceUpdatedAt = date.toISOString();
 	return {
 		...state,

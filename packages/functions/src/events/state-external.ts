@@ -55,7 +55,7 @@ export async function handler(event: S3StateEvent): Promise<void> {
 				sequencer
 			});
 		} else if (stateKey.startsWith("snapshot/")) {
-			// Snapshot processing is a placeholder; current State refresh runs separately.
+			// The artifact locator and current State refresh run separately.
 			await bus.publish(
 				Resource.Bus,
 				State.Events.SnapshotCreated,

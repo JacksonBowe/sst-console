@@ -1,0 +1,15 @@
+info:
+    name: RecoverAccounts
+    type: http
+    seq: 5
+
+http:
+    method: POST
+    url: "{{ApiBase}}/accounts/recover"
+    auth: inherit
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5

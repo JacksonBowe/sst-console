@@ -18,11 +18,26 @@ export function parseUpdateKey(
 ):
 	| { appName: string; stageName: string; updateId: string; key: string }
 	| undefined {
-	const match = /^update\/([^/]+)\/([^/]+)\/([^/]+)\.json$/.exec(key);
-	if (!match) return;
-	const [appName, stageName, updateId] = match.slice(1);
-	if (!appName || !stageName || !updateId) return;
+	const artifact = parseArtifactKey(key);
+	if (artifact?.kind !== "update") return;
+	const { appName, stageName, updateId } = artifact;
 	return { appName, stageName, updateId, key };
+}
+
+/** Parses an Update, Snapshot, or Event Log artifact key. */
+export function parseArtifactKey(key: string) {
+	const match =
+		/^(update|snapshot|eventlog)\/([^/]+)\/([^/]+)\/([^/]+)\.json$/.exec(
+			key
+		);
+	if (!match) return;
+	return {
+		kind: match[1] as "update" | "snapshot" | "eventlog",
+		appName: match[2]!,
+		stageName: match[3]!,
+		updateId: match[4]!,
+		key
+	};
 }
 
 /** Constructs the S3 key for an SST Update artifact. */

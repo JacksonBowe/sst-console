@@ -11,7 +11,18 @@ const source = z.object({
 export const Events = {
 	UpdateCreated: defineEvent(
 		"state.update.created",
-		source.extend({ sequencer: z.string().regex(/^[0-9A-F]{256}$/) })
+		source
+			.extend({
+				sequencer: z
+					.string()
+					.regex(/^[0-9A-F]{256}$/)
+					.optional(),
+				historical: z.boolean().optional()
+			})
+			.refine(
+				input =>
+					input.historical === true || input.sequencer !== undefined
+			)
 	),
 	SnapshotCreated: defineEvent("state.snapshot.created", source),
 	StateUpdated: defineEvent("state.updated", source),

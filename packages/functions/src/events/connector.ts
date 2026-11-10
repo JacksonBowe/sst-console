@@ -34,12 +34,12 @@ export const handler: Handler<
 			return response(403, { code: "caller_account_mismatch" });
 		}
 
-		const connectorInput = input as Account.Connector.RegisterInput;
+		const connectorInput = input as Account.Registration.RegisterInput;
 		if (connectorInput.requestType === "Delete")
 			await updateEventBusPermission(connectorInput);
 		const account = await withActor(
 			{ type: "system", properties: {} },
-			() => Account.Connector.register(connectorInput)
+			() => Account.Registration.register(connectorInput)
 		);
 		if (connectorInput.requestType !== "Delete")
 			await updateEventBusPermission(connectorInput);
@@ -62,7 +62,7 @@ export const handler: Handler<
 };
 
 async function updateEventBusPermission(
-	input: Account.Connector.RegisterInput
+	input: Account.Registration.RegisterInput
 ): Promise<void> {
 	const client = new EventBridgeClient({});
 	const statementId = `SSTConsoleAccount${input.accountId}`;

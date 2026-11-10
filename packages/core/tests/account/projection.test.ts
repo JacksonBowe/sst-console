@@ -52,6 +52,10 @@ vi.mock("../../src/state/state", () => ({
 	removeStageHistory
 }));
 vi.mock("../../src/account/connector", () => ({ connect: vi.fn() }));
+vi.mock("../../src/connection", () => ({}));
+vi.mock("../../src/state/update", () => ({}));
+vi.mock("../../src/state/snapshot", () => ({}));
+vi.mock("../../src/state/event-log", () => ({}));
 vi.mock("../../src/issue/monitoring", () => ({
 	removeStageMonitoring: vi.fn()
 }));

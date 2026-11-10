@@ -7,13 +7,98 @@ vi.mock("sst", () => ({
 	}
 }));
 
-const { parseSstUpdate, normalizeSequencer, upsert } =
+const { parseSstUpdate, normalizeSequencer, upsert, update } =
 	await import("../../src/state/update");
 const { dynamo } = await import("../../src/db/client");
 const { db } = await import("../../src/db");
+const stage = {
+	accountId: "123456789012",
+	appName: "app",
+	stageName: "dev",
+	region: "us-east-1",
+	issueMonitoringEnabled: false,
+	createdAt: "2026-01-01T00:00:00Z",
+	updatedAt: "2026-01-01T00:00:00Z"
+};
 
 describe("SST update ingestion", () => {
 	afterEach(() => vi.restoreAllMocks());
+
+	it("updates optional fields and removes cleared resource counts", async () => {
+		const send = vi.spyOn(dynamo, "send").mockResolvedValue({} as never);
+		const key = { appName: "app", stageName: "dev", updateId: "id" };
+		await update({
+			...key,
+			comparisonStatus: "unavailable",
+			resourceCounts: null
+		});
+		const command = send.mock.calls[0]![0] as any;
+		expect(command.input.UpdateExpression).toContain("REMOVE");
+		expect(Object.values(command.input.ExpressionAttributeNames)).toContain(
+			"resourceCounts"
+		);
+		expect(() => update(key)).toThrow(
+			"At least one State Update field must be updated"
+		);
+	});
+
+	it("reports missing Update timestamps as a State domain error", async () => {
+		await expect(
+			upsert({
+				accountId: "123456789012",
+				appName: "app",
+				stageName: "dev",
+				updateId: "id",
+				sourceBucket: "bucket",
+				sourceKey: "update/app/dev/id.json",
+				sequencer: normalizeSequencer("1")!,
+				observedAt: "2026-01-01T00:00:00Z",
+				sstVersion: "4",
+				command: "deploy",
+				errors: []
+			})
+		).rejects.toMatchObject({
+			code: "state.update_timestamp_missing",
+			status: 500
+		});
+	});
+
+	it("reports a failed live Update write as a State domain error", async () => {
+		vi.spyOn(dynamo, "send").mockRejectedValue(
+			Object.assign(new Error("transaction cancelled"), {
+				name: "TransactionCanceledException",
+				CancellationReasons: [
+					{ Code: "None" },
+					{ Code: "ConditionalCheckFailed" }
+				]
+			}) as never
+		);
+		vi.spyOn(db.entities.stage, "get").mockReturnValue({
+			go: async () => ({ data: stage })
+		} as never);
+		vi.spyOn(db.entities.stateUpdate, "get").mockReturnValue({
+			go: async () => ({ data: null })
+		} as never);
+		await expect(
+			upsert({
+				accountId: "123456789012",
+				appName: "app",
+				stageName: "dev",
+				updateId: "id",
+				sourceBucket: "bucket",
+				sourceKey: "update/app/dev/id.json",
+				sequencer: normalizeSequencer("1")!,
+				observedAt: "2026-01-01T00:00:00Z",
+				timeStarted: "2026-01-01T00:00:00Z",
+				sstVersion: "4",
+				command: "deploy",
+				errors: []
+			})
+		).rejects.toMatchObject({
+			code: "state.update_persistence_failed",
+			status: 500
+		});
+	});
 
 	it("atomically guards the update by sequencer, source, and Stage ownership", async () => {
 		const send = vi.spyOn(dynamo, "send").mockResolvedValue({} as never);
@@ -83,11 +168,17 @@ describe("SST update ingestion", () => {
 			return {};
 		}) as never);
 		vi.spyOn(db.entities.stage, "get").mockReturnValue({
-			go: async () => ({ data: { accountId: "123456789012" } })
+			go: async () => ({ data: stage })
 		} as never);
 		vi.spyOn(db.entities.stateUpdate, "get").mockReturnValue({
 			go: async () => ({
 				data: {
+					accountId: stage.accountId,
+					appName: stage.appName,
+					stageName: stage.stageName,
+					updateId: "id",
+					observedAt: "2026-01-01T00:00:00Z",
+					createdAt: "2026-01-01T00:00:00Z",
 					sequencer: normalizeSequencer("10"),
 					sourceBucket: "bucket",
 					sourceKey: "update/app/dev/id.json"

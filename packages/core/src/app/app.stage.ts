@@ -117,6 +117,16 @@ export const find = fn(StageKeySchema, async input => {
 	return result.data ? StageSchema.parse(result.data) : null;
 });
 
+/** Ensures a Stage belongs to the requested Workload Account. */
+export const assertStageOwnership = fn(
+	StageKeySchema.extend({ accountId: AccountIdSchema }),
+	async input => {
+		const stage = await find(input);
+		if (stage?.accountId !== input.accountId)
+			throw appErrors.stageNotFound();
+	}
+);
+
 /** Returns summary data used by App listings. */
 export async function summary(stage: Stage) {
 	const [state, resources] = await Promise.all([

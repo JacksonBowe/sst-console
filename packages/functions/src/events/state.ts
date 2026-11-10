@@ -32,7 +32,8 @@ export const handler = bus.subscriber(
 							appName: update.appName,
 							stageName: update.stageName,
 							updateId: update.updateId,
-							sequencer: event.properties.sequencer
+							sequencer: event.properties.sequencer,
+							replay: event.properties.historical
 						})
 					);
 					return;
@@ -56,14 +57,14 @@ export const handler = bus.subscriber(
 				}
 				case State.Events.SnapshotCreated.type:
 					console.log(
-						"State Snapshot processing not implemented",
-						event.properties
+						"State Snapshot ingestion complete",
+						await State.Snapshot.receiveSnapshot(event.properties)
 					);
 					return;
 				case State.Events.EventLogCreated.type:
 					console.log(
-						"State Event Log processing not implemented",
-						event.properties
+						"State Event Log ingestion complete",
+						await State.EventLog.receiveEventLog(event.properties)
 					);
 			}
 		})

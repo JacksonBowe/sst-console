@@ -55,5 +55,103 @@ export const stateErrors = {
 		new NotFoundError(
 			"state.update_not_found",
 			"SST State Update was not found"
+		),
+	/** Reports malformed or incomplete Update artifacts. */
+	updateTimestampMissing: () =>
+		new ServerError(
+			"state.update_timestamp_missing",
+			"State Update has no timestamp"
+		),
+	updateEmpty: () =>
+		new ServerError("state.update_empty", "Update object is empty"),
+	updateInvalid: () =>
+		new ServerError("state.update_invalid", "Invalid Update artifact"),
+	/** Reports failure to persist live or historical Updates. */
+	updatePersistenceFailed: () =>
+		new ServerError(
+			"state.update_persistence_failed",
+			"Unable to persist State Update"
+		),
+	historicalUpdatePersistenceFailed: () =>
+		new ServerError(
+			"state.historical_update_persistence_failed",
+			"Unable to persist historical State Update"
+		),
+	/** Reports invalid or inaccessible Snapshot observations. */
+	snapshotEmpty: () =>
+		new ServerError("state.snapshot_empty", "Snapshot object is empty"),
+	snapshotResourcesMissing: () =>
+		new ServerError(
+			"state.snapshot_resources_missing",
+			"Snapshot has no resource list"
+		),
+	snapshotTimestampMissing: () =>
+		new ServerError(
+			"state.snapshot_timestamp_missing",
+			"Snapshot has no LastModified timestamp"
+		),
+	snapshotMissingAfterWrite: () =>
+		new ServerError(
+			"state.snapshot_missing_after_write",
+			"State Snapshot not found after write"
+		),
+	snapshotPersistenceFailed: () =>
+		new ServerError(
+			"state.snapshot_persistence_failed",
+			"Unable to persist State Snapshot"
+		),
+	snapshotHistoryReconciliationFailed: () =>
+		new ServerError(
+			"state.snapshot_history_reconciliation_failed",
+			"Unable to reconcile State Snapshot history"
+		),
+	/** Reports Event Log locator failures. */
+	eventLogPersistenceFailed: () =>
+		new ServerError(
+			"state.event_log_persistence_failed",
+			"Unable to persist State Event Log"
+		),
+	eventPersistenceFailed: () =>
+		new ServerError(
+			"state.event_persistence_failed",
+			"Unable to persist State Events"
+		),
+	eventLogTimestampMissing: () =>
+		new ServerError(
+			"state.event_log_timestamp_missing",
+			"Event Log has no LastModified timestamp"
+		),
+	/** Reports incomplete manual backfill setup or listing. */
+	backfillBucketMissing: () =>
+		new ServerError(
+			"state.backfill_bucket_missing",
+			"Account is not connected to a State bucket"
+		),
+	backfillListingIncomplete: () =>
+		new ServerError(
+			"state.backfill_listing_incomplete",
+			"Incomplete artifact listing"
+		),
+	/** Reports malformed SST checkpoints. */
+	invalidJson: () =>
+		new ServerError(
+			"state.invalid_json",
+			"SST state object is not valid JSON"
+		),
+	unsupportedCheckpoint: () =>
+		new ServerError(
+			"state.unsupported_checkpoint",
+			"SST state object is not a supported Pulumi checkpoint"
+		),
+	invalidTimestamp: () =>
+		new ServerError(
+			"state.invalid_timestamp",
+			"Invalid SST state timestamp"
+		),
+	/** Avoid replaying untracked, excluded, or differently owned Stages. */
+	stageNotTracked: () =>
+		new NotFoundError(
+			"state.stage_not_tracked",
+			"Stage is not tracked in this account"
 		)
 };

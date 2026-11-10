@@ -2,8 +2,9 @@
 
 `ConsoleData` indexes Console-safe SST state; raw state remains in S3. State owns
 artifact references and queryable metadata. App owns App, Stage, and Resource
-projections. State ingestion lives in `packages/core/src/state/`; `update.ts`
-handles State Update ingestion, contracts, and CRUD. See
+projections. State ingestion lives in `packages/core/src/state/`; `update.ts`,
+`snapshot.ts`, and `event-log.ts` own their respective contracts, persistence,
+and artifact handling. See
 [DynamoDB access patterns](architecture/dynamodb.md) for persistence keys and
 [State Update history](state-update-history.md) for the history plan.
 
@@ -40,7 +41,14 @@ The State worker validates the source account and configured bucket before
 processing supported events. Update ingestion also checks connection status,
 sync policy, Stage ownership, and the source object's S3 sequencer. Only newer
 sequencers for the same bucket and key can replace an observation. Historical
-Update artifacts are not listed or replayed.
+Update artifacts are not listed or replayed during normal account sync. Live
+snapshot events persist a source locator and reconcile Resource counts and events
+from S3; event-log events persist a locator and safe operation timing. Manual
+Stage backfill lists S3 artifacts and records locators without reading artifact
+contents through `POST /accounts/{accountId}/state/{appName}/{stageName}/backfill`.
+Selected historical processing publishes the same internal events as live
+ingestion. A first-time backfill experience remains to be designed. Legacy zero-valued
+Update count attributes must not be interpreted as measured counts.
 
 Stage removal deletes State history before the Stage so failed cleanup can be
 retried. Concurrent ingestion or recreation can race cleanup and require manual

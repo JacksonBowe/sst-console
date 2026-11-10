@@ -15,6 +15,10 @@ vi.mock("../../src/db", () => ({
 	}
 }));
 vi.mock("../../src/account/connector", () => ({ connect: vi.fn() }));
+vi.mock("../../src/connection", () => ({}));
+vi.mock("../../src/state/update", () => ({}));
+vi.mock("../../src/state/snapshot", () => ({}));
+vi.mock("../../src/state/event-log", () => ({}));
 
 const Discovery = await import("../../src/state/discovery");
 const key = { accountId: "123456789012", appName: "shop", stageName: "prod" };

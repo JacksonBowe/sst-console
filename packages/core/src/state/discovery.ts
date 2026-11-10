@@ -7,9 +7,14 @@ import { stateErrors } from "./errors";
 import { connect } from "../account/connector";
 import { chunkArray } from "../util/chunk";
 import { getBootstrapBucket } from "./sst";
-import { parseStateKey, stageKey } from "./keys";
+import { parseArtifactKey, parseStateKey, stageKey } from "./keys";
 import { z } from "zod";
 import { fn } from "../util/fn";
+import * as Connection from "../connection";
+import * as Stage from "../app/app.stage";
+import * as Update from "./update";
+import * as Snapshot from "./snapshot";
+import * as EventLog from "./event-log";
 
 const maxTransactionActions = 90;
 
@@ -139,16 +144,14 @@ async function reconcileDiscovery(
 	stateBucket: string,
 	states: StateObject[]
 ) {
-	const existing = await db.entities.discoveredStage.query
-		.discovery({ accountId })
-		.go({ pages: "all" });
+	const existing = await list({ accountId });
 	const now = new Date().toISOString();
 	const desired = new Set(
 		states.map(state => stageKey(state.appName, state.stageName))
 	);
 	const writes = [
 		...states.map(state => ({ kind: "upsert" as const, state })),
-		...existing.data
+		...existing
 			.filter(
 				stage => !desired.has(stageKey(stage.appName, stage.stageName))
 			)
@@ -186,3 +189,179 @@ async function reconcileDiscovery(
 			throw stateErrors.discoveryPersistenceFailed();
 	}
 }
+
+// Error messages can contain artifact contents or credentials. Only log known
+// service error names, never arbitrary exception names or messages.
+function errorCategory(error: unknown): string {
+	const name = error instanceof Error ? error.name : "";
+	return [
+		"AccessDenied",
+		"AccessDeniedException",
+		"NoSuchKey",
+		"NoSuchBucket",
+		"ThrottlingException",
+		"TimeoutError"
+	].includes(name)
+		? name
+		: "processing_error";
+}
+
+/** Discover current S3 artifacts for one tracked, included Stage. */
+export const backfill = fn(
+	z.object({
+		accountId: AccountIdSchema,
+		appName: z
+			.string()
+			.min(1)
+			.regex(/^[^/]+$/),
+		stageName: z
+			.string()
+			.min(1)
+			.regex(/^[^/]+$/)
+	}),
+	async ({ accountId, appName, stageName }) => {
+		const startedAt = Date.now();
+		const stageKey = { appName, stageName };
+		const context = { accountId, ...stageKey };
+		console.log("State history backfill started", context);
+		const { account, connection } = await connect(accountId);
+		if (account.status !== "connected" || !account.stateBucket)
+			throw stateErrors.backfillBucketMissing();
+		const policy = await Connection.getSyncPolicy(accountId);
+		if (!Connection.Policy.includesStage(policy, stageKey))
+			throw stateErrors.stageNotTracked();
+		await Stage.assertStageOwnership({ accountId, ...stageKey });
+		const stateBucket = account.stateBucket;
+		const s3 = new S3Client({
+			credentials: connection.credentials,
+			region: account.region
+		});
+		const objects: Array<{ key: string; lastModified: string }> = [];
+		// Finish every listing before processing; incomplete inventory is a failed request.
+		for (const kind of ["update", "snapshot", "eventlog"]) {
+			const prefix = `${kind}/${appName}/${stageName}/`;
+			let token: string | undefined;
+			let listed = 0;
+			console.log("State history backfill listing", {
+				...context,
+				prefix
+			});
+			do {
+				let page;
+				try {
+					page = await s3.send(
+						new ListObjectsV2Command({
+							Bucket: stateBucket,
+							Prefix: prefix,
+							ContinuationToken: token
+						})
+					);
+				} catch (error) {
+					console.warn("State history backfill listing failed", {
+						...context,
+						prefix,
+						listed,
+						error: errorCategory(error)
+					});
+					throw error;
+				}
+				listed += page.Contents?.length ?? 0;
+				console.log("State history backfill listing progress", {
+					...context,
+					prefix,
+					listed
+				});
+				for (const object of page.Contents ?? []) {
+					if (object.Key)
+						objects.push({
+							key: object.Key,
+							lastModified:
+								object.LastModified?.toISOString() ?? ""
+						});
+				}
+				if (page.IsTruncated && !page.NextContinuationToken) {
+					console.warn("State history backfill listing incomplete", {
+						...context,
+						prefix,
+						listed
+					});
+					throw stateErrors.backfillListingIncomplete();
+				}
+				token = page.NextContinuationToken;
+			} while (token);
+		}
+		console.log("State history backfill listing complete", {
+			...context,
+			total: objects.length
+		});
+		const result = {
+			processed: 0,
+			skipped: 0,
+			failed: 0,
+			failures: [] as Array<{ key: string; reason: string }>,
+			failuresTruncated: false
+		};
+		for (const object of objects) {
+			const artifact = parseArtifactKey(object.key);
+			if (
+				!artifact ||
+				artifact.appName !== appName ||
+				artifact.stageName !== stageName
+			) {
+				result.skipped++;
+				continue;
+			}
+			const { kind, updateId } = artifact;
+			const key = { appName, stageName, updateId };
+			try {
+				if (kind !== "update" && !object.lastModified)
+					throw kind === "snapshot"
+						? stateErrors.snapshotTimestampMissing()
+						: stateErrors.eventLogTimestampMissing();
+				const now = new Date().toISOString();
+				const source = {
+					...key,
+					accountId,
+					sourceBucket: stateBucket,
+					sourceKey: object.key,
+					observedAt: now
+				};
+				const created =
+					kind === "update"
+						? await Update.create(source)
+						: kind === "snapshot"
+							? await Snapshot.create({
+									...source,
+									lastModified: object.lastModified
+								})
+							: await EventLog.create({
+									...source,
+									lastModified: object.lastModified
+								});
+				if (created) result.processed++;
+				else result.skipped++;
+			} catch (error) {
+				result.failed++;
+				console.warn("State history backfill artifact failed", {
+					...context,
+					key: object.key,
+					error: errorCategory(error)
+				});
+				if (result.failures.length < 100)
+					result.failures.push({
+						key: object.key,
+						reason: "Artifact processing failed"
+					});
+				else result.failuresTruncated = true;
+			}
+		}
+		console.log("State history backfill complete", {
+			...context,
+			processed: result.processed,
+			skipped: result.skipped,
+			failed: result.failed,
+			elapsedMs: Date.now() - startedAt
+		});
+		return result;
+	}
+);

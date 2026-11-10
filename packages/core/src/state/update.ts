@@ -20,7 +20,6 @@ import { StateKeySchema } from "./schema";
 
 const maxCommandBytes = 8 * 1024;
 const maxErrorsBytes = 64 * 1024;
-const maximumTimestamp = 9_999_999_999_999;
 
 // Public contracts accept only Console-safe metadata. Raw SST State, Pulumi
 // inputs/outputs, and event-log data must never cross this domain boundary.
@@ -44,36 +43,105 @@ export const StateUpdateInputSchema = StateKeySchema.extend({
 	errors: z.array(StateUpdateErrorSchema)
 });
 
-export const StateUpdateSchema = StateUpdateInputSchema.extend({
-	errorsSourceCount: z.number().int().nonnegative(),
-	errorsStoredCount: z.number().int().nonnegative(),
-	errorsTruncated: z.boolean(),
-	createdCount: z.number().int().nonnegative(),
-	updatedCount: z.number().int().nonnegative(),
-	deletedCount: z.number().int().nonnegative(),
-	unchangedCount: z.number().int().nonnegative(),
+export const StateUpdateSchema = StateUpdateInputSchema.partial({
+	sstVersion: true,
+	command: true,
+	errors: true
+}).extend({
+	sequencer: StateUpdateInputSchema.shape.sequencer.optional(),
+	errorsSourceCount: z.number().int().nonnegative().optional(),
+	errorsStoredCount: z.number().int().nonnegative().optional(),
+	errorsTruncated: z.boolean().optional(),
+	processedAt: z.iso.datetime().optional(),
+	comparisonStatus: z.enum(["available", "unavailable"]).optional(),
+	resourceCounts: z
+		.object({
+			created: z.number(),
+			updated: z.number(),
+			deleted: z.number(),
+			unchanged: z.number()
+		})
+		.optional(),
 	createdAt: z.iso.datetime()
 });
 
 export type StateUpdate = z.infer<typeof StateUpdateSchema>;
 
-// Update deliveries are at-least-once. Upsert makes duplicate artifacts converge
-// while keeping DynamoDB payloads bounded before they are persisted.
-/** Persists bounded Update metadata while guarding ownership and event ordering. */
-export const upsert = fn(StateUpdateInputSchema, async input => {
+/** Updates mutable fields on an existing State Update. */
+export const update = fn(
+	StateUpdateSchema.omit({
+		appName: true,
+		stageName: true,
+		updateId: true,
+		createdAt: true
+	})
+		.partial()
+		.extend({
+			...StateKeySchema.shape,
+			updateId: StateUpdateSchema.shape.updateId,
+			resourceCounts: StateUpdateSchema.shape.resourceCounts
+				.unwrap()
+				.nullable()
+				.optional()
+		})
+		.refine(
+			({
+				appName: _appName,
+				stageName: _stageName,
+				updateId: _updateId,
+				...changes
+			}) => Object.values(changes).some(value => value !== undefined),
+			"At least one State Update field must be updated"
+		),
+	async ({ appName, stageName, updateId, resourceCounts, ...changes }) => {
+		const patch = db.entities.stateUpdate.patch({
+			appName,
+			stageName,
+			updateId
+		});
+		const values = {
+			...changes,
+			...(resourceCounts != null ? { resourceCounts } : {})
+		};
+		if (resourceCounts === null) {
+			if (Object.values(values).some(value => value !== undefined))
+				await patch
+					.set(values)
+					.remove(["resourceCounts"])
+					.go({ response: "none" });
+			else
+				await patch.remove(["resourceCounts"]).go({ response: "none" });
+		} else await patch.set(values).go({ response: "none" });
+	}
+);
+
+function prepareUpdate(
+	input: Omit<z.infer<typeof StateUpdateInputSchema>, "sequencer"> & {
+		sequencer?: string;
+	}
+) {
+	if (!input.timeCompleted && !input.timeStarted)
+		throw stateErrors.updateTimestampMissing();
 	const errors = truncateErrors(input.errors);
-	const historyAt = input.timeCompleted ?? input.timeStarted;
-	if (!historyAt) throw new Error("State Update has no timestamp");
-	const update = {
+	return {
 		...input,
 		command: truncateUtf8(input.command, maxCommandBytes),
 		errors: errors.items,
 		errorsSourceCount: input.errors.length,
 		errorsStoredCount: errors.items.length,
 		errorsTruncated: errors.truncated,
-		reverseHistoryAt: reverseTimestampFor(historyAt)
+		processedAt: input.observedAt
 	};
-	const result = await db.transaction
+}
+
+async function persistUpdate(
+	input: Omit<z.infer<typeof StateUpdateInputSchema>, "sequencer"> & {
+		sequencer?: string;
+	},
+	replaySequencer?: { value?: string }
+) {
+	const update = prepareUpdate(input);
+	return db.transaction
 		.write(({ stage, stateUpdate }) => [
 			stage
 				.check({ appName: input.appName, stageName: input.stageName })
@@ -81,41 +149,70 @@ export const upsert = fn(StateUpdateInputSchema, async input => {
 				.commit(),
 			stateUpdate
 				.upsert(update)
-				.ifNotExists({
-					createdCount: 0,
-					updatedCount: 0,
-					deletedCount: 0,
-					unchangedCount: 0,
-					createdAt: input.observedAt
-				})
-				.where(
-					(a, op) =>
-						`(${op.notExists(a.sequencer)} OR (${op.eq(a.sourceBucket, input.sourceBucket)} AND ${op.eq(a.sourceKey, input.sourceKey)} AND ${op.lt(a.sequencer, input.sequencer)}))`
+				.ifNotExists({ createdAt: input.observedAt })
+				.where((a, op) =>
+					replaySequencer
+						? replaySequencer.value
+							? op.eq(a.sequencer, replaySequencer.value)
+							: op.notExists(a.sequencer)
+						: `(${op.notExists(a.sequencer)} OR (${op.eq(a.sourceBucket, input.sourceBucket)} AND ${op.eq(a.sourceKey, input.sourceKey)} AND ${op.lt(a.sequencer, input.sequencer!)}))`
 				)
 				.commit()
 		])
 		.go();
+}
+
+/** Records a discovered Update without replacing processed metadata. */
+export const create = fn(
+	StateUpdateInputSchema.pick({
+		accountId: true,
+		appName: true,
+		stageName: true,
+		updateId: true,
+		sourceBucket: true,
+		sourceKey: true,
+		observedAt: true
+	}),
+	async input => {
+		const result = await db.transaction
+			.write(({ stage, stateUpdate }) => [
+				stage
+					.check(input)
+					.where((a, op) => op.eq(a.accountId, input.accountId))
+					.commit(),
+				stateUpdate
+					.create({ ...input, createdAt: input.observedAt })
+					.commit()
+			])
+			.go();
+		if (!result.canceled) return true;
+		const existing = await get(input);
+		if (existing) return false;
+		throw stateErrors.discoveryPersistenceFailed();
+	}
+);
+
+// Update deliveries are at-least-once. Upsert makes duplicate artifacts converge
+// while keeping DynamoDB payloads bounded before they are persisted.
+/** Persists bounded Update metadata while guarding ownership and event ordering. */
+export const upsert = fn(StateUpdateInputSchema, async input => {
+	const result = await persistUpdate(input);
 	if (result.canceled) {
-		const stage = await db.entities.stage
-			.get({ appName: input.appName, stageName: input.stageName })
-			.go({ consistent: true });
-		if (stage.data?.accountId !== input.accountId) return false;
-		const existing = await db.entities.stateUpdate
-			.get(input)
-			.go({ consistent: true });
+		const stage = await Stage.find(input);
+		if (stage?.accountId !== input.accountId) return false;
+		const existing = await get(input);
 		if (
-			existing.data?.sequencer &&
-			(existing.data.sourceBucket !== input.sourceBucket ||
-				existing.data.sourceKey !== input.sourceKey ||
-				existing.data.sequencer >= input.sequencer)
+			existing?.sequencer &&
+			(existing.sourceBucket !== input.sourceBucket ||
+				existing.sourceKey !== input.sourceKey ||
+				existing.sequencer >= input.sequencer)
 		)
 			return false;
-		throw new Error("Unable to persist State Update");
+		throw stateErrors.updatePersistenceFailed();
 	}
 	return true;
 });
 
-// Detail reads use State Update's primary key; history listing uses its lookup index.
 /** Reads one State Update by its Stage and Update identity. */
 export const get = fn(
 	StateKeySchema.extend({ updateId: StateUpdateInputSchema.shape.updateId }),
@@ -127,12 +224,20 @@ export const get = fn(
 	}
 );
 
+/** Lists Stage Updates by SST key, including records absent from GSIs. */
+export const list = fn(StateKeySchema, async input => {
+	const result = await db.entities.stateUpdate.query
+		.update(input)
+		.go({ pages: "all", consistent: true });
+	return result.data.map(item => StateUpdateSchema.parse(item)).reverse();
+});
+
 /** Derives the current outcome from Update completion and errors. */
 export function outcomeFor(
 	update: Pick<StateUpdate, "timeCompleted" | "errors">
 ) {
 	if (!update.timeCompleted) return "running" as const;
-	return update.errors.length === 0 ? "succeeded" : "failed";
+	return (update.errors?.length ?? 0) === 0 ? "succeeded" : "failed";
 }
 
 // TODO: This looks like a generic helper, does it need to be in this file?
@@ -207,14 +312,6 @@ function truncateErrorMessage(
 	return characters.slice(0, lower).join("");
 }
 
-// TODO: This looks like a generic helper, does it need to be in this file?
-/** Converts a timestamp to a newest-first DynamoDB sort key. */
-function reverseTimestampFor(value: string): string {
-	// DynamoDB sorts ascending; invert epoch milliseconds for newest-first history.
-	const timestamp = new Date(value).getTime();
-	return String(maximumTimestamp - timestamp).padStart(13, "0");
-}
-
 const SstUpdateSchema = z.object({
 	id: z.string().min(1),
 	version: z.string().min(1),
@@ -274,14 +371,22 @@ export function parseSstUpdate(value: string):
 
 /** Reads an SST Update artifact and persists its Console-safe metadata. */
 export const receiveUpdate = fn(
-	z.object({
-		accountId: AccountIdSchema,
-		appName: z.string().min(1),
-		stageName: z.string().min(1),
-		updateId: z.string().min(1),
-		sequencer: z.string().regex(/^[0-9A-F]{256}$/)
-	}),
-	async ({ accountId, appName, stageName, updateId, sequencer }) => {
+	z
+		.object({
+			accountId: AccountIdSchema,
+			appName: z.string().min(1),
+			stageName: z.string().min(1),
+			updateId: z.string().min(1),
+			sequencer: z
+				.string()
+				.regex(/^[0-9A-F]{256}$/)
+				.optional(),
+			replay: z.boolean().optional()
+		})
+		.refine(
+			input => input.replay === true || input.sequencer !== undefined
+		),
+	async ({ accountId, appName, stageName, updateId, sequencer, replay }) => {
 		const stateKey = updateObjectKey(appName, stageName, updateId);
 		const updateKey = { appName, stageName, updateId };
 		const { account: accountData, connection } = await connect(accountId);
@@ -294,14 +399,16 @@ export const receiveUpdate = fn(
 
 		// This early check avoids fetching an artifact for another account.
 		// The Update write checks ownership again atomically to guard races.
-		const stage = await db.entities.stage
-			.get({
-				appName: updateKey.appName,
-				stageName: updateKey.stageName
-			})
-			.go({ consistent: true });
-		if (stage.data && stage.data.accountId !== accountId)
+		const stage = await Stage.find(updateKey);
+		if (stage && stage.accountId !== accountId)
 			return { accountId, stateKey, status: "ignored" as const };
+		let existingSequencer: string | undefined;
+		if (replay) {
+			if (!stage)
+				return { accountId, stateKey, status: "ignored" as const };
+			const existing = await get(updateKey);
+			existingSequencer = existing?.sequencer;
+		}
 
 		const s3 = new S3Client({
 			credentials: connection.credentials,
@@ -314,10 +421,11 @@ export const receiveUpdate = fn(
 				new GetObjectCommand({ Bucket: stateBucket, Key: stateKey })
 			);
 		} catch (error) {
-			if (isMissingObject(error))
+			if (isMissingObject(error) && !replay)
 				return { accountId, stateKey, status: "ignored" as const };
 			throw error;
 		}
+		if (!object.Body && replay) throw stateErrors.updateEmpty();
 		if (!object.Body)
 			return { accountId, stateKey, status: "ignored" as const };
 
@@ -327,10 +435,12 @@ export const receiveUpdate = fn(
 				decodeSstStateBytes(bytes, object.ContentEncoding)
 			)
 		);
+		if ((!update || update.updateId !== updateKey.updateId) && replay)
+			throw stateErrors.updateInvalid();
 		if (!update || update.updateId !== updateKey.updateId)
 			return { accountId, stateKey, status: "ignored" as const };
 		const { updateId: _, ...updateInput } = update;
-		if (!stage.data) {
+		if (!stage) {
 			const now = new Date().toISOString();
 			await Stage.upsert({
 				accountId,
@@ -341,6 +451,30 @@ export const receiveUpdate = fn(
 			});
 		}
 
+		const now = new Date().toISOString();
+		if (replay) {
+			const result = await persistUpdate(
+				{
+					accountId,
+					...updateKey,
+					sourceBucket: stateBucket,
+					sourceKey: stateKey,
+					...(object.VersionId
+						? { sourceVersion: object.VersionId }
+						: {}),
+					observedAt: now,
+					...updateInput
+				},
+				{ value: existingSequencer }
+			);
+			if (result.canceled) {
+				const current = await get(updateKey);
+				if (current?.sequencer !== existingSequencer)
+					return { accountId, stateKey, status: "ignored" as const };
+				throw stateErrors.historicalUpdatePersistenceFailed();
+			}
+			return { accountId, stateKey, status: "synced" as const };
+		}
 		const persisted = await upsert({
 			accountId,
 			appName: updateKey.appName,
@@ -348,9 +482,9 @@ export const receiveUpdate = fn(
 			updateId: updateKey.updateId,
 			sourceBucket: stateBucket,
 			sourceKey: stateKey,
-			sequencer,
+			sequencer: sequencer!,
 			...(object.VersionId ? { sourceVersion: object.VersionId } : {}),
-			observedAt: new Date().toISOString(),
+			observedAt: now,
 			...updateInput
 		});
 
@@ -364,10 +498,8 @@ export const receiveUpdate = fn(
 
 /** Deletes all persisted Update records for a Stage. */
 export const remove = fn(StateKeySchema, async input => {
-	const updates = await db.entities.stateUpdate.query
-		.update(input)
-		.go({ pages: "all", consistent: true });
-	for (const chunk of chunkArray(updates.data, 90)) {
+	const updates = await list(input);
+	for (const chunk of chunkArray(updates, 90)) {
 		const transaction = await db.transaction
 			.write(({ stateUpdate }) =>
 				chunk.map(update =>

@@ -110,14 +110,12 @@ export function parseSstState(input: string | Uint8Array): SstState {
 	try {
 		value = JSON.parse(text);
 	} catch {
-		throw new Error("SST state object is not valid JSON");
+		throw stateErrors.invalidJson();
 	}
 
 	const parsed = checkpointSchema.safeParse(value);
 	if (!parsed.success) {
-		throw new Error(
-			"SST state object is not a supported Pulumi checkpoint"
-		);
+		throw stateErrors.unsupportedCheckpoint();
 	}
 	return parsed.data;
 }

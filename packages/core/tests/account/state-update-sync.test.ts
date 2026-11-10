@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
 	policy: vi.fn(),
 	includes: vi.fn(),
 	stageGet: vi.fn(),
+	updateGet: vi.fn(),
 	send: vi.fn(),
 	write: vi.fn()
 }));
@@ -37,7 +38,10 @@ vi.mock("../../src/connection", () => ({
 }));
 vi.mock("../../src/db", () => ({
 	db: {
-		entities: { stage: { get: mocks.stageGet } },
+		entities: {
+			stage: { get: mocks.stageGet },
+			stateUpdate: { get: mocks.updateGet }
+		},
 		transaction: { write: mocks.write }
 	}
 }));
@@ -50,6 +54,22 @@ const input = {
 	stageName: "dev",
 	updateId: "id",
 	sequencer: "0".repeat(255) + "1"
+};
+const stage = {
+	appName: input.appName,
+	stageName: input.stageName,
+	accountId: input.accountId,
+	region: "us-east-1",
+	issueMonitoringEnabled: false,
+	createdAt: "2026-01-01T00:00:00Z",
+	updatedAt: "2026-01-01T00:00:00Z"
+};
+const update = {
+	...input,
+	sourceBucket: "bucket",
+	sourceKey: "update/app/dev/id.json",
+	observedAt: "2026-01-01T00:00:00Z",
+	createdAt: "2026-01-01T00:00:00Z"
 };
 
 describe("State Update sync", () => {
@@ -64,6 +84,9 @@ describe("State Update sync", () => {
 		mocks.policy.mockResolvedValue({});
 		mocks.includes.mockReturnValue(true);
 		mocks.stageGet.mockReturnValue({
+			go: vi.fn().mockResolvedValue({ data: null })
+		});
+		mocks.updateGet.mockReturnValue({
 			go: vi.fn().mockResolvedValue({ data: null })
 		});
 		mocks.assume.mockResolvedValue({
@@ -99,14 +122,82 @@ describe("State Update sync", () => {
 
 	it("ignores a Stage owned by another account", async () => {
 		mocks.stageGet.mockReturnValue({
-			go: vi
-				.fn()
-				.mockResolvedValue({ data: { accountId: "999999999999" } })
+			go: vi.fn().mockResolvedValue({
+				data: { ...stage, accountId: "999999999999" }
+			})
 		});
 		await expect(receiveUpdate(input)).resolves.toMatchObject({
 			status: "ignored"
 		});
 		expect(mocks.send).not.toHaveBeenCalled();
+	});
+
+	it("refreshes existing Update metadata during historical processing", async () => {
+		mocks.stageGet.mockReturnValue({
+			go: async () => ({ data: stage })
+		});
+		mocks.updateGet.mockReturnValue({
+			go: async () => ({ data: update })
+		});
+		await expect(
+			receiveUpdate({ ...input, replay: true })
+		).resolves.toMatchObject({ status: "synced" });
+		expect(mocks.send).toHaveBeenCalled();
+		expect(mocks.write).toHaveBeenCalled();
+	});
+
+	it("skips historical processing when a live sequencer changes", async () => {
+		mocks.stageGet.mockReturnValue({
+			go: async () => ({ data: stage })
+		});
+		mocks.updateGet
+			.mockReturnValueOnce({
+				go: async () => ({ data: update })
+			})
+			.mockReturnValueOnce({
+				go: async () => ({
+					data: { ...update, sequencer: "0".repeat(255) + "2" }
+				})
+			});
+		mocks.write.mockReturnValueOnce({
+			go: async () => ({ canceled: true })
+		});
+		await expect(
+			receiveUpdate({ ...input, replay: true })
+		).resolves.toMatchObject({ status: "ignored" });
+	});
+
+	it("reports empty and invalid replay artifacts as State domain errors", async () => {
+		mocks.stageGet.mockReturnValue({
+			go: async () => ({ data: stage })
+		});
+		mocks.send.mockResolvedValueOnce({ Body: undefined });
+		await expect(
+			receiveUpdate({ ...input, replay: true })
+		).rejects.toMatchObject({ code: "state.update_empty", status: 500 });
+		mocks.send.mockResolvedValueOnce({
+			Body: {
+				transformToByteArray: async () => new TextEncoder().encode("{}")
+			}
+		});
+		await expect(
+			receiveUpdate({ ...input, replay: true })
+		).rejects.toMatchObject({ code: "state.update_invalid", status: 500 });
+	});
+
+	it("reports a failed historical Update write as a State domain error", async () => {
+		mocks.stageGet.mockReturnValue({
+			go: async () => ({ data: stage })
+		});
+		mocks.write.mockReturnValueOnce({
+			go: async () => ({ canceled: true })
+		});
+		await expect(
+			receiveUpdate({ ...input, replay: true })
+		).rejects.toMatchObject({
+			code: "state.historical_update_persistence_failed",
+			status: 500
+		});
 	});
 
 	it("ignores excluded Stages and propagates S3 permission errors", async () => {
