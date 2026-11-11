@@ -12,7 +12,7 @@
 					flat
 					dense
 					no-caps
-					color="grey-7"
+					text-color="muted"
 					icon="sym_r_arrow_back_2"
 					:label="backConfig.label"
 					:to="backConfig.to"
@@ -24,13 +24,13 @@
 						:name="icon"
 						size="28px"
 						color="primary"
-						class="q-mr-sm"
+						class="dashboard-page-header__icon"
 					/>
 					{{ title }}
 				</DashboardPageHeaderTitle>
 				<DashboardPageHeaderTitle v-else :title="title" />
-				<!-- Make subtitle text color configurable -->
-				<div v-if="subtitle" class="text-body2 text-grey-7 q-mt-xs">
+				<slot v-if="$slots.subtitle" name="subtitle" />
+				<div v-else-if="subtitle" class="text-body2 text-muted q-mt-xs">
 					{{ subtitle }}
 				</div>
 			</div>
@@ -85,3 +85,9 @@ function handleBackClick() {
 	router.back();
 }
 </script>
+
+<style scoped lang="scss">
+.dashboard-page-header__icon {
+	margin-right: 0.75rem;
+}
+</style>
