@@ -9,23 +9,20 @@
 			class="column full-height overflow-hidden"
 		>
 			<q-card-section class="q-pa-sm bg-secondary-2">
-				<div
-					class="invocation-list__header row no-wrap items-center"
-					role="row"
-				>
-					<div class="col-2" role="columnheader">Time</div>
-					<div class="col" role="columnheader">Function</div>
-					<div class="col-2 q-pr-md text-right" role="columnheader">
+				<div class="invocation-list__header items-center" role="row">
+					<div role="columnheader">Time</div>
+					<div role="columnheader">Function</div>
+					<div class="q-pr-md text-right" role="columnheader">
 						Status
 					</div>
-					<div class="col-1 text-right" role="columnheader">
-						Duration
-					</div>
+					<div class="text-right" role="columnheader"> Duration </div>
 				</div>
 			</q-card-section>
 			<q-separator />
 			<q-scroll-area
 				class="col"
+				content-style="width: 100%"
+				content-active-style="width: 100%"
 				:vertical-bar-style="{ width: '6px' }"
 				:vertical-thumb-style="{ width: '6px' }"
 			>
@@ -98,7 +95,14 @@ function selectAdjacent(
 </script>
 
 <style scoped lang="scss">
+.invocation-list {
+	--invocation-columns: 5rem minmax(0, 1fr) 5rem 4rem;
+}
+
 .invocation-list__header {
+	display: grid;
+	grid-template-columns: var(--invocation-columns);
+	padding: 0 0.25rem;
 	color: var(--q-text-secondary);
 	font-size: 0.75rem;
 	font-weight: 500;
