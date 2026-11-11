@@ -134,6 +134,15 @@ export const accountRoutes = new Hono()
 		async c => c.json(await State.processHistory(c.req.valid("param")))
 	)
 	.get(
+		"/:accountId/state/:appName/:stageName/updates/:updateId/events",
+		zValidator("param", StateProcessParamSchema),
+		async c => {
+			const input = c.req.valid("param");
+			await Stage.assertStageOwnership(input);
+			return c.json(await State.StateEvent.list(input));
+		}
+	)
+	.get(
 		"/:accountId/state/:appName/:stageName/snapshots",
 		zValidator("param", StateBackfillParamSchema),
 		async c => {

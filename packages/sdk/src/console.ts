@@ -71,6 +71,51 @@ export type State = {
 	observedAt: string;
 };
 
+export type HistoryKey = {
+	accountId: string;
+	appName: string;
+	stageName: string;
+};
+export type StateArtifact = { updateId: string; processedAt?: string };
+export type StateUpdate = StateArtifact & {
+	command?: string;
+	sstVersion?: string;
+	timeStarted?: string;
+	timeCompleted?: string;
+	errors?: Array<{ urn: string; message: string }>;
+	errorsTruncated?: boolean;
+	comparisonStatus?: "available" | "unavailable";
+	resourceCounts?: {
+		created: number;
+		updated: number;
+		deleted: number;
+		unchanged: number;
+	};
+};
+export type StateResourceEvent = {
+	resourceId: string;
+	urn: string;
+	resourceType: string;
+	action: "created" | "updated" | "deleted";
+	snapshot?: object;
+	operation?: {
+		startedAt: string;
+		completedAt?: string;
+		outcome: "unknown" | "succeeded" | "failed";
+	};
+};
+export type HistoryDiscoveryResult = {
+	processed: number;
+	skipped: number;
+	failed: number;
+	failures: Array<{ key: string; reason: string }>;
+	failuresTruncated: boolean;
+};
+
+function historyUrl(key: HistoryKey) {
+	return `accounts/${encodeURIComponent(key.accountId)}/state/${encodeURIComponent(key.appName)}/${encodeURIComponent(key.stageName)}`;
+}
+
 export type Resource = {
 	accountId: string;
 	appName: string;
@@ -223,6 +268,30 @@ export type IssuesFilters = {
 };
 
 export const consoleMethods = (request: RequestFn) => ({
+	listStateUpdates: (key: HistoryKey): Promise<StateUpdate[]> =>
+		request({ method: "GET", url: `${historyUrl(key)}/updates` }),
+	listStateSnapshots: (key: HistoryKey): Promise<StateArtifact[]> =>
+		request({ method: "GET", url: `${historyUrl(key)}/snapshots` }),
+	listStateEventLogs: (key: HistoryKey): Promise<StateArtifact[]> =>
+		request({ method: "GET", url: `${historyUrl(key)}/event-logs` }),
+	listStateResourceEvents: (
+		key: HistoryKey,
+		updateId: string
+	): Promise<StateResourceEvent[]> =>
+		request({
+			method: "GET",
+			url: `${historyUrl(key)}/updates/${encodeURIComponent(updateId)}/events`
+		}),
+	discoverStateHistory: (key: HistoryKey): Promise<HistoryDiscoveryResult> =>
+		request({ method: "POST", url: `${historyUrl(key)}/backfill` }),
+	processStateHistory: (
+		key: HistoryKey,
+		updateId: string
+	): Promise<{ published: number }> =>
+		request({
+			method: "POST",
+			url: `${historyUrl(key)}/updates/${encodeURIComponent(updateId)}/process`
+		}),
 	listNotificationDestinations: (): Promise<NotificationDestination[]> =>
 		request({ method: "GET", url: "notification-destinations" }),
 	createNotificationDestination: (

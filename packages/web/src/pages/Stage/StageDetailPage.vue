@@ -134,6 +134,14 @@
 				:loading="stageQuery.isPending.value"
 				class="col"
 			/>
+			<StageUpdates
+				v-else-if="stage"
+				:history-key="{
+					accountId: stage.accountId,
+					appName,
+					stageName
+				}"
+			/>
 		</DashboardPageContent>
 	</DashboardPage>
 </template>
@@ -147,6 +155,7 @@ import {
 	ResourceExplorer,
 	StageDetailErrorState
 } from "@/components/App/Detail/Stage";
+import StageUpdates from "@/components/App/Detail/Stage/StageUpdates.vue";
 import {
 	DashboardPage,
 	DashboardPageBreadcrumbs,

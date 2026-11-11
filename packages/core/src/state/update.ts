@@ -229,7 +229,8 @@ export const list = fn(StateKeySchema, async input => {
 	const result = await db.entities.stateUpdate.query
 		.update(input)
 		.go({ pages: "all", consistent: true });
-	return result.data.map(item => StateUpdateSchema.parse(item)).reverse();
+	// SST keys sort newest first; preserve the primary-key query order.
+	return result.data.map(item => StateUpdateSchema.parse(item));
 });
 
 /** Derives the current outcome from Update completion and errors. */

@@ -45,6 +45,9 @@ vi.mock("@/composables/apps", () => ({
 vi.mock("@/composables/issues", () => ({
 	useIssues: () => ({ data: issues, isError: issuesError })
 }));
+vi.mock("@/components/App/Detail/Stage/StageUpdates.vue", () => ({
+	default: { template: "<div data-updates />" }
+}));
 vi.mock("@/components/App/Detail/Stage", () => ({
 	ResourceExplorer: {
 		props: ["resources", "loading"],

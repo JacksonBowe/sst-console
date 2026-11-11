@@ -35,6 +35,25 @@ const item = {
 describe("Stage history listing", () => {
 	beforeEach(() => vi.clearAllMocks());
 
+	it("lists newest Updates first in SST key order, including unprocessed records", async () => {
+		const newest = {
+			...item,
+			updateId: "100",
+			sourceKey: "update/app/prod/100.json",
+			createdAt: item.observedAt
+		};
+		const older = {
+			...newest,
+			updateId: "200",
+			sourceKey: "update/app/prod/200.json",
+			timeStarted: "2025-01-01T00:00:00Z"
+		};
+		mocks.updates.mockReturnValue({
+			go: vi.fn().mockResolvedValue({ data: [newest, older] })
+		});
+		expect(await Update.list(input)).toEqual([newest, older]);
+	});
+
 	it.each([
 		[Update.list, "updates", { ...item, createdAt: item.observedAt }],
 		[

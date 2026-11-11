@@ -7,13 +7,15 @@ const mocks = vi.hoisted(() => ({
 	processHistory: vi.fn(),
 	updates: vi.fn(),
 	snapshots: vi.fn(),
-	logs: vi.fn()
+	logs: vi.fn(),
+	events: vi.fn()
 }));
 vi.mock("@console/core/state", () => ({
 	processHistory: mocks.processHistory,
 	Update: { list: mocks.updates },
 	Snapshot: { list: mocks.snapshots },
-	EventLog: { list: mocks.logs }
+	EventLog: { list: mocks.logs },
+	StateEvent: { list: mocks.events }
 }));
 vi.mock("@console/core/app", () => ({
 	Stage: { assertStageOwnership: mocks.ownership }
@@ -41,6 +43,29 @@ describe("Stage history API", () => {
 			...input,
 			updateId: "id"
 		});
+	});
+	it("checks ownership before listing resource events", async () => {
+		mocks.events.mockResolvedValue([{ action: "created" }]);
+		const app = new Hono().route("/accounts", accountRoutes);
+		const response = await app.request(
+			"/accounts/123456789012/state/app/prod/updates/id/events"
+		);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual([{ action: "created" }]);
+		expect(mocks.ownership).toHaveBeenCalledWith({
+			...input,
+			updateId: "id"
+		});
+		expect(mocks.events).toHaveBeenCalledWith({ ...input, updateId: "id" });
+	});
+	it("rejects resource events when ownership fails", async () => {
+		mocks.ownership.mockRejectedValue(new Error("not owned"));
+		const app = new Hono().route("/accounts", accountRoutes);
+		const response = await app.request(
+			"/accounts/123456789012/state/app/prod/updates/id/events"
+		);
+		expect(response.status).toBe(500);
+		expect(mocks.events).not.toHaveBeenCalled();
 	});
 	it.each([
 		["updates", "updates"],
