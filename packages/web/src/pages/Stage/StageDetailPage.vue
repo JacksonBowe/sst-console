@@ -132,6 +132,7 @@
 				v-else-if="activeTab === 'overview'"
 				:resources="visibleResources"
 				:loading="stageQuery.isPending.value"
+				class="col"
 			/>
 		</DashboardPageContent>
 	</DashboardPage>

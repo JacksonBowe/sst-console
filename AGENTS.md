@@ -9,7 +9,7 @@
 
 - Keep replies concise. Load the `caveman` skill before responding.
 - Strongly prefer simple, explicit, readable, and maintainable code. Avoid cleverness, unnecessary abstraction, and complexity unless they provide a clear practical benefit.
-- Prefer Quasar components and utility classes over custom CSS.
+- Use Quasar components and built-in utility classes whenever they provide equivalent behavior; add custom CSS only for gaps.
 - Directory-local `.agent_context.md` files are concise directory maps that help agents orient without scanning every file.
 - When changing a directory, update its `.agent_context.md` when the map becomes inaccurate or omits important entries.
 - Create a new `.agent_context.md` only where it materially improves discoverability.
