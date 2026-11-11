@@ -1,65 +1,99 @@
 <template>
 	<q-card flat bordered>
-		<div
-			class="row items-center justify-between q-pa-md q-pb-sm q-gutter-sm"
-		>
-			<div>
-				<div class="text-subtitle1 text-weight-medium"
-					>Resource inspector</div
-				>
-				<div class="text-caption text-secondary">
-					{{ counts.resources }} resources ·
-					{{ counts.components }} components
-				</div>
+		<template v-if="loading">
+			<div class="q-pa-md">
+				<q-skeleton type="text" width="12rem" />
+				<q-skeleton type="text" width="10rem" />
 			</div>
-			<q-input
-				v-model="search"
-				dense
-				outlined
-				clearable
-				placeholder="Search resources"
-				aria-label="Search resources"
-				class="resource-explorer__search"
+			<q-separator />
+			<div
+				class="resource-explorer__panes q-pa-md"
+				aria-label="Loading resources"
 			>
-				<template #prepend><q-icon name="sym_r_search" /></template>
-			</q-input>
-		</div>
-		<q-separator />
-		<div class="resource-explorer__panes">
-			<div class="resource-explorer__tree">
 				<div
-					v-if="!filteredResources.length"
-					class="q-pa-md text-secondary"
-				>
-					No resources match this search.
-				</div>
-				<ResourceTreeView
-					v-else
-					:resources="filteredResources"
-					:expanded-ids="visibleExpandedIds"
-					:searching="Boolean(search.trim())"
-					:selected-id="selectedResource?.resourceId"
-					@select="selectedResource = $event"
-					@toggle="toggle"
-				/>
+					><q-skeleton
+						v-for="i in 6"
+						:key="i"
+						type="text"
+						width="70%"
+						class="q-mb-sm"
+				/></div>
+				<div />
+				<q-skeleton type="rect" height="12rem" />
 			</div>
-			<q-separator vertical class="gt-sm" />
-			<div class="resource-explorer__details">
-				<ResourceDetails :resource="selectedResource" />
-			</div>
+		</template>
+		<div
+			v-else-if="!resources.length"
+			class="column items-center text-center q-gutter-sm q-pa-xl"
+		>
+			<q-icon name="sym_r_account_tree" size="40px" color="secondary" />
+			<div class="text-h6">No resources discovered</div>
+			<div class="text-body2 text-secondary"
+				>This Stage has no imported resources available to inspect.</div
+			>
 		</div>
+		<template v-else>
+			<div
+				class="row items-center justify-between q-pa-md q-pb-sm q-gutter-sm"
+			>
+				<div>
+					<div class="text-subtitle1 text-weight-medium"
+						>Resource inspector</div
+					>
+					<div class="text-caption text-secondary">
+						{{ counts.resources }} resources ·
+						{{ counts.components }} components
+					</div>
+				</div>
+				<q-input
+					v-model="search"
+					dense
+					outlined
+					clearable
+					placeholder="Search resources"
+					aria-label="Search resources"
+					class="resource-explorer__search"
+				>
+					<template #prepend><q-icon name="sym_r_search" /></template>
+				</q-input>
+			</div>
+			<q-separator />
+			<div class="resource-explorer__panes">
+				<div class="resource-explorer__tree">
+					<div
+						v-if="!filteredResources.length"
+						class="q-pa-md text-secondary"
+					>
+						No resources match this search.
+					</div>
+					<ResourceTreeView
+						v-else
+						:resources="filteredResources"
+						:expanded-ids="visibleExpandedIds"
+						:searching="Boolean(search.trim())"
+						:selected-id="selectedResource?.resourceId"
+						@select="selectedResource = $event"
+						@toggle="toggle"
+					/>
+				</div>
+				<q-separator vertical class="gt-sm" />
+				<div class="resource-explorer__details">
+					<ResourceDetails :resource="selectedResource" />
+				</div>
+			</div>
+		</template>
 	</q-card>
 </template>
 
 <script setup lang="ts">
+import { stageResourceCounts } from "@/composables/apps/stage-resources";
 import type { ResourceTree } from "@sst-console/sdk";
 import { computed, ref } from "vue";
-import { stageResourceCounts } from "@/composables/apps/stage-resources";
 
 import ResourceDetails from "./ResourceDetails.vue";
 import ResourceTreeView from "./ResourceTree.vue";
 
-const props = defineProps<{ resources: ResourceTree[] }>();
+const props = defineProps<{ resources: ResourceTree[]; loading?: boolean }>();
 
 const search = ref("");
 const expandedIds = ref(new Set<string>());

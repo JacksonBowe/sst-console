@@ -1,7 +1,7 @@
 <template>
 	<DashboardPage>
 		<DashboardPageBreadcrumbs :segments="breadcrumbs" class="q-mb-md" />
-		<StageDetailHeader title="Functions" icon="sym_r_functions" />
+		<DashboardPageHeader title="Functions" icon="sym_r_functions" />
 
 		<DashboardPageContent>
 			<StageDetailLoadingState v-if="stageQuery.isPending.value" />
@@ -25,13 +25,13 @@ import { useRoute } from "vue-router";
 import {
 	FunctionNavigator,
 	StageDetailErrorState,
-	StageDetailHeader,
 	StageDetailLoadingState
 } from "@/components/App/Detail/Stage";
 import {
 	DashboardPage,
 	DashboardPageBreadcrumbs,
-	DashboardPageContent
+	DashboardPageContent,
+	DashboardPageHeader
 } from "@/components/ui/Dashboard";
 import { useStage } from "@/composables/apps";
 import { functionResourcesFor } from "@/composables/apps/stage-resources";
