@@ -58,7 +58,7 @@ function select(value: T) {
 	align-items: center;
 	gap: 2px;
 	padding: 4px;
-	background: rgba(127, 127, 127, 0.1);
+	background: var(--q-secondary-3);
 	border-radius: $generic-border-radius;
 }
 
@@ -73,7 +73,7 @@ function select(value: T) {
 	font: inherit;
 	font-size: 13px;
 	font-weight: 500;
-	color: var(--q-dark);
+	color: var(--q-text-primary);
 	opacity: 0.7;
 	cursor: pointer;
 	transition:
@@ -84,12 +84,12 @@ function select(value: T) {
 
 	&:hover:not(:disabled) {
 		opacity: 1;
-		background: rgba(127, 127, 127, 0.08);
+		background: var(--q-secondary-2);
 	}
 
 	&:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 2px var(--q-primary);
+		outline: 2px solid var(--q-focus-ring);
+		outline-offset: 2px;
 	}
 
 	&:disabled {
@@ -98,27 +98,14 @@ function select(value: T) {
 	}
 }
 
-.body--dark .pill-tabs__btn {
-	color: #fff;
-}
-
 .pill-tabs__btn--active,
 .pill-tabs__btn--active:hover {
-	background: #fff;
+	background: var(--q-page);
 	color: var(--q-primary);
 	opacity: 1;
 	box-shadow:
-		0 1px 2px rgba(0, 0, 0, 0.06),
-		0 0 0 1px rgba(0, 0, 0, 0.04);
-}
-
-.body--dark .pill-tabs__btn--active,
-.body--dark .pill-tabs__btn--active:hover {
-	background: rgba(255, 255, 255, 0.12);
-	color: #fff;
-	box-shadow:
-		0 1px 2px rgba(0, 0, 0, 0.3),
-		0 0 0 1px rgba(255, 255, 255, 0.06);
+		0 1px 2px color-mix(in srgb, var(--q-text-primary) 6%, transparent),
+		0 0 0 1px var(--q-border);
 }
 
 .pill-tabs__count {
