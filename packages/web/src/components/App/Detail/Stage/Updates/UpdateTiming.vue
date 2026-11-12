@@ -1,10 +1,10 @@
 <template>
 	<div class="update-timing text-caption text-secondary">
-		<div
+		<div title="Duration"
 			><q-icon name="sym_r_timer" size="16px" />
 			{{ duration(update.timeStarted, update.timeCompleted) }}</div
 		>
-		<div
+		<div title="Started"
 			><q-icon name="sym_r_schedule" size="16px" />
 			{{ timestamp(update.timeStarted) }}</div
 		>
@@ -26,6 +26,7 @@ defineProps<{ update: StateUpdate }>();
 	justify-content: space-between;
 	height: 100%;
 	gap: 0.25rem;
+	font-variant-numeric: tabular-nums;
 }
 .update-timing > div {
 	display: flex;

@@ -109,9 +109,10 @@
 							)
 						}}</div
 					>
-					<div class="q-mt-sm"
-						>Snapshot changes: {{ counts(selected) }}</div
-					>
+					<UpdateChangeCounts
+						:counts="selected.resourceCounts"
+						class="q-mt-sm"
+					/>
 					<div
 						v-if="selected.comparisonStatus === 'unavailable'"
 						class="text-warning"
@@ -152,11 +153,6 @@
 						>
 					</div>
 					<div class="text-subtitle1 q-mt-lg">Resource events</div>
-					<div class="text-caption text-secondary">
-						Events include operations that may not have produced a
-						snapshot change, so totals can differ from snapshot
-						changes.
-					</div>
 					<div v-if="detail.isPending.value"
 						>Loading Update details…</div
 					>
@@ -240,7 +236,8 @@ import { Notify } from "quasar";
 import { computed, ref, watch } from "vue";
 import { handleApiError } from "@/boot/api-client";
 import UpdateTimeline from "./Updates/UpdateTimeline.vue";
-import { counts, duration, status, timestamp } from "./Updates/update-format";
+import UpdateChangeCounts from "./Updates/UpdateChangeCounts.vue";
+import { duration, status, timestamp } from "./Updates/update-format";
 import {
 	useDiscoverStateHistory,
 	useProcessStateHistory,

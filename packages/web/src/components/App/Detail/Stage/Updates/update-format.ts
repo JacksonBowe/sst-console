@@ -39,10 +39,3 @@ export function duration(start?: string, end?: string) {
 		? `${seconds.toFixed(1)}s`
 		: "Duration unavailable";
 }
-
-export function counts(update: StateUpdate) {
-	const counts = update.resourceCounts;
-	return counts
-		? `Created ${counts.created} · Updated ${counts.updated} · Deleted ${counts.deleted} · Unchanged ${counts.unchanged}`
-		: "Unavailable";
-}

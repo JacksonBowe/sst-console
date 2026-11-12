@@ -1,22 +1,34 @@
 <template>
-	<div v-if="counts" class="row q-gutter-x-md text-body2 text-secondary">
-		<span>Snapshot changes</span>
+	<div
+		v-if="counts && (counts.created || counts.updated || counts.deleted)"
+		class="change-summary text-body2 text-weight-medium text-mono"
+		role="group"
+		aria-label="Resource changes"
+	>
 		<span
-			>Created <strong>{{ counts.created }}</strong></span
+			v-if="counts.created"
+			role="img"
+			class="change-summary__count text-positive"
+			:aria-label="`${counts.created} created`"
+			>+{{ counts.created }}<q-tooltip>Created</q-tooltip></span
 		>
 		<span
-			>Updated <strong>{{ counts.updated }}</strong></span
+			v-if="counts.updated"
+			role="img"
+			class="change-summary__count text-warning"
+			:aria-label="`${counts.updated} updated`"
+			>~{{ counts.updated }}<q-tooltip>Updated</q-tooltip></span
 		>
 		<span
-			>Deleted <strong>{{ counts.deleted }}</strong></span
-		>
-		<span
-			>Unchanged <strong>{{ counts.unchanged }}</strong></span
+			v-if="counts.deleted"
+			role="img"
+			class="change-summary__count text-negative"
+			:aria-label="`${counts.deleted} deleted`"
+			>−{{ counts.deleted }}<q-tooltip>Deleted</q-tooltip></span
 		>
 	</div>
-	<div v-else class="text-body2 text-secondary"
-		>Snapshot change counts unavailable</div
-	>
+	<div v-else-if="counts" class="text-body2 text-secondary">No changes</div>
+	<div v-else class="text-body2 text-secondary">Changes unavailable</div>
 </template>
 
 <script setup lang="ts">
@@ -26,8 +38,13 @@ defineProps<{ counts?: StateUpdate["resourceCounts"] }>();
 </script>
 
 <style scoped>
-strong {
-	color: var(--q-text-primary);
-	font-weight: 500;
+.change-summary {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.65rem;
+	white-space: nowrap;
+}
+.change-summary__count {
+	font-variant-numeric: tabular-nums;
 }
 </style>

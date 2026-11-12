@@ -67,6 +67,7 @@ const stubs = {
 		template: '<div :data-color="color"><slot /></div>'
 	},
 	QBadge: { props: ["label"], template: "<span>{{ label }}</span>" },
+	QTooltip: true,
 	QList: { template: "<div><slot /></div>" },
 	QItemSection: { template: "<div><slot /></div>" },
 	QItemLabel: { template: "<div><slot /></div>" },
@@ -120,25 +121,46 @@ describe("StageUpdates", () => {
 		expect(wrapper.findAll(".update-item")[1]!.attributes("title")).toBe(
 			"Failed"
 		);
-		expect(wrapper.text()).toContain("Created 2");
-		expect(wrapper.text()).toContain("Deleted 0");
+		expect(wrapper.find('[aria-label="2 created"]').text()).toContain("+2");
+		expect(wrapper.find('[aria-label="0 deleted"]').exists()).toBe(false);
+		expect(wrapper.find('[aria-label="2 created"]').classes()).toContain(
+			"text-positive"
+		);
+		expect(wrapper.find('[aria-label="Resource changes"]').exists()).toBe(
+			true
+		);
 		expect(wrapper.text()).toContain("12.0s");
-		expect(wrapper.text()).toContain("Snapshot change counts unavailable");
+		expect(wrapper.text()).toContain("Changes unavailable");
 		await wrapper.findAll(".update-item")[0]!.trigger("click");
 		expect(wrapper.text()).toContain("Resource events");
-		expect(wrapper.text()).toContain(
-			"totals can differ from snapshot changes"
-		);
 	});
 	it("shows partial history and operation-only failures", async () => {
 		const wrapper = render();
 		expect(wrapper.find(".update-item").attributes("title")).toBe(
 			"Unprocessed"
 		);
-		expect(wrapper.text()).toContain("Snapshot change counts unavailable");
+		expect(wrapper.text()).toContain("Changes unavailable");
 		await wrapper.findAll("button")[1]!.trigger("click");
 		expect(wrapper.text()).toContain("No snapshot change observed");
 		expect(wrapper.text()).toContain("Operation: failed");
+	});
+	it("shows no changes without zero counts or unchanged totals", () => {
+		data.value = [
+			{
+				updateId: "one",
+				resourceCounts: {
+					created: 0,
+					updated: 0,
+					deleted: 0,
+					unchanged: 104
+				}
+			}
+		];
+		const wrapper = render();
+		const item = wrapper.find(".update-item");
+		expect(item.text()).toContain("No changes");
+		expect(item.text()).not.toContain("104");
+		expect(item.find(".change-bar").exists()).toBe(false);
 	});
 	it("marks only the newest unfinished processed update as possibly in progress", () => {
 		data.value = [
