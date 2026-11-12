@@ -21,32 +21,11 @@
 		<div v-else-if="!updates.length" class="q-pa-lg text-center text-muted">
 			No Updates stored. Discover history to find older artifacts.
 		</div>
-		<q-list v-else bordered separator>
-			<q-item
-				v-for="update in updates"
-				:key="update.updateId"
-				clickable
-				@click="selectedId = update.updateId"
-			>
-				<q-item-section>
-					<q-item-label
-						>{{ update.command || "Command unavailable" }} ·
-						{{ status(update) }}</q-item-label
-					>
-					<q-item-label caption
-						>{{ update.updateId }} ·
-						{{ timestamp(update.timeStarted) }} ·
-						{{
-							duration(update.timeStarted, update.timeCompleted)
-						}}</q-item-label
-					>
-					<q-item-label caption>{{ counts(update) }}</q-item-label>
-				</q-item-section>
-				<q-item-section side
-					><q-icon name="sym_r_chevron_right"
-				/></q-item-section>
-			</q-item>
-		</q-list>
+		<UpdateTimeline
+			v-else
+			:updates="updates"
+			@select="selectedId = $event"
+		/>
 
 		<q-dialog v-model="showDiscovery">
 			<q-card style="min-width: min(90vw, 32rem)">
@@ -113,7 +92,12 @@
 				<q-card-section class="col scroll">
 					<div class="text-subtitle1"
 						>{{ selected.command || "Command unavailable" }} ·
-						{{ status(selected) }}</div
+						{{
+							status(
+								selected,
+								selected.updateId === updates[0]?.updateId
+							)
+						}}</div
 					>
 					<div>Started: {{ timestamp(selected.timeStarted) }}</div>
 					<div
@@ -125,7 +109,9 @@
 							)
 						}}</div
 					>
-					<div class="q-mt-sm">{{ counts(selected) }}</div>
+					<div class="q-mt-sm"
+						>Snapshot changes: {{ counts(selected) }}</div
+					>
 					<div
 						v-if="selected.comparisonStatus === 'unavailable'"
 						class="text-warning"
@@ -166,6 +152,11 @@
 						>
 					</div>
 					<div class="text-subtitle1 q-mt-lg">Resource events</div>
+					<div class="text-caption text-secondary">
+						Events include operations that may not have produced a
+						snapshot change, so totals can differ from snapshot
+						changes.
+					</div>
 					<div v-if="detail.isPending.value"
 						>Loading Update details…</div
 					>
@@ -243,13 +234,13 @@ import type {
 	HistoryDiscoveryResult,
 	HistoryKey,
 	StateArtifact,
-	StateResourceEvent,
-	StateUpdate
+	StateResourceEvent
 } from "@sst-console/sdk";
 import { Notify } from "quasar";
 import { computed, ref, watch } from "vue";
 import { handleApiError } from "@/boot/api-client";
-import { formatDateTime } from "@/components/ui/format";
+import UpdateTimeline from "./Updates/UpdateTimeline.vue";
+import { counts, duration, status, timestamp } from "./Updates/update-format";
 import {
 	useDiscoverStateHistory,
 	useProcessStateHistory,
@@ -303,32 +294,6 @@ function artifactStatus(artifact?: StateArtifact | null) {
 		: artifact.processedAt
 			? "Processed"
 			: "Unprocessed";
-}
-function status(update: StateUpdate) {
-	if (!update.processedAt) return "Unprocessed";
-	if (!update.timeCompleted) return "In progress";
-	if (!update.errors) return "Unknown";
-	return update.errors.length || update.errorsTruncated
-		? "Failed"
-		: "Succeeded";
-}
-function timestamp(value?: string) {
-	return value && !Number.isNaN(Date.parse(value))
-		? formatDateTime(value)
-		: "Unavailable";
-}
-function duration(start?: string, end?: string) {
-	if (!start || !end) return "Duration unavailable";
-	const seconds = (Date.parse(end) - Date.parse(start)) / 1000;
-	return Number.isFinite(seconds) && seconds >= 0
-		? `${seconds.toFixed(1)}s`
-		: "Duration unavailable";
-}
-function counts(update: StateUpdate) {
-	const counts = update.resourceCounts;
-	return counts
-		? `Created ${counts.created} · Updated ${counts.updated} · Deleted ${counts.deleted} · Unchanged ${counts.unchanged}`
-		: "Change counts unavailable";
 }
 async function discover() {
 	try {

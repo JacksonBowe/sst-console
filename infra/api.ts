@@ -30,7 +30,7 @@ export const api = new sst.aws.Function("Api", {
 });
 
 // export const testFunction = new sst.aws.Function("TestFunction", {
-// 	handler: "packages/functions/src/api/index.handler",
+// 	handler: "packages/functions/src/api/index2.handler",
 // 	link: [consoleData, consoleConnections],
 // 	environment: {
 // 		SST_CONSOLE_EXTERNAL_ID: externalId
