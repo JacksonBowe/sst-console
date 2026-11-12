@@ -133,8 +133,20 @@
 					>
 					<div class="text-subtitle1 q-mt-lg">Artifacts</div>
 					<div>Update: {{ artifactStatus(selected) }}</div>
-					<div>Snapshot: {{ artifactStatus(snapshot) }}</div>
-					<div>Event Log: {{ artifactStatus(log) }}</div>
+					<template v-if="detail.data.value">
+						<div
+							>Snapshot:
+							{{
+								artifactStatus(detail.data.value.snapshot)
+							}}</div
+						>
+						<div
+							>Event Log:
+							{{
+								artifactStatus(detail.data.value.eventLog)
+							}}</div
+						>
+					</template>
 					<div
 						v-if="
 							selected.errors?.length || selected.errorsTruncated
@@ -154,20 +166,20 @@
 						>
 					</div>
 					<div class="text-subtitle1 q-mt-lg">Resource events</div>
-					<div v-if="events.isPending.value"
-						>Loading resource events…</div
+					<div v-if="detail.isPending.value"
+						>Loading Update details…</div
 					>
-					<div v-else-if="events.isError.value"
-						>Unable to load events.
+					<div v-else-if="detail.isError.value"
+						>Unable to load Update details.
 						<q-btn
 							flat
 							no-caps
 							label="Retry"
-							@click="events.refetch()"
+							@click="detail.refetch()"
 					/></div>
 					<template v-else>
 						<div
-							v-if="!events.data.value?.length"
+							v-if="!detail.data.value?.events.length"
 							class="text-muted"
 							>No resource events available.</div
 						>
@@ -242,7 +254,7 @@ import {
 	useDiscoverStateHistory,
 	useProcessStateHistory,
 	useStateHistory,
-	useStateResourceEvents
+	useStateUpdateDetail
 } from "@/composables/state-history";
 
 const props = defineProps<{ historyKey: HistoryKey }>();
@@ -251,18 +263,12 @@ const history = useStateHistory(key, true);
 const discovery = useDiscoverStateHistory();
 const processing = useProcessStateHistory();
 const selectedId = ref("");
-const events = useStateResourceEvents(key, selectedId);
-const updates = computed(() => history.data.value?.updates ?? []);
-const selected = computed(() =>
-	updates.value.find(update => update.updateId === selectedId.value)
-);
-const snapshot = computed(() =>
-	history.data.value?.snapshots.find(
-		item => item.updateId === selectedId.value
-	)
-);
-const log = computed(() =>
-	history.data.value?.logs.find(item => item.updateId === selectedId.value)
+const detail = useStateUpdateDetail(key, selectedId);
+const updates = computed(() => history.data.value ?? []);
+const selected = computed(
+	() =>
+		detail.data.value?.update ??
+		updates.value.find(update => update.updateId === selectedId.value)
 );
 const discoveryResult = ref<HistoryDiscoveryResult>();
 const showDiscovery = ref(false);
@@ -287,9 +293,11 @@ watch(
 );
 
 function eventsFor(action: StateResourceEvent["action"]) {
-	return (events.data.value ?? []).filter(event => event.action === action);
+	return (detail.data.value?.events ?? []).filter(
+		event => event.action === action
+	);
 }
-function artifactStatus(artifact?: StateArtifact) {
+function artifactStatus(artifact?: StateArtifact | null) {
 	return !artifact
 		? "Not discovered"
 		: artifact.processedAt

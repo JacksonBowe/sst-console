@@ -41,6 +41,7 @@ export type {
 	HistoryDiscoveryResult,
 	StateArtifact,
 	StateUpdate,
+	StateUpdateDetail,
 	StateResourceEvent,
 	StageAccountConflict,
 	SyncAccountResult,

@@ -3,11 +3,7 @@ import { ref } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import StageUpdates from "@/components/App/Detail/Stage/StageUpdates.vue";
 
-const data = ref({
-	updates: [{ updateId: "one", command: "deploy" }],
-	snapshots: [],
-	logs: []
-});
+const data = ref([{ updateId: "one", command: "deploy" }]);
 const discover = vi.fn();
 const process = vi.fn();
 const { notify } = vi.hoisted(() => ({ notify: vi.fn() }));
@@ -21,16 +17,21 @@ vi.mock("@/composables/state-history", () => ({
 		isError: ref(false),
 		refetch: vi.fn()
 	}),
-	useStateResourceEvents: () => ({
-		data: ref([
-			{
-				resourceId: "r",
-				urn: "worker",
-				resourceType: "lambda",
-				action: "created",
-				operation: { outcome: "failed" }
-			}
-		]),
+	useStateUpdateDetail: () => ({
+		data: ref({
+			update: { updateId: "one", command: "deploy" },
+			snapshot: null,
+			eventLog: null,
+			events: [
+				{
+					resourceId: "r",
+					urn: "worker",
+					resourceType: "lambda",
+					action: "created",
+					operation: { outcome: "failed" }
+				}
+			]
+		}),
 		isPending: ref(false),
 		isError: ref(false),
 		refetch: vi.fn()

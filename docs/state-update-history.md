@@ -60,14 +60,15 @@ Normal account sync does not discover or process historical artifacts.
 Stage-scoped API routes list persisted Updates, Snapshots, and Event Log locators
 using primary-key queries, including Updates absent from the entity-type index.
 These routes return all results; large histories may require pagination later.
-History detail and UI remain outside this scope. Discovery may also require
-pagination or batching for large histories.
+App Stage routes list Updates and fetch one Update's Snapshot, Event Log, and
+Resource events on demand. Discovery may also require pagination or batching
+for large histories.
 
 ## Security and gaps
 
 Raw SST State, Pulumi inputs/outputs, and raw event logs are never persisted in
 ConsoleData. Existing Update diagnostics remain subject to their separate size
 limit. Snapshot comparisons need workload S3 read access, and missing source
-objects prevent comparisons. No raw log access, history detail API, or history UI is
-provided here. Legacy Update count attributes may remain in DynamoDB but are not
+objects prevent comparisons. No raw log access is provided. Legacy Update count
+attributes may remain in DynamoDB but are not
 read; they were initialized to zero without reconciliation.

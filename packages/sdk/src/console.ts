@@ -104,6 +104,12 @@ export type StateResourceEvent = {
 		outcome: "unknown" | "succeeded" | "failed";
 	};
 };
+export type StateUpdateDetail = {
+	update: StateUpdate;
+	snapshot: StateArtifact | null;
+	eventLog: StateArtifact | null;
+	events: StateResourceEvent[];
+};
 export type HistoryDiscoveryResult = {
 	processed: number;
 	skipped: number;
@@ -268,6 +274,23 @@ export type IssuesFilters = {
 };
 
 export const consoleMethods = (request: RequestFn) => ({
+	listStageUpdates: (
+		appName: string,
+		stageName: string
+	): Promise<StateUpdate[]> =>
+		request({
+			method: "GET",
+			url: `apps/${encodeURIComponent(appName)}/stages/${encodeURIComponent(stageName)}/updates`
+		}),
+	getStageUpdate: (
+		appName: string,
+		stageName: string,
+		updateId: string
+	): Promise<StateUpdateDetail> =>
+		request({
+			method: "GET",
+			url: `apps/${encodeURIComponent(appName)}/stages/${encodeURIComponent(stageName)}/updates/${encodeURIComponent(updateId)}`
+		}),
 	listStateUpdates: (key: HistoryKey): Promise<StateUpdate[]> =>
 		request({ method: "GET", url: `${historyUrl(key)}/updates` }),
 	listStateSnapshots: (key: HistoryKey): Promise<StateArtifact[]> =>

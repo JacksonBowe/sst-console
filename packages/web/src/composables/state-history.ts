@@ -7,8 +7,8 @@ import { api } from "@/boot/api-client";
 export const historyQueryKeys = {
 	stage: (key: HistoryKey) =>
 		["state-history", key.accountId, key.appName, key.stageName] as const,
-	events: (key: HistoryKey, updateId: string) =>
-		[...historyQueryKeys.stage(key), "events", updateId] as const
+	detail: (key: HistoryKey, updateId: string) =>
+		[...historyQueryKeys.stage(key), "detail", updateId] as const
 };
 
 export function useStateHistory(
@@ -17,28 +17,25 @@ export function useStateHistory(
 ) {
 	return useQuery({
 		queryKey: () => [...historyQueryKeys.stage(toValue(key)), "artifacts"],
-		queryFn: async () => {
-			const current = toValue(key);
-			const [updates, snapshots, logs] = await Promise.all([
-				api.listStateUpdates(current),
-				api.listStateSnapshots(current),
-				api.listStateEventLogs(current)
-			]);
-			return { updates, snapshots, logs };
-		},
+		queryFn: () =>
+			api.listStageUpdates(toValue(key).appName, toValue(key).stageName),
 		enabled: () => toValue(enabled) && Boolean(toValue(key).accountId)
 	});
 }
 
-export function useStateResourceEvents(
+export function useStateUpdateDetail(
 	key: MaybeRefOrGetter<HistoryKey>,
 	updateId: MaybeRefOrGetter<string>
 ) {
 	return useQuery({
 		queryKey: () =>
-			historyQueryKeys.events(toValue(key), toValue(updateId)),
+			historyQueryKeys.detail(toValue(key), toValue(updateId)),
 		queryFn: () =>
-			api.listStateResourceEvents(toValue(key), toValue(updateId)),
+			api.getStageUpdate(
+				toValue(key).appName,
+				toValue(key).stageName,
+				toValue(updateId)
+			),
 		enabled: () => Boolean(toValue(key).accountId && toValue(updateId))
 	});
 }
