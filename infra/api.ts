@@ -37,3 +37,12 @@ export const api = new sst.aws.Function("Api", {
 // 	},
 // 	permissions: [assumeAccountRolePermission]
 // });
+
+// export const testFunction2 = new sst.aws.Function("TestFunction2", {
+// 	handler: "packages/functions/src/api/index2.handler",
+// 	link: [consoleData, consoleConnections],
+// 	environment: {
+// 		SST_CONSOLE_EXTERNAL_ID: externalId
+// 	},
+// 	permissions: [assumeAccountRolePermission]
+// });

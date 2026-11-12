@@ -89,128 +89,57 @@
 					/>
 				</q-card-section>
 				<q-separator />
-				<q-card-section class="col scroll">
-					<div class="text-subtitle1"
-						>{{ selected.command || "Command unavailable" }} ·
-						{{
-							status(
-								selected,
+				<q-scroll-area
+					class="col update-sheet__scroll"
+					tabindex="0"
+					role="region"
+					aria-label="Update details"
+				>
+					<q-card-section>
+						<UpdateSummary
+							:update="selected"
+							:is-newest="
 								selected.updateId === updates[0]?.updateId
-							)
-						}}</div
-					>
-					<div>Started: {{ timestamp(selected.timeStarted) }}</div>
-					<div
-						>Duration:
-						{{
-							duration(
-								selected.timeStarted,
-								selected.timeCompleted
-							)
-						}}</div
-					>
-					<UpdateChangeCounts
-						:counts="selected.resourceCounts"
-						class="q-mt-sm"
-					/>
-					<div
-						v-if="selected.comparisonStatus === 'unavailable'"
-						class="text-warning"
-						>Snapshot comparison unavailable.</div
-					>
-					<div class="text-subtitle1 q-mt-lg">Artifacts</div>
-					<div>Update: {{ artifactStatus(selected) }}</div>
-					<template v-if="detail.data.value">
+							"
+							:detail="detail.data.value"
+						/>
 						<div
-							>Snapshot:
-							{{
-								artifactStatus(detail.data.value.snapshot)
-							}}</div
+							v-if="
+								selected.errors?.length ||
+								selected.errorsTruncated
+							"
+							class="q-mt-lg"
 						>
-						<div
-							>Event Log:
-							{{
-								artifactStatus(detail.data.value.eventLog)
-							}}</div
-						>
-					</template>
-					<div
-						v-if="
-							selected.errors?.length || selected.errorsTruncated
-						"
-						class="q-mt-lg"
-					>
-						<div class="text-subtitle1">Errors</div>
-						<div
-							v-for="(error, index) in selected.errors"
-							:key="index"
-							class="q-mb-sm text-break"
-							><div>{{ error.urn }}</div
-							><div>{{ error.message }}</div></div
-						>
-						<div v-if="selected.errorsTruncated"
-							>Some errors were omitted.</div
-						>
-					</div>
-					<div class="text-subtitle1 q-mt-lg">Resource events</div>
-					<div v-if="detail.isPending.value"
-						>Loading Update details…</div
-					>
-					<div v-else-if="detail.isError.value"
-						>Unable to load Update details.
-						<q-btn
-							flat
-							no-caps
-							label="Retry"
-							@click="detail.refetch()"
-					/></div>
-					<template v-else>
-						<div
-							v-if="!detail.data.value?.events.length"
-							class="text-muted"
-							>No resource events available.</div
-						>
-						<div v-for="action in actions" :key="action">
-							<template v-if="eventsFor(action).length">
-								<div
-									class="text-subtitle2 q-mt-md text-capitalize"
-									>{{ action }} ({{
-										eventsFor(action).length
-									}})</div
-								>
-								<div
-									v-for="event in eventsFor(action)"
-									:key="event.resourceId"
-									class="q-py-sm"
-								>
-									<div class="text-break">{{
-										event.urn
-									}}</div>
-									<div class="text-caption text-muted"
-										>{{ event.resourceType }} ·
-										{{
-											event.snapshot
-												? "Snapshot change observed"
-												: "No snapshot change observed"
-										}}
-										· Operation:
-										{{
-											event.operation?.outcome ??
-											"unavailable"
-										}}
-										·
-										{{
-											duration(
-												event.operation?.startedAt,
-												event.operation?.completedAt
-											)
-										}}</div
-									>
-								</div>
-							</template>
+							<div class="text-subtitle1">Errors</div>
+							<div
+								v-for="(error, index) in selected.errors"
+								:key="index"
+								class="q-mb-sm text-break"
+								><div>{{ error.urn }}</div
+								><div>{{ error.message }}</div></div
+							>
+							<div v-if="selected.errorsTruncated"
+								>Some errors were omitted.</div
+							>
 						</div>
-					</template>
-				</q-card-section>
+						<div v-if="detail.isPending.value" class="q-mt-lg"
+							>Loading Update details…</div
+						>
+						<div v-else-if="detail.isError.value" class="q-mt-lg"
+							>Unable to load Update details.
+							<q-btn
+								flat
+								no-caps
+								label="Retry"
+								@click="detail.refetch()"
+						/></div>
+						<div v-else class="q-mt-lg">
+							<UpdateResourceEvents
+								:events="detail.data.value?.events ?? []"
+							/>
+						</div>
+					</q-card-section>
+				</q-scroll-area>
 				<q-separator />
 				<q-card-actions align="right"
 					><q-btn
@@ -226,18 +155,13 @@
 </template>
 
 <script setup lang="ts">
-import type {
-	HistoryDiscoveryResult,
-	HistoryKey,
-	StateArtifact,
-	StateResourceEvent
-} from "@sst-console/sdk";
+import type { HistoryDiscoveryResult, HistoryKey } from "@sst-console/sdk";
 import { Notify } from "quasar";
 import { computed, ref, watch } from "vue";
 import { handleApiError } from "@/boot/api-client";
 import UpdateTimeline from "./Updates/UpdateTimeline.vue";
-import UpdateChangeCounts from "./Updates/UpdateChangeCounts.vue";
-import { duration, status, timestamp } from "./Updates/update-format";
+import UpdateResourceEvents from "./Updates/UpdateResourceEvents.vue";
+import UpdateSummary from "./Updates/UpdateSummary.vue";
 import {
 	useDiscoverStateHistory,
 	useProcessStateHistory,
@@ -260,7 +184,6 @@ const selected = computed(
 );
 const discoveryResult = ref<HistoryDiscoveryResult>();
 const showDiscovery = ref(false);
-const actions = ["created", "updated", "deleted"] as const;
 
 watch(updates, value => {
 	if (
@@ -280,18 +203,6 @@ watch(
 	}
 );
 
-function eventsFor(action: StateResourceEvent["action"]) {
-	return (detail.data.value?.events ?? []).filter(
-		event => event.action === action
-	);
-}
-function artifactStatus(artifact?: StateArtifact | null) {
-	return !artifact
-		? "Not discovered"
-		: artifact.processedAt
-			? "Processed"
-			: "Unprocessed";
-}
 async function discover() {
 	try {
 		discoveryResult.value = await discovery.mutateAsync(key.value);
@@ -321,6 +232,9 @@ async function process() {
 	width: min(100vw, 42rem);
 	max-width: 100vw;
 	height: 100vh;
+}
+.update-sheet__scroll {
+	min-height: 0;
 }
 .text-break {
 	overflow-wrap: anywhere;

@@ -3,6 +3,7 @@ import type { StateUpdate } from "@sst-console/sdk";
 import { ref } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import StageUpdates from "@/components/App/Detail/Stage/StageUpdates.vue";
+import UpdateResourceEvents from "@/components/App/Detail/Stage/Updates/UpdateResourceEvents.vue";
 
 const data = ref<StateUpdate[]>([{ updateId: "one", command: "deploy" }]);
 const discover = vi.fn();
@@ -61,6 +62,7 @@ const stubs = {
 	QCard: { template: "<div><slot /></div>" },
 	QCardSection: { template: "<div><slot /></div>" },
 	QCardActions: { template: "<div><slot /></div>" },
+	QScrollArea: { template: "<div><slot /></div>" },
 	QTimeline: { template: "<div><slot /></div>" },
 	QTimelineEntry: {
 		props: ["color"],
@@ -141,7 +143,6 @@ describe("StageUpdates", () => {
 		);
 		expect(wrapper.text()).toContain("Changes unavailable");
 		await wrapper.findAll("button")[1]!.trigger("click");
-		expect(wrapper.text()).toContain("No snapshot change observed");
 		expect(wrapper.text()).toContain("Operation: failed");
 	});
 	it("shows no changes without zero counts or unchanged totals", () => {
@@ -214,5 +215,63 @@ describe("StageUpdates", () => {
 				message: expect.stringContaining("2 artifacts queued")
 			})
 		);
+	});
+});
+
+describe("UpdateResourceEvents", () => {
+	it("switches between action groups and operation time, keeping untimed events last", async () => {
+		const wrapper = mount(UpdateResourceEvents, {
+			props: {
+				events: [
+					{
+						resourceId: "late",
+						urn: "urn:pulumi:stage::app::aws:lambda/function:Function::Worker",
+						resourceType: "aws:lambda/function:Function",
+						action: "deleted",
+						operation: {
+							startedAt: "2026-11-12T10:00:02Z",
+							completedAt: "2026-11-12T10:00:04Z",
+							outcome: "succeeded"
+						}
+					},
+					{
+						resourceId: "untimed",
+						urn: "unknown",
+						resourceType: "custom",
+						action: "created"
+					},
+					{
+						resourceId: "early",
+						urn: "first",
+						resourceType: "custom",
+						action: "updated",
+						operation: {
+							startedAt: "2026-11-12T10:00:01Z",
+							outcome: "unknown"
+						}
+					}
+				]
+			},
+			global: { stubs }
+		});
+		expect(
+			wrapper.findAll(".resource-event").map(row => row.text())
+		).toEqual([
+			expect.stringContaining("unknown"),
+			expect.stringContaining("first"),
+			expect.stringContaining("Worker")
+		]);
+		await wrapper
+			.findAll("button")
+			.find(button => button.text() === "By time")!
+			.trigger("click");
+		expect(
+			wrapper.findAll(".resource-event").map(row => row.text())
+		).toEqual([
+			expect.stringContaining("first"),
+			expect.stringContaining("Worker"),
+			expect.stringContaining("unknown")
+		]);
+		expect(wrapper.text()).toContain("(2.0s)");
 	});
 });
