@@ -78,12 +78,16 @@ const stubs = {
 	QIcon: true
 };
 
-function render() {
+function render(desktop = true) {
 	return mount(StageUpdates, {
 		props: {
 			historyKey: { accountId: "123", appName: "app", stageName: "prod" }
 		},
-		global: { stubs, directives: { closePopup: {} } }
+		global: {
+			stubs,
+			directives: { closePopup: {} },
+			mocks: { $q: { screen: { gt: { sm: desktop } } } }
+		}
 	});
 }
 
@@ -91,6 +95,16 @@ describe("StageUpdates", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		data.value = [{ updateId: "one", command: "deploy" }];
+	});
+	it("uses a scroll region on desktop and page scrolling on smaller screens", () => {
+		expect(render().find('[aria-label="Update history"]').exists()).toBe(
+			true
+		);
+		const mobile = render(false);
+		expect(mobile.find('[aria-label="Update history"]').exists()).toBe(
+			false
+		);
+		expect(mobile.find(".update-item").exists()).toBe(true);
 	});
 	it("renders update status and change counts in selectable timeline rows", async () => {
 		data.value = [

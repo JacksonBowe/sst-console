@@ -1,5 +1,5 @@
 <template>
-	<div class="col">
+	<div class="stage-updates col">
 		<div class="row items-center justify-between q-mb-md">
 			<div class="text-h6">Updates</div>
 			<q-btn
@@ -21,6 +21,33 @@
 		<div v-else-if="!updates.length" class="q-pa-lg text-center text-muted">
 			No Updates stored. Discover history to find older artifacts.
 		</div>
+		<q-scroll-area
+			v-else-if="$q.screen.gt.sm"
+			class="col stage-updates__scroll"
+			visible
+			:vertical-bar-style="{
+				background: 'var(--q-border)',
+				opacity: '1',
+				width: '6px',
+				borderRadius: '3px'
+			}"
+			:vertical-thumb-style="{
+				background: 'var(--q-text-secondary)',
+				opacity: '0.7',
+				width: '6px',
+				borderRadius: '3px'
+			}"
+			tabindex="0"
+			role="region"
+			aria-label="Update history"
+		>
+			<div class="q-pr-md">
+				<UpdateTimeline
+					:updates="updates"
+					@select="selectedId = $event"
+				/>
+			</div>
+		</q-scroll-area>
 		<UpdateTimeline
 			v-else
 			:updates="updates"
@@ -228,6 +255,16 @@ async function process() {
 </script>
 
 <style scoped>
+@media (min-width: 1024px) {
+	.stage-updates {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+	}
+	.stage-updates__scroll {
+		min-height: 0;
+	}
+}
 .update-sheet {
 	width: min(100vw, 42rem);
 	max-width: 100vw;

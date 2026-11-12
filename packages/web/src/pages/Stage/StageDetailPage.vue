@@ -1,5 +1,5 @@
 <template>
-	<DashboardPage>
+	<DashboardPage :class="{ 'stage-page--updates': activeTab === 'updates' }">
 		<DashboardPageBreadcrumbs :segments="breadcrumbs" class="q-mb-md" />
 		<DashboardPageHeader
 			:title="stage?.stageName ?? stageName"
@@ -251,6 +251,12 @@ function formatTimestamp(value: string) {
 </script>
 
 <style scoped lang="scss">
+@media (min-width: 1024px) {
+	.stage-page--updates {
+		height: 100dvh;
+	}
+}
+
 .stage-actions-menu {
 	background: var(--q-page);
 	color: var(--q-text-primary);
