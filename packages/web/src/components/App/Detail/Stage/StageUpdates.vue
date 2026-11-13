@@ -14,11 +14,17 @@
 		<div v-if="history.isPending.value" class="q-pa-md"
 			>Loading updates…</div
 		>
-		<div v-else-if="history.isError.value" class="q-pa-md">
+		<div
+			v-else-if="history.isError.value && !history.data.value"
+			class="q-pa-md"
+		>
 			Unable to load history.
 			<q-btn flat no-caps label="Retry" @click="history.refetch()" />
 		</div>
-		<div v-else-if="!updates.length" class="q-pa-lg text-center text-muted">
+		<div
+			v-else-if="!updates.length && !history.hasNextPage.value"
+			class="q-pa-lg text-center text-muted"
+		>
 			No Updates stored. Discover history to find older artifacts.
 		</div>
 		<q-scroll-area
@@ -42,17 +48,64 @@
 			aria-label="Update history"
 		>
 			<div class="q-pr-md">
-				<UpdateTimeline
-					:updates="updates"
-					@select="selectedId = $event"
-				/>
+				<q-infinite-scroll
+					:disable="
+						!history.hasNextPage.value ||
+						history.isFetchNextPageError.value
+					"
+					@load="loadMore"
+				>
+					<UpdateTimeline
+						:updates="updates"
+						@select="selectedId = $event"
+					/>
+					<div
+						v-if="history.hasNextPage.value"
+						class="text-center q-pa-md"
+					>
+						<div v-if="history.isFetchNextPageError.value"
+							>Unable to load more Updates.</div
+						>
+						<q-btn
+							flat
+							no-caps
+							:label="
+								history.isFetchNextPageError.value
+									? 'Retry'
+									: 'Load more'
+							"
+							:loading="history.isFetchingNextPage.value"
+							@click="fetchMore"
+						/>
+					</div>
+				</q-infinite-scroll>
 			</div>
 		</q-scroll-area>
-		<UpdateTimeline
+		<q-infinite-scroll
 			v-else
-			:updates="updates"
-			@select="selectedId = $event"
-		/>
+			:disable="
+				!history.hasNextPage.value || history.isFetchNextPageError.value
+			"
+			@load="loadMore"
+		>
+			<UpdateTimeline :updates="updates" @select="selectedId = $event" />
+			<div v-if="history.hasNextPage.value" class="text-center q-pa-md">
+				<div v-if="history.isFetchNextPageError.value"
+					>Unable to load more Updates.</div
+				>
+				<q-btn
+					flat
+					no-caps
+					:label="
+						history.isFetchNextPageError.value
+							? 'Retry'
+							: 'Load more'
+					"
+					:loading="history.isFetchingNextPage.value"
+					@click="fetchMore"
+				/>
+			</div>
+		</q-infinite-scroll>
 
 		<q-dialog v-model="showDiscovery">
 			<q-card style="min-width: min(90vw, 32rem)">
@@ -203,7 +256,9 @@ const discovery = useDiscoverStateHistory();
 const processing = useProcessStateHistory();
 const selectedId = ref("");
 const detail = useStateUpdateDetail(key, selectedId);
-const updates = computed(() => history.data.value ?? []);
+const updates = computed(
+	() => history.data.value?.pages.flatMap(page => page.items) ?? []
+);
 const selected = computed(
 	() =>
 		detail.data.value?.update ??
@@ -211,6 +266,19 @@ const selected = computed(
 );
 const discoveryResult = ref<HistoryDiscoveryResult>();
 const showDiscovery = ref(false);
+
+async function fetchMore() {
+	if (!history.hasNextPage.value || history.isFetching.value) return;
+	await history.fetchNextPage();
+}
+
+async function loadMore(_index: number, done: (stop?: boolean) => void) {
+	try {
+		await fetchMore();
+	} finally {
+		done();
+	}
+}
 
 watch(updates, value => {
 	if (

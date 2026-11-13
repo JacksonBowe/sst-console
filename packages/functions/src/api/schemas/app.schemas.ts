@@ -13,3 +13,8 @@ export const StageUpdateParamSchema = StageParamSchema.extend({
 export const AppListQuerySchema = z.object({
 	summaries: z.stringbool().default(false)
 });
+
+export const StageUpdateListQuerySchema = z.object({
+	limit: z.coerce.number().int().min(1).max(50).default(50),
+	cursor: z.string().min(1).optional()
+});

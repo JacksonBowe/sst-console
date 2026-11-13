@@ -17,6 +17,7 @@ import { z } from "zod";
 import { db } from "../db";
 import { fn } from "../util/fn";
 import { StateKeySchema } from "./schema";
+import type { Page } from "../db/types";
 
 const maxCommandBytes = 8 * 1024;
 const maxErrorsBytes = 64 * 1024;
@@ -224,14 +225,37 @@ export const get = fn(
 	}
 );
 
-/** Lists Stage Updates by SST key, including records absent from GSIs. */
-export const list = fn(StateKeySchema, async input => {
-	const result = await db.entities.stateUpdate.query
-		.update(input)
-		.go({ pages: "all", consistent: true });
-	// SST keys sort newest first; preserve the primary-key query order.
-	return result.data.map(item => StateUpdateSchema.parse(item));
-});
+/** Lists Stage Updates by SST key; without pagination, reads all results. */
+export const list = fn(
+	StateKeySchema.extend({
+		limit: z.number().int().min(1).optional(),
+		cursor: z.string().min(1).optional()
+	}),
+	async ({
+		appName,
+		stageName,
+		limit,
+		cursor
+	}): Promise<Page<StateUpdate>> => {
+		const query = db.entities.stateUpdate.query.update({
+			appName,
+			stageName
+		});
+		const result =
+			limit !== undefined || cursor !== undefined
+				? await query.go({ limit, cursor, consistent: true })
+				: await query.go({ pages: "all", consistent: true });
+		const items = result.data.map(item => StateUpdateSchema.parse(item));
+		return {
+			items,
+			meta: {
+				limit: limit ?? items.length,
+				hasMore: Boolean(result.cursor),
+				nextCursor: result.cursor ?? null
+			}
+		};
+	}
+);
 
 /** Derives the current outcome from Update completion and errors. */
 export function outcomeFor(
@@ -499,7 +523,7 @@ export const receiveUpdate = fn(
 
 /** Deletes all persisted Update records for a Stage. */
 export const remove = fn(StateKeySchema, async input => {
-	const updates = await list(input);
+	const { items: updates } = await list(input);
 	for (const chunk of chunkArray(updates, 90)) {
 		const transaction = await db.transaction
 			.write(({ stateUpdate }) =>

@@ -72,7 +72,8 @@ describe("Stage history API", () => {
 		["snapshots", "snapshots"],
 		["event-logs", "logs"]
 	] as const)("lists %s", async (kind, query) => {
-		mocks[query].mockResolvedValue([{ updateId: "id" }]);
+		const items = [{ updateId: "id" }];
+		mocks[query].mockResolvedValue(query === "updates" ? { items } : items);
 		const app = new Hono().route("/accounts", accountRoutes);
 		const response = await app.request(
 			`/accounts/123456789012/state/app/prod/${kind}`

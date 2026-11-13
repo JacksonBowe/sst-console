@@ -35,6 +35,32 @@ const item = {
 describe("Stage history listing", () => {
 	beforeEach(() => vi.clearAllMocks());
 
+	it("reads one consistent page and returns the continuation cursor", async () => {
+		const cursor = Buffer.from(
+			JSON.stringify({ pk: "APP#app#STAGE#prod", sk: "STATE_UPDATE#123" })
+		).toString("base64url");
+		const go = vi.fn().mockResolvedValue({
+			data: [{ ...item, createdAt: item.observedAt }],
+			cursor: "next"
+		});
+		mocks.updates.mockReturnValue({ go });
+		const result = await Update.list({
+			...input,
+			limit: 10,
+			cursor
+		});
+		expect(go).toHaveBeenCalledWith({
+			limit: 10,
+			cursor,
+			consistent: true
+		});
+		expect(result.meta).toEqual({
+			limit: 10,
+			hasMore: true,
+			nextCursor: "next"
+		});
+	});
+
 	it("lists newest Updates first in SST key order, including unprocessed records", async () => {
 		const newest = {
 			...item,
@@ -48,14 +74,13 @@ describe("Stage history listing", () => {
 			sourceKey: "update/app/prod/200.json",
 			timeStarted: "2025-01-01T00:00:00Z"
 		};
-		mocks.updates.mockReturnValue({
-			go: vi.fn().mockResolvedValue({ data: [newest, older] })
-		});
-		expect(await Update.list(input)).toEqual([newest, older]);
+		const go = vi.fn().mockResolvedValue({ data: [newest, older] });
+		mocks.updates.mockReturnValue({ go });
+		expect((await Update.list(input)).items).toEqual([newest, older]);
+		expect(go).toHaveBeenCalledWith({ pages: "all", consistent: true });
 	});
 
 	it.each([
-		[Update.list, "updates", { ...item, createdAt: item.observedAt }],
 		[
 			Snapshot.list,
 			"snapshots",

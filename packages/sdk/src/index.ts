@@ -31,6 +31,7 @@ export type {
 	IssuesFilters,
 	IssueStatus,
 	ListAppsOptions,
+	Page,
 	RecoverAccountsResult,
 	Resource,
 	ResourceTree,

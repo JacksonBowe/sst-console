@@ -7,6 +7,7 @@ import {
 	AppListQuerySchema,
 	AppNameParamSchema,
 	StageParamSchema,
+	StageUpdateListQuerySchema,
 	StageUpdateParamSchema
 } from "./schemas/app.schemas";
 
@@ -17,10 +18,12 @@ export const appRoutes = new Hono()
 	.get(
 		"/:appName/stages/:stageName/updates",
 		zValidator("param", StageParamSchema),
+		zValidator("query", StageUpdateListQuerySchema),
 		async c => {
 			const input = c.req.valid("param");
+			const query = c.req.valid("query");
 			await App.Stage.get(input);
-			return c.json(await State.Update.list(input));
+			return c.json(await State.Update.list({ ...input, ...query }));
 		}
 	)
 	.get(

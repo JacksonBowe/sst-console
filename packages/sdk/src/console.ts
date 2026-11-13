@@ -234,14 +234,16 @@ export type UsersFilters = {
 	cognitoEnabled?: boolean;
 };
 
-export type UsersPage = {
-	items: User[];
+export type Page<T> = {
+	items: T[];
 	meta: {
 		limit: number;
 		hasMore: boolean;
 		nextCursor: string | null;
 	};
 };
+
+export type UsersPage = Page<User>;
 
 export type InviteUserInput = { email: string };
 export type InviteUserResult = { id: string };
@@ -276,11 +278,13 @@ export type IssuesFilters = {
 export const consoleMethods = (request: RequestFn) => ({
 	listStageUpdates: (
 		appName: string,
-		stageName: string
-	): Promise<StateUpdate[]> =>
+		stageName: string,
+		options?: { limit?: number; cursor?: string }
+	): Promise<Page<StateUpdate>> =>
 		request({
 			method: "GET",
-			url: `apps/${encodeURIComponent(appName)}/stages/${encodeURIComponent(stageName)}/updates`
+			url: `apps/${encodeURIComponent(appName)}/stages/${encodeURIComponent(stageName)}/updates`,
+			params: options
 		}),
 	getStageUpdate: (
 		appName: string,

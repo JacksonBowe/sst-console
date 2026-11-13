@@ -1,6 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
+import {
+	useInfiniteQuery,
+	useMutation,
+	useQuery,
+	useQueryClient
+} from "@tanstack/vue-query";
 import type { HistoryKey } from "@sst-console/sdk";
-import { toValue, type MaybeRefOrGetter } from "vue";
+import { computed, toValue, type MaybeRefOrGetter } from "vue";
 
 import { api } from "@/boot/api-client";
 
@@ -15,10 +20,18 @@ export function useStateHistory(
 	key: MaybeRefOrGetter<HistoryKey>,
 	enabled: MaybeRefOrGetter<boolean>
 ) {
-	return useQuery({
-		queryKey: () => [...historyQueryKeys.stage(toValue(key)), "artifacts"],
-		queryFn: () =>
-			api.listStageUpdates(toValue(key).appName, toValue(key).stageName),
+	return useInfiniteQuery({
+		queryKey: computed(
+			() =>
+				[...historyQueryKeys.stage(toValue(key)), "artifacts"] as const
+		),
+		initialPageParam: undefined as string | undefined,
+		queryFn: ({ pageParam }) =>
+			api.listStageUpdates(toValue(key).appName, toValue(key).stageName, {
+				limit: 50,
+				...(pageParam ? { cursor: pageParam } : {})
+			}),
+		getNextPageParam: page => page.meta.nextCursor ?? undefined,
 		enabled: () => toValue(enabled) && Boolean(toValue(key).accountId)
 	});
 }

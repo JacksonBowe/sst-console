@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@console/core/app", () => ({ Stage: { get: mocks.stage } }));
 vi.mock("@console/core/state", () => ({
-	Update: { list: mocks.updates, get: mocks.update },
+	Update: {
+		list: mocks.updates,
+		get: mocks.update
+	},
 	Snapshot: { get: mocks.snapshot },
 	EventLog: { get: mocks.log },
 	StateEvent: { list: mocks.events },
@@ -29,13 +32,40 @@ describe("Stage Update API", () => {
 		mocks.stage.mockResolvedValue({ ...stage, accountId: "123456789012" });
 	});
 	it("lists only Updates after checking the Stage", async () => {
-		mocks.updates.mockResolvedValue([{ updateId: "id" }]);
+		mocks.updates.mockResolvedValue({
+			items: [{ updateId: "id" }],
+			meta: { limit: 50, hasMore: false, nextCursor: null }
+		});
 		const response = await app.request("/apps/app/stages/prod/updates");
-		expect(await response.json()).toEqual([{ updateId: "id" }]);
+		expect(await response.json()).toEqual({
+			items: [{ updateId: "id" }],
+			meta: { limit: 50, hasMore: false, nextCursor: null }
+		});
 		expect(mocks.stage).toHaveBeenCalledWith(stage);
-		expect(mocks.updates).toHaveBeenCalledWith(stage);
+		expect(mocks.updates).toHaveBeenCalledWith({ ...stage, limit: 50 });
 		expect(mocks.snapshot).not.toHaveBeenCalled();
 		expect(mocks.log).not.toHaveBeenCalled();
+	});
+	it("passes pagination parameters to the listing", async () => {
+		mocks.updates.mockResolvedValue({
+			items: [],
+			meta: { limit: 10, hasMore: false, nextCursor: null }
+		});
+		const response = await app.request(
+			"/apps/app/stages/prod/updates?limit=10&cursor=abc"
+		);
+		expect(response.status).toBe(200);
+		expect(mocks.updates).toHaveBeenCalledWith({
+			...stage,
+			limit: 10,
+			cursor: "abc"
+		});
+	});
+	it("rejects out-of-range limits", async () => {
+		expect(
+			(await app.request("/apps/app/stages/prod/updates?limit=51")).status
+		).toBe(400);
+		expect(mocks.updates).not.toHaveBeenCalled();
 	});
 	it("loads matching artifacts and events for one Update", async () => {
 		mocks.update.mockResolvedValue({ updateId: "id" });

@@ -125,7 +125,7 @@ export const accountRoutes = new Hono()
 		async c => {
 			const input = c.req.valid("param");
 			await Stage.assertStageOwnership(input);
-			return c.json(await State.Update.list(input));
+			return c.json((await State.Update.list(input)).items);
 		}
 	)
 	.post(

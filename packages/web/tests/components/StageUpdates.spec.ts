@@ -14,9 +14,18 @@ vi.mock("quasar", () => ({ Notify: { create: notify } }));
 vi.mock("@/boot/api-client", () => ({ handleApiError: vi.fn() }));
 vi.mock("@/composables/state-history", () => ({
 	useStateHistory: () => ({
-		data,
+		data: {
+			get value() {
+				return { pages: [{ items: data.value }] };
+			}
+		},
 		isPending: ref(false),
 		isError: ref(false),
+		hasNextPage: ref(false),
+		isFetchNextPageError: ref(false),
+		isFetchingNextPage: ref(false),
+		isFetching: ref(false),
+		fetchNextPage: vi.fn(),
 		refetch: vi.fn()
 	}),
 	useStateUpdateDetail: () => ({
@@ -63,6 +72,7 @@ const stubs = {
 	QCardSection: { template: "<div><slot /></div>" },
 	QCardActions: { template: "<div><slot /></div>" },
 	QScrollArea: { template: "<div><slot /></div>" },
+	QInfiniteScroll: { template: "<div><slot /></div>" },
 	QTimeline: { template: "<div><slot /></div>" },
 	QTimelineEntry: {
 		props: ["color"],
