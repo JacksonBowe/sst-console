@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CursorSchema } from "@console/core/db/cursor";
 
 export const AppNameParamSchema = z.object({ appName: z.string().min(1) });
 
@@ -16,5 +17,5 @@ export const AppListQuerySchema = z.object({
 
 export const StageUpdateListQuerySchema = z.object({
 	limit: z.coerce.number().int().min(1).max(50).default(50),
-	cursor: z.string().min(1).optional()
+	cursor: CursorSchema.optional()
 });

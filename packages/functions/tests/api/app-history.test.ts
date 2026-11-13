@@ -47,25 +47,46 @@ describe("Stage Update API", () => {
 		expect(mocks.log).not.toHaveBeenCalled();
 	});
 	it("passes pagination parameters to the listing", async () => {
+		const cursor = Buffer.from(
+			JSON.stringify({ pk: "stage", sk: "update" })
+		).toString("base64url");
 		mocks.updates.mockResolvedValue({
 			items: [],
 			meta: { limit: 10, hasMore: false, nextCursor: null }
 		});
 		const response = await app.request(
-			"/apps/app/stages/prod/updates?limit=10&cursor=abc"
+			`/apps/app/stages/prod/updates?limit=10&cursor=${cursor}`
 		);
 		expect(response.status).toBe(200);
 		expect(mocks.updates).toHaveBeenCalledWith({
 			...stage,
 			limit: 10,
-			cursor: "abc"
+			cursor
 		});
+	});
+	it.each([
+		"not-base64!",
+		Buffer.from("not json").toString("base64url"),
+		Buffer.from("[]").toString("base64url"),
+		Buffer.from("{}").toString("base64url"),
+		Buffer.from('{"pk":null}').toString("base64url")
+	])("rejects malformed cursor %s", async cursor => {
+		const response = await app.request(
+			`/apps/app/stages/prod/updates?cursor=${encodeURIComponent(cursor)}`
+		);
+		expect(response.status).toBe(400);
+		expect(mocks.updates).not.toHaveBeenCalled();
 	});
 	it("rejects out-of-range limits", async () => {
 		expect(
 			(await app.request("/apps/app/stages/prod/updates?limit=51")).status
 		).toBe(400);
 		expect(mocks.updates).not.toHaveBeenCalled();
+	});
+	it("does not turn unexpected listing failures into client errors", async () => {
+		mocks.updates.mockRejectedValue(new Error("database unavailable"));
+		const response = await app.request("/apps/app/stages/prod/updates");
+		expect(response.status).toBe(500);
 	});
 	it("loads matching artifacts and events for one Update", async () => {
 		mocks.update.mockResolvedValue({ updateId: "id" });
