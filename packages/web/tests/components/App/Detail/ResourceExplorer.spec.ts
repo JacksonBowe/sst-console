@@ -6,19 +6,25 @@ import { stageResources } from "../../../fixtures/stage-resources";
 const stubs = {
 	QCard: { template: "<div><slot /></div>" },
 	QIcon: true,
-	QInput: true,
+	QInput: { props: ["disable"], template: '<input :disabled="disable" />' },
 	QScrollArea: { template: "<div><slot /></div>" },
 	QSkeleton: { template: "<div data-skeleton />" },
+	QSpinner: true,
 	QSeparator: { props: ["vertical"], template: "<div />" }
 };
 
 describe("ResourceExplorer", () => {
-	it("shows its own loading skeleton instead of an empty state", () => {
+	it("keeps the header visible and shows a loading indicator", () => {
 		const wrapper = mount(ResourceExplorer, {
 			props: { resources: [], loading: true },
-			global: { stubs }
+			global: { stubs, mocks: { $q: { screen: { lt: { sm: false } } } } }
 		});
 		expect(wrapper.find("[data-skeleton]").exists()).toBe(true);
+		expect(wrapper.text()).toContain("Resource inspector");
+		expect(wrapper.find("input").attributes("disabled")).toBeDefined();
+		expect(wrapper.find('[role="status"]').attributes("aria-label")).toBe(
+			"Loading resources"
+		);
 		expect(wrapper.text()).not.toContain("No resources discovered");
 	});
 
@@ -44,6 +50,11 @@ describe("ResourceExplorer", () => {
 				}
 			});
 			const areas = wrapper.findAllComponents(stubs.QScrollArea);
+			expect(wrapper.find('[role="status"]').exists()).toBe(false);
+			expect(
+				wrapper.find("input").attributes("disabled")
+			).toBeUndefined();
+			expect(wrapper.find("[data-skeleton]").exists()).toBe(false);
 			expect(areas).toHaveLength(2);
 			expect(areas.map(area => area.attributes("aria-label"))).toEqual([
 				"Resource tree",

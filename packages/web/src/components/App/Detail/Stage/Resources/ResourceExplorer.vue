@@ -1,25 +1,7 @@
 <template>
 	<q-card flat bordered class="column no-wrap">
-		<template v-if="loading">
-			<div class="q-pa-md">
-				<q-skeleton type="text" width="12rem" />
-				<q-skeleton type="text" width="10rem" />
-			</div>
-			<q-separator />
-			<div class="row no-wrap col q-pa-md" aria-label="Loading resources">
-				<div class="col-4"
-					><q-skeleton
-						v-for="i in 6"
-						:key="i"
-						type="text"
-						width="70%"
-						class="q-mb-sm"
-				/></div>
-				<q-skeleton class="col" type="rect" height="12rem" />
-			</div>
-		</template>
 		<div
-			v-else-if="!resources.length"
+			v-if="!loading && !resources.length"
 			class="column items-center text-center q-gutter-sm q-pa-xl"
 		>
 			<q-icon name="sym_r_account_tree" size="40px" color="secondary" />
@@ -36,7 +18,8 @@
 					<div class="text-subtitle1 text-weight-medium"
 						>Resource inspector</div
 					>
-					<div class="text-caption text-secondary">
+					<q-skeleton v-if="loading" type="text" width="10rem" />
+					<div v-else class="text-caption text-secondary">
 						{{ counts.resources }} resources ·
 						{{ counts.components }} components
 					</div>
@@ -46,6 +29,7 @@
 					dense
 					outlined
 					clearable
+					:disable="loading"
 					placeholder="Search resources"
 					aria-label="Search resources"
 				>
@@ -54,6 +38,15 @@
 			</div>
 			<q-separator />
 			<div
+				v-if="loading"
+				class="col column flex-center q-pa-lg"
+				role="status"
+				aria-label="Loading resources"
+			>
+				<q-spinner color="primary" size="32px" />
+			</div>
+			<div
+				v-else
 				class="no-wrap col"
 				:class="$q.screen.lt.sm ? 'column' : 'row'"
 			>
