@@ -1,5 +1,6 @@
 import * as State from "@console/core/state";
 import * as Account from "@console/core/account";
+import * as Connection from "@console/core/connection";
 import { withActor } from "@console/core/actor";
 import { bus } from "sst/aws/bus";
 
@@ -50,7 +51,8 @@ export const handler = bus.subscriber(
 						await State.sync({
 							accountId,
 							appName: match[1]!,
-							stageName: match[2]!
+							stageName: match[2]!,
+							policy: await Connection.getSyncPolicy(accountId)
 						})
 					);
 					return;

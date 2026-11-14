@@ -35,7 +35,8 @@ export const sync = fn(
 			const result = await State.sync({
 				accountId,
 				appName: state.appName,
-				stageName: state.stageName
+				stageName: state.stageName,
+				policy
 			});
 			if (result.status === "missing")
 				throw State.stateErrors.missingDiscovered();

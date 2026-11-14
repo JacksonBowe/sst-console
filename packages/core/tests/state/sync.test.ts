@@ -20,10 +20,11 @@ vi.mock("../../src/account/connector", () => ({
 		connection: { credentials: {} }
 	})
 }));
-vi.mock("../../src/connection", () => ({
-	getSyncPolicy: async () => ({}),
-	Policy: { includesStage: () => true }
-}));
+vi.mock("../../src/connection", async () => {
+	const Policy = await import("../../src/connection/policy");
+	return { Policy, AccountSyncPolicySchema: Policy.AccountSyncPolicySchema };
+});
+vi.mock("../../src/app/app.stage", () => ({ find: async () => null }));
 vi.mock("../../src/state/discovery", () => ({
 	upsertEntry: mocks.upsertDiscovery,
 	remove: vi.fn()
@@ -40,7 +41,12 @@ vi.mock("../../src/db", () => ({
 }));
 
 const { sync } = await import("../../src/state/sync");
-const input = { accountId: "123456789012", appName: "app", stageName: "prod" };
+const input = {
+	accountId: "123456789012",
+	appName: "app",
+	stageName: "prod",
+	policy: { allowList: [], ignoreList: [] }
+};
 
 function checkpoint(time?: string) {
 	return JSON.stringify({

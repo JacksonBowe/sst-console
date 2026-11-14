@@ -43,7 +43,12 @@ sync policy, Stage ownership, and the source object's S3 sequencer. Only newer
 sequencers for the same bucket and key can replace an observation. Historical
 Update artifacts are not listed or replayed during normal account sync. Live
 snapshot events persist a source locator and reconcile Resource counts and events
-from S3; event-log events persist a locator and safe operation timing. Manual
+from S3. Current State sync checks the caller-provided sync policy and existing
+Stage ownership before downloading `app/` State. Account sync reuses one policy
+for all its Stages; live refresh reads the policy for each event. Excluded Stages still schedule
+projection removal. Skipped excluded or conflicting Stages do not update discovery
+inventory during refresh; account sync refreshes that inventory.
+Event-log events persist a locator and safe operation timing. Manual
 Stage backfill lists S3 artifacts and records locators without reading artifact
 contents through `POST /accounts/{accountId}/state/{appName}/{stageName}/backfill`.
 Selected historical processing publishes the same internal events as live

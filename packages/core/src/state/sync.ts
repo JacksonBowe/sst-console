@@ -9,6 +9,7 @@ import * as Connection from "../connection";
 import { requestReconcile } from "../issue/monitoring";
 import { requestProjectionRemoval } from "./cleanup";
 import { reconcile } from "../app/projection";
+import * as Stage from "../app/app.stage";
 import * as CurrentState from "./state";
 import { parseStateKey, stateObjectKey } from "./keys";
 import { remove, upsertEntry, type StateObject } from "./discovery";
@@ -21,9 +22,10 @@ export const sync = fn(
 	z.object({
 		accountId: AccountIdSchema,
 		appName: z.string().min(1),
-		stageName: z.string().min(1)
+		stageName: z.string().min(1),
+		policy: Connection.AccountSyncPolicySchema
 	}),
-	async ({ accountId, appName, stageName }) => {
+	async ({ accountId, appName, stageName, policy }) => {
 		const stateKey = stateObjectKey(appName, stageName);
 		const state = { appName, stageName, key: stateKey };
 		const { account: accountData, connection } = await connect(accountId);
@@ -34,7 +36,20 @@ export const sync = fn(
 			region: accountData.region
 		});
 		const now = new Date().toISOString();
-		const policy = await Connection.getSyncPolicy(accountId);
+		if (!Connection.Policy.includesStage(policy, state)) {
+			await requestProjectionRemoval({ accountId, ...state });
+			return { accountId, stateKey, status: "scheduled" as const };
+		}
+		const stage = await Stage.find(state);
+		if (stage && stage.accountId !== accountId)
+			return {
+				accountId,
+				stateKey,
+				conflicts: [
+					{ appName, stageName, ownerAccountId: stage.accountId }
+				],
+				status: "conflict" as const
+			};
 
 		let projection: StateProjection;
 		try {
@@ -53,11 +68,6 @@ export const sync = fn(
 			lastModified: projection.sourceUpdatedAt,
 			discoveredAt: now
 		});
-
-		if (!Connection.Policy.includesStage(policy, state)) {
-			await requestProjectionRemoval({ accountId, ...state });
-			return { accountId, stateKey, status: "scheduled" as const };
-		}
 
 		const { conflicts, projections } = await reconcile({
 			accountId,
@@ -135,7 +145,8 @@ export const handleStateDeletion = fn(
 		return sync({
 			accountId: input.accountId,
 			appName: state.appName,
-			stageName: state.stageName
+			stageName: state.stageName,
+			policy: await Connection.getSyncPolicy(input.accountId)
 		});
 	}
 );
