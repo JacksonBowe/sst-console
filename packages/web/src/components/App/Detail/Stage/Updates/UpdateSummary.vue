@@ -50,6 +50,10 @@
 				><div>{{ timestamp(update.timeStarted) }}</div></div
 			>
 			<div
+				><div class="text-caption text-secondary">Finished</div
+				><div>{{ timestamp(update.timeCompleted) }}</div></div
+			>
+			<div
 				><div class="text-caption text-secondary">Duration</div
 				><div>{{
 					duration(update.timeStarted, update.timeCompleted)

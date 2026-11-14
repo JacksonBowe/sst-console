@@ -1,25 +1,26 @@
 <template>
 	<div class="update-timing text-caption text-secondary">
-		<div title="SST version and duration"
-			><span>{{
+		<div class="update-timing__version" title="SST version">
+			{{
 				update.sstVersion
 					? `SST ${update.sstVersion}`
-					: "SST version unavailable"
-			}}</span>
+					: "SST unavailable"
+			}}
+		</div>
+		<div title="Duration">
 			<q-icon name="sym_r_timer" size="16px" />
-			{{ duration(update.timeStarted, update.timeCompleted) }}</div
-		>
-		<div title="Started to finished"
-			><q-icon name="sym_r_schedule" size="16px" />
-			{{ timestamp(update.timeStarted) }} →
-			{{ timestamp(update.timeCompleted) }}</div
-		>
+			{{ duration(update.timeStarted, update.timeCompleted) }}
+		</div>
+		<div title="Started">
+			<q-icon name="sym_r_schedule" size="16px" />
+			{{ startTime(update.timeStarted) }}
+		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
 import type { StateUpdate } from "@sst-console/sdk";
-import { duration, timestamp } from "./update-format";
+import { duration, startTime } from "./update-format";
 
 defineProps<{ update: StateUpdate }>();
 </script>
@@ -27,11 +28,10 @@ defineProps<{ update: StateUpdate }>();
 <style scoped>
 .update-timing {
 	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	justify-content: space-between;
+	flex-wrap: wrap;
+	align-items: center;
 	height: 100%;
-	gap: 0.25rem;
+	gap: 0.25rem 0.75rem;
 	font-variant-numeric: tabular-nums;
 }
 .update-timing > div {
@@ -39,9 +39,13 @@ defineProps<{ update: StateUpdate }>();
 	align-items: center;
 	gap: 0.25rem;
 }
-@media (max-width: 599px) {
+@media (min-width: 1024px) {
 	.update-timing {
-		align-items: flex-start;
+		display: grid;
+		grid-template-columns: 8rem 9rem 7rem;
+	}
+	.update-timing__version {
+		overflow-wrap: anywhere;
 	}
 }
 </style>

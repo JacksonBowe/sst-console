@@ -32,6 +32,15 @@ export function timestamp(value?: string) {
 		: "Unavailable";
 }
 
+export function startTime(value?: string) {
+	return value && !Number.isNaN(Date.parse(value))
+		? new Date(value).toLocaleTimeString(undefined, {
+				hour: "numeric",
+				minute: "2-digit"
+			})
+		: "Unavailable";
+}
+
 export function duration(start?: string, end?: string) {
 	if (!start || !end) return "Duration unavailable";
 	const seconds = (Date.parse(end) - Date.parse(start)) / 1000;

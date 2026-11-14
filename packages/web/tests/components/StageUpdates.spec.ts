@@ -4,6 +4,7 @@ import { ref } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import StageUpdates from "@/components/App/Detail/Stage/StageUpdates.vue";
 import UpdateResourceEvents from "@/components/App/Detail/Stage/Updates/UpdateResourceEvents.vue";
+import UpdateSummary from "@/components/App/Detail/Stage/Updates/UpdateSummary.vue";
 
 const data = ref<StateUpdate[]>([{ updateId: "one", command: "deploy" }]);
 const discover = vi.fn();
@@ -171,6 +172,85 @@ describe("StageUpdates", () => {
 		expect(wrapper.text()).toContain("Changes unavailable");
 		await wrapper.findAll(".update-item")[0]!.trigger("click");
 		expect(wrapper.text()).toContain("Resource events");
+	});
+	it("groups updates by local start date in chronological order, including missing dates", () => {
+		const now = new Date();
+		const localTime = (daysAgo: number, hour: number) =>
+			new Date(
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate() - daysAgo,
+				hour
+			).toISOString();
+		data.value = [
+			{
+				updateId: "yesterday",
+				command: "yesterday",
+				timeStarted: localTime(1, 12)
+			},
+			{
+				updateId: "today-early",
+				command: "today early",
+				timeStarted: localTime(0, 8)
+			},
+			{ updateId: "missing", command: "missing" },
+			{
+				updateId: "older",
+				command: "older",
+				timeStarted: localTime(3, 12)
+			},
+			{
+				updateId: "today-late",
+				command: "today late",
+				timeStarted: localTime(0, 18)
+			},
+			{ updateId: "invalid", command: "invalid", timeStarted: "invalid" }
+		];
+		const wrapper = render(false);
+		expect(
+			wrapper
+				.findAll(".update-timeline__date")
+				.map(heading => heading.text())
+		).toEqual([
+			"Today",
+			"Yesterday",
+			new Date(localTime(3, 12)).toLocaleDateString(undefined, {
+				year: "numeric",
+				month: "short",
+				day: "numeric"
+			}),
+			"Date unavailable"
+		]);
+		expect(
+			wrapper
+				.findAll(".update-item__command")
+				.map(command => command.text())
+		).toEqual([
+			"today late",
+			"today early",
+			"yesterday",
+			"older",
+			"missing",
+			"invalid"
+		]);
+		expect(wrapper.find(".update-timing").text()).not.toContain("→");
+	});
+	it("keeps full start and finish timestamps in the update details", () => {
+		const update = {
+			updateId: "one",
+			timeStarted: "2026-11-12T10:00:00Z",
+			timeCompleted: "2026-11-12T10:01:00Z"
+		};
+		const wrapper = mount(UpdateSummary, {
+			props: { update, isNewest: true },
+			global: { stubs }
+		});
+		expect(wrapper.text()).toContain(
+			new Date(update.timeStarted).toLocaleString()
+		);
+		expect(wrapper.text()).toContain(
+			new Date(update.timeCompleted).toLocaleString()
+		);
 	});
 	it("shows partial history and operation-only failures", async () => {
 		const wrapper = render();
