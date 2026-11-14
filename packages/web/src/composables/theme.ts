@@ -17,7 +17,7 @@ function apply(preference: ThemePreference): void {
 	Dark.set(dark.value);
 
 	for (const [key, value] of Object.entries(themeColors[preference])) {
-		setCssVar(key as ThemeColorKey, value);
+		setCssVar(key as ThemeColorKey, value, document.documentElement);
 	}
 }
 
