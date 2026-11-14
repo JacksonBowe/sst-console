@@ -1,12 +1,18 @@
 <template>
 	<div class="update-timing text-caption text-secondary">
-		<div title="Duration"
-			><q-icon name="sym_r_timer" size="16px" />
+		<div title="SST version and duration"
+			><span>{{
+				update.sstVersion
+					? `SST ${update.sstVersion}`
+					: "SST version unavailable"
+			}}</span>
+			<q-icon name="sym_r_timer" size="16px" />
 			{{ duration(update.timeStarted, update.timeCompleted) }}</div
 		>
-		<div title="Started"
+		<div title="Started to finished"
 			><q-icon name="sym_r_schedule" size="16px" />
-			{{ timestamp(update.timeStarted) }}</div
+			{{ timestamp(update.timeStarted) }} →
+			{{ timestamp(update.timeCompleted) }}</div
 		>
 	</div>
 </template>
@@ -35,8 +41,7 @@ defineProps<{ update: StateUpdate }>();
 }
 @media (max-width: 599px) {
 	.update-timing {
-		flex-direction: row;
-		flex-wrap: wrap;
+		align-items: flex-start;
 	}
 }
 </style>
