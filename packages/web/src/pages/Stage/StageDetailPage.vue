@@ -1,125 +1,145 @@
 <template>
 	<DashboardPage :class="{ 'stage-page--updates': activeTab === 'updates' }">
 		<DashboardPageBreadcrumbs :segments="breadcrumbs" class="q-mb-md" />
-		<DashboardPageHeader
-			:title="stage?.stageName ?? stageName"
-			icon="sym_r_account_tree"
-		>
-			<template #subtitle>
-				<div class="text-body2 q-mt-xs">
-					<div
-						v-if="stageQuery.isPending.value"
-						class="row items-center q-gutter-sm"
-						aria-label="Loading stage context"
+		<DashboardPageHeader>
+			<div class="stage-header">
+				<DashboardPageHeaderTitle class="stage-header__title">
+					<q-icon
+						name="sym_r_account_tree"
+						size="28px"
+						color="primary"
+						class="q-mr-sm"
+					/>
+					<span
+						class="stage-header__name"
+						:tabindex="stage?.state ? 0 : undefined"
 					>
-						<q-skeleton type="text" width="8rem" />
-						<q-skeleton type="text" width="7rem" />
-						<q-skeleton type="text" width="12rem" />
-					</div>
-					<div
-						v-else-if="stage"
-						class="row items-center q-gutter-x-sm"
-					>
-						<router-link
-							:to="{
-								name: 'account-detail',
-								params: { accountId: stage.accountId }
-							}"
-							class="stage-account-link text-primary"
-							style="opacity: 1"
-							>{{ stage.accountId }}</router-link
-						>
-						<span>·</span>
-						<span class="text-muted">{{ stage.region }}</span>
-						<span>·</span>
-						<span
-							v-if="stage.state"
-							:title="stage.state.sourceKey"
-							class="text-muted"
+						{{ stage?.stageName ?? stageName }}
+						<q-tooltip v-if="stage?.state"
 							>State observed
-							{{ formatTimestamp(stage.state.observedAt) }}</span
+							{{
+								formatTimestamp(stage.state.observedAt)
+							}}</q-tooltip
 						>
-						<span v-else>No state</span>
+					</span>
+				</DashboardPageHeaderTitle>
+				<div class="stage-header__subtitle">
+					<div class="text-body2 q-mt-xs">
+						<div
+							v-if="stageQuery.isPending.value"
+							class="row items-center q-gutter-sm"
+							aria-label="Loading stage context"
+						>
+							<q-skeleton type="text" width="8rem" />
+							<q-skeleton type="text" width="7rem" />
+							<q-skeleton type="text" width="12rem" />
+						</div>
+						<div
+							v-else-if="stage"
+							class="row items-center q-gutter-x-sm"
+						>
+							<router-link
+								:to="{
+									name: 'account-detail',
+									params: { accountId: stage.accountId }
+								}"
+								class="stage-account-link text-primary"
+								style="opacity: 1"
+								>{{ stage.accountId }}</router-link
+							>
+							<span>·</span>
+							<span class="text-muted">{{ stage.region }}</span>
+							<template v-if="!stage.state"
+								><span>·</span><span>No state</span></template
+							>
+						</div>
 					</div>
 				</div>
-			</template>
-			<template #actions>
-				<q-btn
-					v-if="!issuesQuery.isError.value && stageOpenIssues.length"
-					flat
-					round
-					dense
-					no-caps
-					color="primary"
-					icon="sym_r_error"
-					:aria-label="`${stageOpenIssues.length} open ${stageOpenIssues.length === 1 ? 'issue' : 'issues'}`"
-					:to="issuesRoute"
-				>
-					<q-badge color="negative" floating>{{
-						stageOpenIssues.length
-					}}</q-badge>
-					<q-tooltip
-						>{{ stageOpenIssues.length }} open
-						{{
-							stageOpenIssues.length === 1 ? "issue" : "issues"
-						}}</q-tooltip
+				<DashboardPageHeaderActions class="stage-header__actions">
+					<q-btn
+						v-if="
+							!issuesQuery.isError.value && stageOpenIssues.length
+						"
+						flat
+						round
+						dense
+						no-caps
+						color="primary"
+						icon="sym_r_error"
+						:aria-label="`${stageOpenIssues.length} open ${stageOpenIssues.length === 1 ? 'issue' : 'issues'}`"
+						:to="issuesRoute"
 					>
-				</q-btn>
-				<PillTabs
-					:model-value="activeTab"
-					:options="tabs"
-					@update:model-value="setTab"
-				/>
-				<q-btn
-					flat
-					round
-					dense
-					icon="sym_r_more_vert"
-					aria-label="Stage actions"
-					:disable="!stage || stageQuery.isPending.value"
-				>
-					<q-menu
-						class="stage-actions-menu"
-						anchor="bottom right"
-						self="top right"
-						:offset="[0, 8]"
+						<q-badge color="negative" floating>{{
+							stageOpenIssues.length
+						}}</q-badge>
+						<q-tooltip
+							>{{ stageOpenIssues.length }} open
+							{{
+								stageOpenIssues.length === 1
+									? "issue"
+									: "issues"
+							}}</q-tooltip
+						>
+					</q-btn>
+					<PillTabs
+						:model-value="activeTab"
+						:options="tabs"
+						icons-on-mobile
+						@update:model-value="setTab"
+					/>
+					<q-btn
+						flat
+						round
+						dense
+						icon="sym_r_more_vert"
+						aria-label="Stage actions"
+						:disable="!stage || stageQuery.isPending.value"
 					>
-						<div class="q-pa-sm" style="min-width: 12rem">
-							<q-item
-								:active="stage?.issueMonitoringEnabled ?? false"
-								:aria-checked="
-									stage?.issueMonitoringEnabled ?? false
-								"
-								:disable="
-									setStageIssueMonitoring.isPending.value
-								"
-								class="stage-actions-menu__item q-px-sm q-py-xs"
-								clickable
-								dense
-								role="menuitemcheckbox"
-								@click="
-									toggleMonitoring(
-										!stage?.issueMonitoringEnabled
-									)
-								"
-							>
-								<q-item-section
-									>Issue monitoring</q-item-section
+						<q-menu
+							class="stage-actions-menu"
+							anchor="bottom right"
+							self="top right"
+							:offset="[0, 8]"
+						>
+							<div class="q-pa-sm" style="min-width: 12rem">
+								<q-item
+									:active="
+										stage?.issueMonitoringEnabled ?? false
+									"
+									:aria-checked="
+										stage?.issueMonitoringEnabled ?? false
+									"
+									:disable="
+										setStageIssueMonitoring.isPending.value
+									"
+									class="stage-actions-menu__item q-px-sm q-py-xs"
+									clickable
+									dense
+									role="menuitemcheckbox"
+									@click="
+										toggleMonitoring(
+											!stage?.issueMonitoringEnabled
+										)
+									"
 								>
-								<q-item-section
-									v-if="stage?.issueMonitoringEnabled"
-									side
-								>
-									<q-icon
-										name="sym_r_check"
-										color="primary"
-									/>
-								</q-item-section>
-							</q-item>
-						</div>
-					</q-menu>
-				</q-btn>
-			</template>
+									<q-item-section
+										>Issue monitoring</q-item-section
+									>
+									<q-item-section
+										v-if="stage?.issueMonitoringEnabled"
+										side
+									>
+										<q-icon
+											name="sym_r_check"
+											color="primary"
+										/>
+									</q-item-section>
+								</q-item>
+							</div>
+						</q-menu>
+					</q-btn>
+				</DashboardPageHeaderActions>
+			</div>
 		</DashboardPageHeader>
 
 		<DashboardPageContent>
@@ -160,7 +180,9 @@ import {
 	DashboardPage,
 	DashboardPageBreadcrumbs,
 	DashboardPageContent,
-	DashboardPageHeader
+	DashboardPageHeader,
+	DashboardPageHeaderActions,
+	DashboardPageHeaderTitle
 } from "@/components/ui/Dashboard";
 import { formatDateTime } from "@/components/ui/format";
 import { PillTabs } from "@/components/ui/PillTabs";
@@ -175,8 +197,8 @@ import { useIssues } from "@/composables/issues";
 const route = useRoute();
 const router = useRouter();
 const tabs = [
-	{ label: "Overview", value: "overview" },
-	{ label: "Updates", value: "updates" }
+	{ label: "Overview", value: "overview", icon: "sym_r_dashboard" },
+	{ label: "Updates", value: "updates", icon: "sym_r_history" }
 ];
 const activeTab = computed(() =>
 	route.query.tab === "updates" ? "updates" : "overview"
@@ -251,6 +273,28 @@ function formatTimestamp(value: string) {
 </script>
 
 <style scoped lang="scss">
+.stage-header {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	width: 100%;
+}
+.stage-header__title {
+	min-width: 0;
+	flex-wrap: nowrap;
+}
+.stage-header__name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.stage-header__actions {
+	grid-column: 2;
+	grid-row: 1;
+	flex-wrap: nowrap;
+}
+.stage-header__subtitle {
+	grid-column: 1 / -1;
+}
 @media (min-width: 1024px) {
 	.stage-page--updates {
 		height: 100dvh;

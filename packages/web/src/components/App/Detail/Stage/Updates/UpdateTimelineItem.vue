@@ -74,10 +74,9 @@ defineEmits<{ select: [] }>();
 }
 @media (max-width: 599px) {
 	.update-item {
-		flex-wrap: wrap;
+		flex-direction: column;
 	}
 	.update-item__timing {
-		width: 100%;
 		padding-left: 0;
 		padding-top: 0.5rem;
 	}

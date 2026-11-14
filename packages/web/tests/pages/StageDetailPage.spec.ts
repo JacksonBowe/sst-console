@@ -20,7 +20,7 @@ const stage = ref({
 	stageName: "dev",
 	accountId: "123456789012",
 	region: "us-east-1",
-	state: undefined,
+	state: undefined as { observedAt: string; sourceKey: string } | undefined,
 	issueMonitoringEnabled: false,
 	resources: []
 });
@@ -61,8 +61,10 @@ vi.mock("@/components/ui/Dashboard", () => ({
 	DashboardPageContent: { template: "<section><slot /></section>" },
 	DashboardPageHeader: {
 		template:
-			'<header><slot name="subtitle" /><slot name="actions" /></header>'
-	}
+			'<header><slot /><slot name="subtitle" /><slot name="actions" /></header>'
+	},
+	DashboardPageHeaderTitle: { template: "<div><slot /></div>" },
+	DashboardPageHeaderActions: { template: "<div><slot /></div>" }
 }));
 
 const stubs = {
@@ -92,6 +94,7 @@ describe("StageDetailPage", () => {
 		issues.value = [];
 		issuesError.value = false;
 		pending.value = false;
+		stage.value.state = undefined;
 		push.mockReset();
 		mutate.mockReset();
 	});
@@ -126,6 +129,25 @@ describe("StageDetailPage", () => {
 		expect(wrapper.find("[data-explorer]").exists()).toBe(false);
 		await wrapper.findAll('[role="tab"]')[0]!.trigger("click");
 		expect(push).toHaveBeenLastCalledWith({ query: { tab: undefined } });
+	});
+	it("keeps observed time in the stage name tooltip and labels icon tabs", () => {
+		stage.value.state = {
+			observedAt: "2026-11-12T10:00:00Z",
+			sourceKey: "state.json"
+		};
+		const wrapper = render();
+		expect(wrapper.find(".stage-header__subtitle").text()).not.toContain(
+			"State observed"
+		);
+		expect(wrapper.find(".stage-header__name").html()).toContain(
+			"State observed"
+		);
+		expect(
+			wrapper.find('[role="tab"][aria-label="Overview"]').exists()
+		).toBe(true);
+		expect(
+			wrapper.find('[role="tab"][aria-label="Updates"]').exists()
+		).toBe(true);
 	});
 	it("only links to matching open issues when the query succeeds", async () => {
 		issues.value = [

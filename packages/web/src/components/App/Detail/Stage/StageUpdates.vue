@@ -6,10 +6,14 @@
 				color="primary"
 				outline
 				no-caps
-				label="Discover history"
+				:label="$q.screen.lt.sm ? undefined : 'Discover history'"
+				:icon="$q.screen.lt.sm ? 'sym_r_manage_search' : undefined"
+				aria-label="Discover history"
 				:loading="discovery.isPending.value"
 				@click="discover"
-			/>
+			>
+				<q-tooltip>Discover history</q-tooltip>
+			</q-btn>
 		</div>
 		<div v-if="history.isPending.value" class="q-pa-md"
 			>Loading updates…</div

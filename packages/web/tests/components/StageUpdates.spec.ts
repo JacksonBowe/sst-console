@@ -59,9 +59,9 @@ vi.mock("@/composables/state-history", () => ({
 
 const stubs = {
 	QBtn: {
-		props: ["label"],
+		props: ["label", "icon"],
 		template:
-			"<button @click=\"$emit('click')\">{{ label }}<slot /></button>"
+			'<button :data-icon="icon" @click="$emit(\'click\')">{{ label }}<slot /></button>'
 	},
 	QItem: { template: "<button @click=\"$emit('click')\"><slot /></button>" },
 	QDialog: {
@@ -96,7 +96,9 @@ function render(desktop = true) {
 		global: {
 			stubs,
 			directives: { closePopup: {} },
-			mocks: { $q: { screen: { gt: { sm: desktop } } } }
+			mocks: {
+				$q: { screen: { gt: { sm: desktop }, lt: { sm: !desktop } } }
+			}
 		}
 	});
 }
@@ -115,6 +117,16 @@ describe("StageUpdates", () => {
 			false
 		);
 		expect(mobile.find(".update-item").exists()).toBe(true);
+		expect(
+			mobile
+				.find('[aria-label="Discover history"]')
+				.attributes("data-icon")
+		).toBe("sym_r_manage_search");
+		expect(
+			render()
+				.find('[aria-label="Discover history"]')
+				.attributes("data-icon")
+		).toBeUndefined();
 	});
 	it("renders update status and change counts in selectable timeline rows", async () => {
 		data.value = [
