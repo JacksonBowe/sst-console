@@ -1,3 +1,5 @@
+/// <reference types="bun" />
+
 import { basename, dirname, join } from "node:path";
 
 const root = join(import.meta.dir, "..");
