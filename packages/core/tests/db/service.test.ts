@@ -95,6 +95,7 @@ describe("db service", () => {
 		).toBe("1");
 	});
 
+	// Type-index queries must stay available across all persisted entity types.
 	it("provides an entity-type index for every ConsoleData entity", () => {
 		const entities = Object.values(db.entities) as unknown as Array<{
 			query: {

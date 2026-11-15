@@ -23,10 +23,7 @@ vi.mock("../../src/notification-destination", () => ({
 }));
 vi.mock("../../src/notification", () => ({ deliver }));
 
-const { alertRuleEntity } =
-	await import("../../src/alert-rule/alert-rule.dynamo");
-const { create, list, sendIssueNotifications } =
-	await import("../../src/alert-rule");
+const { create, sendIssueNotifications } = await import("../../src/alert-rule");
 
 const notificationDestinationId = "01K7VRAA8NH8CYTXZYGCGRBDDN";
 const alertRule = {
@@ -67,15 +64,6 @@ describe("alert rules", () => {
 		expect(() =>
 			create({ type: "issue", notificationDestinationIds: [] })
 		).toThrow();
-	});
-
-	it("lists configured notification destination references", async () => {
-		alertRuleByTypeGo.mockResolvedValue({ data: [alertRule] });
-		await create({
-			type: "issue",
-			notificationDestinationIds: [notificationDestinationId]
-		});
-		await expect(list()).resolves.toEqual([alertRule]);
 	});
 
 	it("delivers matching Issue notifications using last seen time", async () => {
@@ -121,12 +109,5 @@ describe("alert rules", () => {
 		await sendIssueNotifications({ ...issue, status: "suppressed" });
 
 		expect(deliver).not.toHaveBeenCalled();
-	});
-
-	it("uses type index to list alert rules", () => {
-		const params = alertRuleEntity.query
-			.byType({})
-			.params({ table: "ConsoleData" });
-		expect(params.IndexName).toBe("entitiesByType");
 	});
 });

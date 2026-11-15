@@ -69,6 +69,9 @@ vi.mock("@/components/ui/Dashboard", () => ({
 
 const stubs = {
 	QSkeleton: true,
+	QBadge: { template: "<span><slot /></span>" },
+	QIcon: true,
+	QTooltip: { template: "<span><slot /></span>" },
 	RouterLink: { template: "<a><slot /></a>" },
 	QBtn: {
 		props: ["label", "to", "disable"],

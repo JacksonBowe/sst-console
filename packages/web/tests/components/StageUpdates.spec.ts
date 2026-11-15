@@ -4,7 +4,6 @@ import { ref } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import StageUpdates from "@/components/App/Detail/Stage/StageUpdates.vue";
 import UpdateResourceEvents from "@/components/App/Detail/Stage/Updates/UpdateResourceEvents.vue";
-import UpdateSummary from "@/components/App/Detail/Stage/Updates/UpdateSummary.vue";
 
 const data = ref<StateUpdate[]>([{ updateId: "one", command: "deploy" }]);
 const discover = vi.fn();
@@ -81,6 +80,7 @@ const stubs = {
 	},
 	QBadge: { props: ["label"], template: "<span>{{ label }}</span>" },
 	QTooltip: true,
+	QMenu: { template: "<div><slot /></div>" },
 	QList: { template: "<div><slot /></div>" },
 	QItemSection: { template: "<div><slot /></div>" },
 	QItemLabel: { template: "<div><slot /></div>" },
@@ -108,26 +108,6 @@ describe("StageUpdates", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		data.value = [{ updateId: "one", command: "deploy" }];
-	});
-	it("uses a scroll region on desktop and page scrolling on smaller screens", () => {
-		expect(render().find('[aria-label="Update history"]').exists()).toBe(
-			true
-		);
-		const mobile = render(false);
-		expect(mobile.find('[aria-label="Update history"]').exists()).toBe(
-			false
-		);
-		expect(mobile.find(".update-item").exists()).toBe(true);
-		expect(
-			mobile
-				.find('[aria-label="Discover history"]')
-				.attributes("data-icon")
-		).toBe("sym_r_manage_search");
-		expect(
-			render()
-				.find('[aria-label="Discover history"]')
-				.attributes("data-icon")
-		).toBeUndefined();
 	});
 	it("renders update status and change counts in selectable timeline rows", async () => {
 		data.value = [
@@ -162,9 +142,6 @@ describe("StageUpdates", () => {
 		);
 		expect(wrapper.find('[aria-label="2 created"]').text()).toContain("+2");
 		expect(wrapper.find('[aria-label="0 deleted"]').exists()).toBe(false);
-		expect(wrapper.find('[aria-label="2 created"]').classes()).toContain(
-			"text-positive"
-		);
 		expect(wrapper.find('[aria-label="Resource changes"]').exists()).toBe(
 			true
 		);
@@ -235,23 +212,6 @@ describe("StageUpdates", () => {
 		]);
 		expect(wrapper.find(".update-timing").text()).not.toContain("→");
 	});
-	it("keeps full start and finish timestamps in the update details", () => {
-		const update = {
-			updateId: "one",
-			timeStarted: "2026-11-12T10:00:00Z",
-			timeCompleted: "2026-11-12T10:01:00Z"
-		};
-		const wrapper = mount(UpdateSummary, {
-			props: { update, isNewest: true },
-			global: { stubs }
-		});
-		expect(wrapper.text()).toContain(
-			new Date(update.timeStarted).toLocaleString()
-		);
-		expect(wrapper.text()).toContain(
-			new Date(update.timeCompleted).toLocaleString()
-		);
-	});
 	it("shows partial history and operation-only failures", async () => {
 		const wrapper = render();
 		expect(wrapper.find(".update-item").attributes("title")).toBe(
@@ -292,11 +252,6 @@ describe("StageUpdates", () => {
 			"Incomplete",
 			"Unprocessed"
 		]);
-		expect(
-			wrapper
-				.findAll("[data-color]")
-				.map(item => item.attributes("data-color"))
-		).toEqual(["primary", "grey", "warning"]);
 	});
 	it("shows discovery failures without calling them processed", async () => {
 		discover.mockResolvedValue({

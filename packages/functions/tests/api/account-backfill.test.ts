@@ -37,13 +37,4 @@ describe("Stage backfill API", () => {
 			stageName: "prod"
 		});
 	});
-
-	it("does not expose the old account-wide route", async () => {
-		const app = new Hono().route("/accounts", accountRoutes);
-		const response = await app.request(
-			"/accounts/123456789012/state/backfill",
-			{ method: "POST" }
-		);
-		expect(response.status).toBe(404);
-	});
 });

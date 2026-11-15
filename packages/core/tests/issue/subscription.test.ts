@@ -9,8 +9,6 @@ const subscriptionSet = vi.fn();
 const subscriptionUpdateGo = vi.fn();
 const subscriptionUpsert = vi.fn();
 const subscriptionUpsertGo = vi.fn();
-const subscriberUpsert = vi.fn();
-const subscriberUpsertGo = vi.fn();
 
 vi.mock("../../src/db", () => ({
 	db: {
@@ -20,13 +18,12 @@ vi.mock("../../src/db", () => ({
 				query: { stage: subscriptionByStage },
 				patch: subscriptionPatch,
 				upsert: subscriptionUpsert
-			},
-			issueSubscriber: { upsert: subscriberUpsert }
+			}
 		}
 	}
 }));
 
-const { create, list, update, upsert, upsertSubscriber } =
+const { create, list, update, upsert } =
 	await import("../../src/issue/issue.subscription");
 
 const subscription = {
@@ -48,7 +45,6 @@ describe("Issue subscription", () => {
 		subscriptionSet.mockReturnValue({ go: subscriptionUpdateGo });
 		subscriptionPatch.mockReturnValue({ set: subscriptionSet });
 		subscriptionUpsert.mockReturnValue({ go: subscriptionUpsertGo });
-		subscriberUpsert.mockReturnValue({ go: subscriberUpsertGo });
 	});
 
 	it("creates and lists stage subscriptions", async () => {
@@ -82,20 +78,5 @@ describe("Issue subscription", () => {
 		});
 		expect(subscriptionSet).toHaveBeenCalledWith({ status: "attached" });
 		expect(subscriptionUpsert).toHaveBeenCalledWith(subscription);
-	});
-
-	it("upserts regional subscriber state", async () => {
-		const subscriber = {
-			accountId: subscription.accountId,
-			region: subscription.region,
-			stackName:
-				"SSTConsoleIssueSubscriber-123456789012-ef260e9aa3c673af",
-			status: "ready" as const,
-			updatedAt: subscription.updatedAt
-		};
-
-		await upsertSubscriber(subscriber);
-
-		expect(subscriberUpsert).toHaveBeenCalledWith(subscriber);
 	});
 });

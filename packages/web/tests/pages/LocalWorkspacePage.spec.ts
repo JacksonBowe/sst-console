@@ -69,6 +69,7 @@ describe("LocalWorkspacePage", () => {
 			global: {
 				stubs: {
 					LocalWorkspace,
+					QPage: { template: "<main><slot /></main>" },
 					DashboardPage: { template: "<main><slot /></main>" },
 					DashboardPageBreadcrumbs: true,
 					DashboardPageContent: {

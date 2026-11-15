@@ -17,7 +17,8 @@
 		"./user*": "./src/user/index.ts"
 	},
 	"scripts": {
-		"test": "vitest"
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@aws-sdk/client-cloudformation": "^3.1141.0",
