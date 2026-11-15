@@ -15,6 +15,7 @@ export type {
 	AlertRuleInput,
 	NotificationDestination,
 	NotificationDestinationInput,
+	NotificationDestinationUpdate,
 	AlertRuleType,
 	AccountSyncPolicy,
 	AccountStatus,

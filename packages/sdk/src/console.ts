@@ -37,6 +37,11 @@ export type NotificationDestinationInput = {
 	channelConfig: { webhookUrl: string };
 };
 
+export type NotificationDestinationUpdate = {
+	name: string;
+	channelConfig?: { webhookUrl: string };
+};
+
 export type StageSelector = { app: string; stage?: string };
 
 export type AccountSyncPolicy = {
@@ -331,10 +336,10 @@ export const consoleMethods = (request: RequestFn) => ({
 		}),
 	updateNotificationDestination: (
 		id: string,
-		input: NotificationDestinationInput
+		input: NotificationDestinationUpdate
 	): Promise<NotificationDestination> =>
 		request({
-			method: "PUT",
+			method: "PATCH",
 			url: `notification-destinations/${encodeURIComponent(id)}`,
 			data: input
 		}),
