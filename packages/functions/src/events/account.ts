@@ -2,10 +2,10 @@ import * as Account from "@console/core/account";
 import { bus } from "sst/aws/bus";
 
 export const handler = bus.subscriber(
-	[Account.Connector.Events.Connected],
+	[Account.Registration.Events.Connected],
 	async event => {
 		switch (event.type) {
-			case Account.Connector.Events.Connected.type: {
+			case Account.Registration.Events.Connected.type: {
 				const { accountId } = event.properties;
 				console.log("Account connection sync started", { accountId });
 

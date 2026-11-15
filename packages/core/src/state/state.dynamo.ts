@@ -5,20 +5,145 @@ const model = {
 	version: "1"
 } as const;
 
+// One mutable source locator for a Stage's current app/ object. It intentionally
+// contains no checkpoint data; S3 remains authoritative for raw SST State.
+export const stateEntity = new Entity({
+	model: { ...model, entity: "state" },
+	attributes: {
+		accountId: { type: "string", required: true },
+		appName: { type: "string", required: true },
+		stageName: { type: "string", required: true },
+		sourceBucket: { type: "string", required: true },
+		sourceKey: { type: "string", required: true },
+		sourceVersion: { type: "string" },
+		observedAt: { type: "string", required: true },
+		schemaVersion: { type: "string", default: "3" }
+	},
+	indexes: {
+		state: {
+			pk: {
+				field: "pk",
+				composite: ["appName", "stageName"],
+				template: "APP#${appName}#STAGE#${stageName}",
+				casing: "none"
+			},
+			sk: {
+				field: "sk",
+				composite: [],
+				template: "STATE",
+				casing: "none"
+			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "STATE",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["appName", "stageName"],
+				template: "APP#${appName}#STAGE#${stageName}",
+				casing: "none"
+			}
+		}
+	}
+});
+
+// One Console-safe update summary. `history` is a sparse Stage-local index so
+// future history screens can page newest-first without scanning ConsoleData.
+export const stateUpdateEntity = new Entity({
+	model: { ...model, entity: "stateUpdate" },
+	attributes: {
+		accountId: { type: "string", required: true },
+		appName: { type: "string", required: true },
+		stageName: { type: "string", required: true },
+		updateId: { type: "string", required: true },
+		sourceBucket: { type: "string", required: true },
+		sourceKey: { type: "string", required: true },
+		sourceVersion: { type: "string" },
+		sequencer: { type: "string" },
+		observedAt: { type: "string", required: true },
+		sstVersion: { type: "string" },
+		command: { type: "string" },
+		timeStarted: { type: "string" },
+		timeCompleted: { type: "string" },
+		errors: { type: "any" },
+		errorsSourceCount: { type: "number" },
+		errorsStoredCount: { type: "number" },
+		errorsTruncated: { type: "boolean" },
+		processedAt: { type: "string" },
+		comparisonStatus: { type: ["available", "unavailable"] as const },
+		resourceCounts: { type: "any" },
+		createdAt: { type: "string", required: true },
+		schemaVersion: { type: "string", default: "1" }
+	},
+	indexes: {
+		update: {
+			pk: {
+				field: "pk",
+				composite: ["appName", "stageName"],
+				template: "APP#${appName}#STAGE#${stageName}",
+				casing: "none"
+			},
+			sk: {
+				field: "sk",
+				composite: ["updateId"],
+				template: "STATE_UPDATE#${updateId}",
+				casing: "none"
+			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "STATE_UPDATE",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["appName", "stageName", "updateId"],
+				template:
+					"APP#${appName}#STAGE#${stageName}#STATE_UPDATE#${updateId}",
+				casing: "none"
+			}
+		},
+		history: {
+			index: "lookup",
+			pk: {
+				field: "lookupPk",
+				composite: ["appName", "stageName"],
+				template: "STATE_UPDATE#${appName}#${stageName}",
+				casing: "none"
+			},
+			sk: {
+				field: "lookupSk",
+				composite: ["updateId"],
+				template: "STATE_UPDATE#${updateId}",
+				casing: "none"
+			}
+		}
+	}
+});
+
+// Snapshot and Event Log records are independent of Update arrival order.
 export const stateSnapshotEntity = new Entity({
 	model: { ...model, entity: "stateSnapshot" },
 	attributes: {
 		accountId: { type: "string", required: true },
 		appName: { type: "string", required: true },
 		stageName: { type: "string", required: true },
-		snapshotId: { type: "string", required: true },
-		reverseTimestamp: { type: "string", required: true },
+		updateId: { type: "string", required: true },
 		sourceBucket: { type: "string", required: true },
 		sourceKey: { type: "string", required: true },
 		sourceVersion: { type: "string" },
-		archiveKey: { type: "string" },
-		createdAt: { type: "string", required: true },
-		schemaVersion: { type: "string", default: "2" }
+		lastModified: { type: "string", required: true },
+		observedAt: { type: "string", required: true },
+		processedAt: { type: "string" },
+		schemaVersion: { type: "string", default: "3" }
 	},
 	indexes: {
 		snapshot: {
@@ -30,8 +155,8 @@ export const stateSnapshotEntity = new Entity({
 			},
 			sk: {
 				field: "sk",
-				composite: ["reverseTimestamp", "snapshotId"],
-				template: "SNAPSHOT#${reverseTimestamp}#${snapshotId}",
+				composite: ["updateId"],
+				template: "STATE_SNAPSHOT#${updateId}",
 				casing: "none"
 			}
 		},
@@ -45,70 +170,45 @@ export const stateSnapshotEntity = new Entity({
 			},
 			sk: {
 				field: "entitySort",
-				composite: [
-					"appName",
-					"stageName",
-					"reverseTimestamp",
-					"snapshotId"
-				],
+				composite: ["appName", "stageName", "updateId"],
 				template:
-					"APP#${appName}#STAGE#${stageName}#SNAPSHOT#${reverseTimestamp}#${snapshotId}",
-				casing: "none"
-			}
-		},
-		byAwsAccount: {
-			index: "entitiesByAwsAccount",
-			pk: {
-				field: "accountPk",
-				composite: ["accountId"],
-				template: "ACCOUNT#${accountId}",
-				casing: "none"
-			},
-			sk: {
-				field: "accountSk",
-				composite: [
-					"appName",
-					"stageName",
-					"reverseTimestamp",
-					"snapshotId"
-				],
-				template:
-					"SNAPSHOT#${appName}#${stageName}#${reverseTimestamp}#${snapshotId}",
+					"APP#${appName}#STAGE#${stageName}#STATE_SNAPSHOT#${updateId}",
 				casing: "none"
 			}
 		}
 	}
 });
 
-export const syncRunEntity = new Entity({
-	model: { ...model, entity: "syncRun" },
+export const stateEventEntity = new Entity({
+	model: { ...model, entity: "stateEvent" },
 	attributes: {
-		accountId: { type: "string", required: true },
-		syncRunId: { type: "string", required: true },
-		reverseTimestamp: { type: "string", required: true },
-		status: {
-			type: ["succeeded", "completed_with_conflicts", "failed"] as const,
+		appName: { type: "string", required: true },
+		stageName: { type: "string", required: true },
+		updateId: { type: "string", required: true },
+		resourceId: { type: "string", required: true },
+		action: {
+			type: ["created", "updated", "deleted"] as const,
 			required: true
 		},
-		startedAt: { type: "string", required: true },
-		completedAt: { type: "string" },
-		stateCount: { type: "number" },
-		message: { type: "string" },
-		conflicts: { type: "any" },
-		schemaVersion: { type: "string", default: "1" }
+		urn: { type: "string", required: true },
+		resourceType: { type: "string", required: true },
+		parentUrn: { type: "string" },
+		custom: { type: "boolean" },
+		snapshot: { type: "any" },
+		operation: { type: "any" }
 	},
 	indexes: {
-		syncRun: {
+		event: {
 			pk: {
 				field: "pk",
-				composite: ["accountId"],
-				template: "ACCOUNT#${accountId}",
+				composite: ["appName", "stageName"],
+				template: "APP#${appName}#STAGE#${stageName}",
 				casing: "none"
 			},
 			sk: {
 				field: "sk",
-				composite: ["reverseTimestamp", "syncRunId"],
-				template: "SYNC#${reverseTimestamp}#${syncRunId}",
+				composite: ["updateId", "resourceId", "action"],
+				template: "STATE_EVENT#${updateId}#${resourceId}#${action}",
 				casing: "none"
 			}
 		},
@@ -117,29 +217,69 @@ export const syncRunEntity = new Entity({
 			pk: {
 				field: "entityType",
 				composite: [],
-				template: "SYNC_RUN",
+				template: "STATE_EVENT",
 				casing: "none"
 			},
 			sk: {
 				field: "entitySort",
-				composite: ["accountId", "reverseTimestamp", "syncRunId"],
+				composite: [
+					"appName",
+					"stageName",
+					"updateId",
+					"resourceId",
+					"action"
+				],
 				template:
-					"ACCOUNT#${accountId}#SYNC#${reverseTimestamp}#${syncRunId}",
+					"APP#${appName}#STAGE#${stageName}#STATE_EVENT#${updateId}#${resourceId}#${action}",
 				casing: "none"
 			}
-		},
-		byAwsAccount: {
-			index: "entitiesByAwsAccount",
+		}
+	}
+});
+
+export const stateEventLogEntity = new Entity({
+	model: { ...model, entity: "stateEventLog" },
+	attributes: {
+		accountId: { type: "string", required: true },
+		appName: { type: "string", required: true },
+		stageName: { type: "string", required: true },
+		updateId: { type: "string", required: true },
+		sourceBucket: { type: "string", required: true },
+		sourceKey: { type: "string", required: true },
+		sourceVersion: { type: "string" },
+		lastModified: { type: "string", required: true },
+		observedAt: { type: "string", required: true },
+		processedAt: { type: "string" },
+		schemaVersion: { type: "string", default: "1" }
+	},
+	indexes: {
+		eventLog: {
 			pk: {
-				field: "accountPk",
-				composite: ["accountId"],
-				template: "ACCOUNT#${accountId}",
+				field: "pk",
+				composite: ["appName", "stageName"],
+				template: "APP#${appName}#STAGE#${stageName}",
 				casing: "none"
 			},
 			sk: {
-				field: "accountSk",
-				composite: ["reverseTimestamp", "syncRunId"],
-				template: "SYNC#${reverseTimestamp}#${syncRunId}",
+				field: "sk",
+				composite: ["updateId"],
+				template: "STATE_EVENT_LOG#${updateId}",
+				casing: "none"
+			}
+		},
+		byType: {
+			index: "entitiesByType",
+			pk: {
+				field: "entityType",
+				composite: [],
+				template: "STATE_EVENT_LOG",
+				casing: "none"
+			},
+			sk: {
+				field: "entitySort",
+				composite: ["appName", "stageName", "updateId"],
+				template:
+					"APP#${appName}#STAGE#${stageName}#STATE_EVENT_LOG#${updateId}",
 				casing: "none"
 			}
 		}

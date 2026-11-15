@@ -1,3 +1,4 @@
+import { AccountIdSchema } from "@console/core/util/aws";
 import {
 	DeleteMessageBatchCommand,
 	ReceiveMessageCommand,
@@ -19,7 +20,7 @@ const sqs = new SQSClient({});
 // Body sent by regional CloudWatch Logs subscriber Lambdas.
 const ingressSchema = z.object({
 	source: z.object({
-		accountId: z.string().regex(/^\d{12}$/),
+		accountId: AccountIdSchema,
 		region: z.string().min(1).max(64),
 		logGroup: z.string().startsWith("/aws/lambda/").max(512),
 		logStream: z.string().max(512)

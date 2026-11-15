@@ -1,0 +1,19 @@
+info:
+    name: GetApp
+    type: http
+    seq: 5
+
+http:
+    method: GET
+    url: "{{ApiBase}}/apps/:appName"
+    params:
+        - name: appName
+          value: "{{SSTApp}}"
+          type: path
+    auth: inherit
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5

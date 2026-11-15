@@ -71,10 +71,10 @@ watch(
 );
 
 const conflicts = computed<StageAccountConflict[]>(
-	() => account.data.value?.account.lastSyncConflicts ?? []
+	() => account.data.value?.lastSyncConflicts ?? []
 );
 const accountSubtitle = computed(() => {
-	const value = account.data.value?.account;
+	const value = account.data.value;
 	return value ? `${value.region} · ${value.status}` : "Loading Workload";
 });
 const breadcrumbs = computed(() => [

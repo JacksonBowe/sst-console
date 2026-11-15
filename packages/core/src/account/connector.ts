@@ -3,39 +3,43 @@ import {
 	GetCallerIdentityCommand,
 	STSClient
 } from "@aws-sdk/client-sts";
-import { Resource } from "sst";
-import { bus } from "sst/aws/bus";
-import { z } from "zod";
-
-import * as Connection from "../connection";
-import { InputError, ServerError } from "../error";
-import { defineEvent } from "../event";
 import { fn } from "../util/fn";
 import * as Account from "./account";
-import { removeAccountProjections } from "./projection";
-import {
-	ConnectorCallbackSchema,
-	ConnectorRoleArnPattern,
-	ConnectorSchema
-} from "./schema";
+import { accountErrors, isRemoteAccessFailure } from "./errors";
+import { ConnectorSchema } from "./schema";
 
 const sts = new STSClient({});
-export const Events = {
-	Connected: defineEvent(
-		"account.connected",
-		z.object({ accountId: z.string().regex(/^\d{12}$/) })
-	)
-};
-
-export type RegisterInput = z.input<typeof ConnectorCallbackSchema>;
+/** Marks an Account disconnected on role-assumption authorization failure. */
+async function withDisconnectOnAccessFailure<T>(
+	accountId: string,
+	operation: () => Promise<T>
+): Promise<T> {
+	try {
+		return await operation();
+	} catch (error) {
+		if (isRemoteAccessFailure(error)) {
+			try {
+				await Account.update({
+					accountId,
+					status: "disconnected",
+					updatedAt: new Date().toISOString()
+				});
+			} catch (persistenceError) {
+				console.error(
+					"Unable to mark account disconnected after access failure",
+					{ accountId },
+					persistenceError
+				);
+			}
+		}
+		throw error;
+	}
+}
 
 export const assume = fn(ConnectorSchema, async input => {
 	const externalId = process.env.SST_CONSOLE_EXTERNAL_ID;
 	if (!externalId) {
-		throw new ServerError(
-			"missing_external_id",
-			"SST Console external ID is not configured"
-		);
+		throw accountErrors.missingExternalId();
 	}
 
 	const assumed = await sts.send(
@@ -46,19 +50,13 @@ export const assume = fn(ConnectorSchema, async input => {
 		})
 	);
 	if (!assumed.Credentials) {
-		throw new ServerError(
-			"missing_assumed_credentials",
-			"AWS did not return target account credentials"
-		);
+		throw accountErrors.missingCredentials();
 	}
 
 	const accessKeyId = assumed.Credentials.AccessKeyId;
 	const secretAccessKey = assumed.Credentials.SecretAccessKey;
 	if (!accessKeyId || !secretAccessKey) {
-		throw new ServerError(
-			"invalid_assumed_credentials",
-			"AWS returned incomplete target account credentials"
-		);
+		throw accountErrors.invalidCredentials();
 	}
 	const credentials = {
 		accessKeyId,
@@ -69,10 +67,7 @@ export const assume = fn(ConnectorSchema, async input => {
 	const target = new STSClient({ credentials, region: input.region });
 	const identity = await target.send(new GetCallerIdentityCommand({}));
 	if (!identity.Account || !identity.Arn) {
-		throw new ServerError(
-			"invalid_target_identity",
-			"AWS did not return target account identity"
-		);
+		throw accountErrors.invalidTargetIdentity();
 	}
 
 	return {
@@ -84,6 +79,19 @@ export const assume = fn(ConnectorSchema, async input => {
 	};
 });
 
+/** Connects a registered Workload Account and verifies the assumed identity. */
+export async function connect(accountId: string) {
+	const account = await Account.find({ accountId });
+	if (!account || account.status !== "connected")
+		throw accountErrors.notFound();
+	const connection = await withDisconnectOnAccessFailure(accountId, () =>
+		assume({ roleArn: account.roleArn, region: account.region })
+	);
+	if (connection.accountId !== accountId)
+		throw accountErrors.verificationFailed();
+	return { account, connection };
+}
+
 export const verify = fn(ConnectorSchema, async input => {
 	const connection = await assume(input);
 
@@ -92,62 +100,5 @@ export const verify = fn(ConnectorSchema, async input => {
 		arn: connection.arn,
 		region: connection.region,
 		roleArn: connection.roleArn
-	};
-});
-
-export const register = fn(ConnectorCallbackSchema, async input => {
-	const roleMatch = ConnectorRoleArnPattern.exec(input.roleArn);
-	if (roleMatch?.groups?.accountId !== input.accountId) {
-		throw new InputError(
-			"invalid_role_arn",
-			"Connector role ARN does not belong to supplied account"
-		);
-	}
-
-	const status =
-		input.requestType === "Delete" ? "disconnected" : "connected";
-	if (input.requestType !== "Delete") {
-		const connection = await verify({
-			region: input.region,
-			roleArn: input.roleArn
-		});
-		if (connection.accountId !== input.accountId) {
-			throw new ServerError(
-				"account_verification_failed",
-				"Connector role does not belong to supplied account"
-			);
-		}
-	}
-
-	const now = new Date().toISOString();
-	if (input.requestType !== "Delete") {
-		await Connection.upsert({
-			accountId: input.accountId,
-			region: input.region,
-			roleArn: input.roleArn,
-			createdAt: now,
-			updatedAt: now
-		});
-	} else {
-		await removeAccountProjections(input.accountId);
-	}
-	await Account.create({
-		accountId: input.accountId,
-		region: input.region,
-		roleArn: input.roleArn,
-		status,
-		createdAt: now,
-		updatedAt: now
-	});
-
-	if (input.requestType !== "Delete") {
-		await bus.publish(Resource.Bus, Events.Connected, {
-			accountId: input.accountId
-		});
-	}
-
-	return {
-		accountId: input.accountId,
-		status
 	};
 });

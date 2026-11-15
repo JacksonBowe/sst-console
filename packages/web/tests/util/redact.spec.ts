@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { redactSensitiveData } from "@/util/redact";
 
+// Invocation data can contain credentials; preserve redaction before display or copy.
 describe("redactSensitiveData", () => {
 	it("redacts nested standard and AWS credentials without mutation", () => {
 		const value = {

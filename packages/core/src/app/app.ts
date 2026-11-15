@@ -43,6 +43,13 @@ export const get = fn(AppKeySchema, async input => {
 	return AppSchema.parse(result.data);
 });
 
+/** Removes an App projection only when it has no remaining Stages. */
+export const removeIfEmpty = fn(AppKeySchema, async input => {
+	const stages = await Stage.list(input);
+	if (stages.length === 0)
+		await db.entities.app.delete(input).go({ response: "none" });
+});
+
 /** Returns one App and summaries of all its Stages. */
 export const summary = fn(AppKeySchema, async input => {
 	const app = await get(input);

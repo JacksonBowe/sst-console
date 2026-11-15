@@ -140,7 +140,7 @@ quasar inspect --help
 
 ## Implement UI
 
-Prefer existing Quasar components, directives, plugins, utilities, and CSS helpers over recreating equivalent functionality.
+Use existing Quasar components, directives, plugins, and built-in utility classes whenever they provide equivalent functionality. Add custom CSS only for behavior or layout they do not provide.
 
 Prefer small, single-purpose UI components. Extract distinct sections, behaviours, and reusable elements into separate components rather than building monolithic UI files.
 

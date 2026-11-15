@@ -94,8 +94,8 @@ describe("Account", () => {
 		await expect(
 			Account.get({ accountId: account.accountId })
 		).rejects.toMatchObject({
-			code: "account_not_found",
-			status: 400
+			code: "account.not_found",
+			status: 404
 		});
 	});
 });

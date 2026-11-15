@@ -5,6 +5,9 @@ import * as Stage from "./app.stage";
 import { AppKeySchema, StageKeySchema } from "./schema";
 
 export * from "./app";
+export * as Resource from "./resource";
+export { Events } from "./events";
+export type { StageAccountConflict } from "./ownership";
 export * as Stage from "./app.stage";
 export { appErrors } from "./errors";
 export { AppKeySchema, AppSchema, StageKeySchema, StageSchema } from "./schema";
@@ -15,8 +18,8 @@ export const inspect = fn(AppKeySchema, async input => App.summary(input));
 /** DEPR: Superseded by Stage.get(). */
 export const inspectStage = fn(StageKeySchema, async input => {
 	const stage = await Stage.get(input);
-	const [snapshot, resources] = await Promise.all([
-		db.entities.stateSnapshot.query.snapshot(input).go({ limit: 1 }),
+	const [state, resources] = await Promise.all([
+		db.entities.state.get(input).go({ consistent: true }),
 		db.entities.resource.query.resource(input).go({ pages: "all" })
 	]);
 	return {
@@ -27,20 +30,37 @@ export const inspectStage = fn(StageKeySchema, async input => {
 		issueMonitoringEnabled: stage.issueMonitoringEnabled,
 		createdAt: stage.createdAt,
 		updatedAt: stage.updatedAt,
-		latestSnapshot: snapshot.data[0] ?? null,
+		state: state.data ?? null,
 		resources: resourceTree(resources.data)
 	};
 });
 
-function resourceTree<
+export function resourceTree<
 	T extends { resourceId: string; parentResourceId?: string }
 >(resources: T[]): Array<T & { children: Array<T & { children: T[] }> }> {
+	const byId = new Map(
+		resources.map(resource => [resource.resourceId, resource])
+	);
+	// Promote missing parents and cycles to roots so no projection disappears.
+	const parentOf = (resource: T): string | undefined => {
+		const parent = resource.parentResourceId;
+		if (!parent || !byId.has(parent)) return undefined;
+		const seen = new Set([resource.resourceId]);
+		let current: string | undefined = parent;
+		while (current && byId.has(current)) {
+			if (seen.has(current)) return undefined;
+			seen.add(current);
+			current = byId.get(current)?.parentResourceId;
+		}
+		return parent;
+	};
 	const children = new Map<string, T[]>();
 	for (const resource of resources) {
-		if (!resource.parentResourceId) continue;
-		const current = children.get(resource.parentResourceId) ?? [];
+		const parent = parentOf(resource);
+		if (!parent) continue;
+		const current = children.get(parent) ?? [];
 		current.push(resource);
-		children.set(resource.parentResourceId, current);
+		children.set(parent, current);
 	}
 	const build = (
 		resource: T
@@ -48,5 +68,5 @@ function resourceTree<
 		...resource,
 		children: (children.get(resource.resourceId) ?? []).map(build)
 	});
-	return resources.filter(resource => !resource.parentResourceId).map(build);
+	return resources.filter(resource => !parentOf(resource)).map(build);
 }

@@ -1,10 +1,15 @@
 # Agent Notes
 
+## Guiding principles
+
+- Follow a "make it work" > "make it better" approach when implementing new features, instead of attempting to implement a perfect solution first try.
+- This is a small community project - not an enterprise product. Don't overengineer.
+
 ## Work instructions
 
 - Keep replies concise. Load the `caveman` skill before responding.
 - Strongly prefer simple, explicit, readable, and maintainable code. Avoid cleverness, unnecessary abstraction, and complexity unless they provide a clear practical benefit.
-- Prefer Quasar components and utility classes over custom CSS.
+- Use Quasar components and built-in utility classes whenever they provide equivalent behavior; add custom CSS only for gaps.
 - Directory-local `.agent_context.md` files are concise directory maps that help agents orient without scanning every file.
 - When changing a directory, update its `.agent_context.md` when the map becomes inaccurate or omits important entries.
 - Create a new `.agent_context.md` only where it materially improves discoverability.
@@ -16,6 +21,7 @@
 - `sst-env.d.ts` files are quto-generated, never give them any thought
 - Commit messages must use Conventional Commits. Scope is optional; when used, it must be lowercase `package/domain`, for example `feat(core/job): add job helper function` or `docs: update guide`.
 - Before changing DynamoDB, ElectroDB, `ConsoleData`, persistence models, or data migrations, read `docs/architecture/dynamodb.md`.
+- All code should be human readable - with comments where relevant.
 
 ## Tooling
 

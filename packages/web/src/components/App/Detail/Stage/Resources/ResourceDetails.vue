@@ -23,7 +23,9 @@
 		</div>
 
 		<dl class="resource-details__fields">
-			<div v-if="resource.resourceKind === 'physical'">
+			<div
+				v-if="resource.resourceKind === 'resource' || resource.summary"
+			>
 				<dt>Resource name</dt>
 				<dd>
 					<CopyValue

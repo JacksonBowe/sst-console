@@ -1,7 +1,7 @@
 <template>
 	<div
 		:id="`invocation-${invocation.id}`"
-		class="invocation-list-row row no-wrap items-center q-px-md q-py-sm"
+		class="invocation-list-row items-center"
 		:class="{ 'invocation-list-row--active': active }"
 		:aria-label="rowLabel"
 		:aria-selected="active"
@@ -15,16 +15,16 @@
 		@keydown.home.prevent="$emit('navigate', 'first')"
 		@keydown.end.prevent="$emit('navigate', 'last')"
 	>
-		<div class="col-2 invocation-list-row__time">
+		<div class="invocation-list-row__time">
 			{{ formatTime(invocation.start) }}
 		</div>
-		<div class="col invocation-list-row__source ellipsis">
+		<div class="invocation-list-row__source ellipsis">
 			<span>{{ sourceName }}</span>
 			<span v-if="httpLabel" class="invocation-list-row__http">
 				{{ httpLabel }}
 			</span>
 		</div>
-		<div class="col-2 invocation-list-row__status">
+		<div class="invocation-list-row__status">
 			<div
 				class="row items-center no-wrap justify-end q-pr-md q-gutter-xs"
 			>
@@ -35,7 +35,7 @@
 				<span>{{ statusLabel }}</span>
 			</div>
 		</div>
-		<div class="col-1 text-right invocation-list-row__duration">
+		<div class="text-right invocation-list-row__duration">
 			{{ durationLabel }}
 		</div>
 	</div>
@@ -90,6 +90,8 @@ function formatTime(timestamp: number) {
 
 <style scoped lang="scss">
 .invocation-list-row {
+	display: grid;
+	grid-template-columns: var(--invocation-columns);
 	height: 2rem;
 	padding: 0 0.75rem;
 	box-shadow: inset 0 -1px var(--q-secondary-2);

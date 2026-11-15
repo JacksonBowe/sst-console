@@ -1,63 +1,116 @@
 <template>
-	<q-card flat bordered>
+	<q-card flat bordered class="column no-wrap">
 		<div
-			class="row items-center justify-between q-pa-md q-pb-sm q-gutter-sm"
+			v-if="!loading && !resources.length"
+			class="column items-center text-center q-gutter-sm q-pa-xl"
 		>
-			<div class="text-subtitle1 text-weight-medium"
-				>Resources ({{ resourceCount }})</div
+			<q-icon name="sym_r_account_tree" size="40px" color="secondary" />
+			<div class="text-h6">No resources discovered</div>
+			<div class="text-body2 text-secondary"
+				>This Stage has no imported resources available to inspect.</div
 			>
-			<q-input
-				v-model="search"
-				dense
-				outlined
-				clearable
-				placeholder="Search resources"
-				aria-label="Search resources"
-				class="resource-explorer__search"
-			>
-				<template #prepend><q-icon name="sym_r_search" /></template>
-			</q-input>
 		</div>
-		<q-separator />
-		<div class="resource-explorer__panes">
-			<div class="resource-explorer__tree">
-				<div
-					v-if="!filteredResources.length"
-					class="q-pa-md text-secondary"
-				>
-					No resources match this search.
+		<template v-else>
+			<div
+				class="row items-center justify-between q-pa-md q-pb-sm q-gutter-sm"
+			>
+				<div>
+					<div class="text-subtitle1 text-weight-medium"
+						>Resource inspector</div
+					>
+					<q-skeleton v-if="loading" type="text" width="10rem" />
+					<div v-else class="text-caption text-secondary">
+						{{ counts.resources }} resources ·
+						{{ counts.components }} components
+					</div>
 				</div>
-				<ResourceTreeView
-					v-else
-					:resources="filteredResources"
-					:expanded-ids="visibleExpandedIds"
-					:selected-id="selectedResource?.resourceId"
-					@select="selectedResource = $event"
-					@toggle="toggle"
-				/>
+				<q-input
+					v-model="search"
+					dense
+					outlined
+					clearable
+					:disable="loading"
+					placeholder="Search resources"
+					aria-label="Search resources"
+				>
+					<template #prepend><q-icon name="sym_r_search" /></template>
+				</q-input>
 			</div>
-			<q-separator vertical class="gt-sm" />
-			<div class="resource-explorer__details">
-				<ResourceDetails :resource="selectedResource" />
+			<q-separator />
+			<div
+				v-if="loading"
+				class="col column flex-center q-pa-lg"
+				role="status"
+				aria-label="Loading resources"
+			>
+				<q-spinner color="primary" size="32px" />
 			</div>
-		</div>
+			<div
+				v-else
+				class="no-wrap col"
+				:class="$q.screen.lt.sm ? 'column' : 'row'"
+			>
+				<div
+					class="relative-position"
+					:class="$q.screen.lt.sm ? 'col' : 'col-sm-5 col-md-4'"
+				>
+					<q-scroll-area
+						class="absolute-full"
+						tabindex="0"
+						role="region"
+						aria-label="Resource tree"
+					>
+						<div
+							v-if="!filteredResources.length"
+							class="q-pa-md text-secondary"
+						>
+							No resources match this search.
+						</div>
+						<ResourceTreeView
+							v-else
+							:resources="filteredResources"
+							:expanded-ids="visibleExpandedIds"
+							:searching="Boolean(search.trim())"
+							:selected-id="selectedResource?.resourceId"
+							@select="selectedResource = $event"
+							@toggle="toggle"
+						/>
+					</q-scroll-area>
+				</div>
+				<q-separator :vertical="!$q.screen.lt.sm" />
+				<div class="col relative-position">
+					<q-scroll-area
+						class="absolute-full"
+						:content-style="detailsContentStyle"
+						:content-active-style="detailsContentStyle"
+						tabindex="0"
+						role="region"
+						aria-label="Resource details"
+					>
+						<ResourceDetails :resource="selectedResource" />
+					</q-scroll-area>
+				</div>
+			</div>
+		</template>
 	</q-card>
 </template>
 
 <script setup lang="ts">
+import { stageResourceCounts } from "@/composables/apps/stage-resources";
 import type { ResourceTree } from "@sst-console/sdk";
 import { computed, ref } from "vue";
 
 import ResourceDetails from "./ResourceDetails.vue";
 import ResourceTreeView from "./ResourceTree.vue";
 
-const props = defineProps<{ resources: ResourceTree[] }>();
+const props = defineProps<{ resources: ResourceTree[]; loading?: boolean }>();
 
 const search = ref("");
 const expandedIds = ref(new Set<string>());
 const selectedResource = ref<ResourceTree>();
+const detailsContentStyle = { width: "100%", height: "100%" };
 
-const resourceCount = computed(() => countResources(props.resources));
+const counts = computed(() => stageResourceCounts(props.resources));
 const filteredResources = computed(() =>
 	filterResources(props.resources, search.value)
 );
@@ -74,13 +127,6 @@ function toggle(resourceId: string) {
 	if (next.has(resourceId)) next.delete(resourceId);
 	else next.add(resourceId);
 	expandedIds.value = next;
-}
-
-function countResources(resources: ResourceTree[]): number {
-	return resources.reduce(
-		(count, resource) => count + 1 + countResources(resource.children),
-		0
-	);
 }
 
 function resourceMatches(resource: ResourceTree, query: string) {
@@ -121,35 +167,3 @@ function parentsOfMatchingResources(resources: ResourceTree[], query: string) {
 	return result;
 }
 </script>
-
-<style scoped lang="scss">
-.resource-explorer__search {
-	width: min(100%, 18rem);
-}
-
-.resource-explorer__panes {
-	display: grid;
-	grid-template-columns: minmax(16rem, 34%) auto minmax(0, 1fr);
-	min-height: 28rem;
-}
-
-.resource-explorer__tree,
-.resource-explorer__details {
-	min-width: 0;
-}
-
-@media (max-width: 599px) {
-	.resource-explorer__panes {
-		grid-template-columns: 1fr;
-	}
-
-	.resource-explorer__tree {
-		border-bottom: 1px solid var(--q-separator-color);
-		max-height: 20rem;
-	}
-
-	.resource-explorer__details {
-		min-height: 16rem;
-	}
-}
-</style>

@@ -55,20 +55,72 @@ export type Account = {
 	region: string;
 	roleArn: string;
 	status: AccountStatus;
+	stateBucket?: string;
+	lastSyncConflicts?: StageAccountConflict[];
+	createdAt: string;
+	updatedAt: string;
 };
 
-export type StateSnapshot = {
+export type State = {
 	accountId: string;
 	appName: string;
 	stageName: string;
-	snapshotId: string;
-	reverseTimestamp: string;
 	sourceBucket: string;
 	sourceKey: string;
 	sourceVersion?: string;
-	archiveKey?: string;
-	createdAt: string;
+	observedAt: string;
 };
+
+export type HistoryKey = {
+	accountId: string;
+	appName: string;
+	stageName: string;
+};
+export type StateArtifact = { updateId: string; processedAt?: string };
+export type StateUpdate = StateArtifact & {
+	command?: string;
+	sstVersion?: string;
+	timeStarted?: string;
+	timeCompleted?: string;
+	errors?: Array<{ urn: string; message: string }>;
+	errorsTruncated?: boolean;
+	comparisonStatus?: "available" | "unavailable";
+	resourceCounts?: {
+		created: number;
+		updated: number;
+		deleted: number;
+		unchanged: number;
+	};
+};
+export type StateResourceEvent = {
+	resourceId: string;
+	urn: string;
+	resourceType: string;
+	action: "created" | "updated" | "deleted";
+	snapshot?: object;
+	operation?: {
+		startedAt: string;
+		completedAt?: string;
+		outcome: "unknown" | "succeeded" | "failed";
+	};
+};
+export type StateUpdateDetail = {
+	update: StateUpdate;
+	snapshot: StateArtifact | null;
+	eventLog: StateArtifact | null;
+	events: StateResourceEvent[];
+};
+export type HistoryDiscoveryResult = {
+	processed: number;
+	skipped: number;
+	failed: number;
+	failures: Array<{ key: string; reason: string }>;
+	failuresTruncated: boolean;
+};
+
+function historyUrl(key: HistoryKey) {
+	return `accounts/${encodeURIComponent(key.accountId)}/state/${encodeURIComponent(key.appName)}/${encodeURIComponent(key.stageName)}`;
+}
 
 export type Resource = {
 	accountId: string;
@@ -76,7 +128,7 @@ export type Resource = {
 	stageName: string;
 	resourceId: string;
 	parentResourceId?: string;
-	resourceKind: "component" | "physical";
+	resourceKind: "component" | "resource";
 	resourceType: string;
 	urn: string;
 	normalizedArn?: string;
@@ -95,7 +147,7 @@ export type AppStage = {
 	issueMonitoringEnabled: boolean;
 	createdAt: string;
 	updatedAt: string;
-	latestSnapshot: StateSnapshot | null;
+	state: State | null;
 	resourceCount: number;
 };
 
@@ -121,41 +173,12 @@ export type Stage = {
 	issueMonitoringEnabled: boolean;
 	createdAt: string;
 	updatedAt: string;
-	latestSnapshot: StateSnapshot | null;
+	state: State | null;
 	resources: ResourceTree[];
-};
-
-export type AccountStage = {
-	stageName: string;
-	createdAt: string;
-	updatedAt: string;
-	latestSnapshot: StateSnapshot | null;
-	resources: ResourceTree[];
-};
-
-export type AccountApp = {
-	appName: string;
-	createdAt: string;
-	updatedAt: string;
-	stages: AccountStage[];
-};
-
-export type AccountDetail = {
-	account: Account & {
-		stateBucket?: string;
-		lastSyncedAt?: string;
-		lastSyncConflicts?: StageAccountConflict[];
-		createdAt?: string;
-		updatedAt: string;
-	};
-	apps: AccountApp[];
 };
 
 export type SyncAccountResult = {
 	accountId: string;
-	arn: string;
-	region: string;
-	roleArn: string;
 	stateBucket: string;
 	states: Array<{
 		app: string;
@@ -164,7 +187,6 @@ export type SyncAccountResult = {
 		lastModified?: string;
 		size?: number;
 	}>;
-	statesTruncated: boolean;
 	skippedStages: StageAccountConflict[];
 };
 
@@ -212,14 +234,16 @@ export type UsersFilters = {
 	cognitoEnabled?: boolean;
 };
 
-export type UsersPage = {
-	items: User[];
+export type Page<T> = {
+	items: T[];
 	meta: {
 		limit: number;
 		hasMore: boolean;
 		nextCursor: string | null;
 	};
 };
+
+export type UsersPage = Page<User>;
 
 export type InviteUserInput = { email: string };
 export type InviteUserResult = { id: string };
@@ -252,6 +276,49 @@ export type IssuesFilters = {
 };
 
 export const consoleMethods = (request: RequestFn) => ({
+	listStageUpdates: (
+		appName: string,
+		stageName: string,
+		options?: { limit?: number; cursor?: string }
+	): Promise<Page<StateUpdate>> =>
+		request({
+			method: "GET",
+			url: `apps/${encodeURIComponent(appName)}/stages/${encodeURIComponent(stageName)}/updates`,
+			params: options
+		}),
+	getStageUpdate: (
+		appName: string,
+		stageName: string,
+		updateId: string
+	): Promise<StateUpdateDetail> =>
+		request({
+			method: "GET",
+			url: `apps/${encodeURIComponent(appName)}/stages/${encodeURIComponent(stageName)}/updates/${encodeURIComponent(updateId)}`
+		}),
+	listStateUpdates: (key: HistoryKey): Promise<StateUpdate[]> =>
+		request({ method: "GET", url: `${historyUrl(key)}/updates` }),
+	listStateSnapshots: (key: HistoryKey): Promise<StateArtifact[]> =>
+		request({ method: "GET", url: `${historyUrl(key)}/snapshots` }),
+	listStateEventLogs: (key: HistoryKey): Promise<StateArtifact[]> =>
+		request({ method: "GET", url: `${historyUrl(key)}/event-logs` }),
+	listStateResourceEvents: (
+		key: HistoryKey,
+		updateId: string
+	): Promise<StateResourceEvent[]> =>
+		request({
+			method: "GET",
+			url: `${historyUrl(key)}/updates/${encodeURIComponent(updateId)}/events`
+		}),
+	discoverStateHistory: (key: HistoryKey): Promise<HistoryDiscoveryResult> =>
+		request({ method: "POST", url: `${historyUrl(key)}/backfill` }),
+	processStateHistory: (
+		key: HistoryKey,
+		updateId: string
+	): Promise<{ published: number }> =>
+		request({
+			method: "POST",
+			url: `${historyUrl(key)}/updates/${encodeURIComponent(updateId)}/process`
+		}),
 	listNotificationDestinations: (): Promise<NotificationDestination[]> =>
 		request({ method: "GET", url: "notification-destinations" }),
 	createNotificationDestination: (
@@ -313,7 +380,7 @@ export const consoleMethods = (request: RequestFn) => ({
 		}),
 	listAccounts: (): Promise<Account[]> =>
 		request({ method: "GET", url: "accounts" }),
-	getAccount: (accountId: string): Promise<AccountDetail> =>
+	getAccount: (accountId: string): Promise<Account> =>
 		request({
 			method: "GET",
 			url: `accounts/${encodeURIComponent(accountId)}`

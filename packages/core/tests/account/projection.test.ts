@@ -9,7 +9,8 @@ const {
 	deleteResource,
 	deleteStage,
 	deleteDiscoveredStage,
-	transactionWrite
+	transactionWrite,
+	removeStageHistory
 } = vi.hoisted(() => ({
 	queryStagesByAwsAccount: vi.fn(),
 	queryDiscoveredStages: vi.fn(),
@@ -19,7 +20,8 @@ const {
 	deleteResource: vi.fn(),
 	deleteStage: vi.fn(),
 	deleteDiscoveredStage: vi.fn(),
-	transactionWrite: vi.fn()
+	transactionWrite: vi.fn(),
+	removeStageHistory: vi.fn()
 }));
 
 vi.mock("../../src/db", () => ({
@@ -46,12 +48,25 @@ vi.mock("../../src/db", () => ({
 	}
 }));
 
+vi.mock("../../src/state/state", () => ({
+	removeStageHistory
+}));
+vi.mock("../../src/account/connector", () => ({ connect: vi.fn() }));
+vi.mock("../../src/connection", () => ({}));
+vi.mock("../../src/state/update", () => ({}));
+vi.mock("../../src/state/snapshot", () => ({}));
+vi.mock("../../src/state/event-log", () => ({}));
+vi.mock("../../src/issue/monitoring", () => ({
+	removeStageMonitoring: vi.fn()
+}));
+
 const { removeAccountProjections } =
 	await import("../../src/account/projection");
 
 describe("account projection removal", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		removeStageHistory.mockResolvedValue(undefined);
 		queryStagesByAwsAccount.mockReturnValue({
 			go: vi.fn().mockResolvedValue({
 				data: [
@@ -84,7 +99,20 @@ describe("account projection removal", () => {
 		});
 		queryStagesByApp.mockImplementation(({ appName }) => ({
 			go: vi.fn().mockResolvedValue({
-				data: appName === "shared" ? [{ stageName: "other" }] : []
+				data:
+					appName === "shared"
+						? [
+								{
+									appName,
+									stageName: "other",
+									accountId: "111111111111",
+									region: "us-east-1",
+									issueMonitoringEnabled: false,
+									createdAt: "2026-01-01T00:00:00.000Z",
+									updatedAt: "2026-01-01T00:00:00.000Z"
+								}
+							]
+						: []
 			})
 		}));
 		for (const operation of [
@@ -123,5 +151,13 @@ describe("account projection removal", () => {
 		});
 		expect(deleteApp).toHaveBeenCalledWith({ appName: "removed" });
 		expect(deleteApp).not.toHaveBeenCalledWith({ appName: "shared" });
+	});
+
+	it("keeps Stages when history cleanup fails", async () => {
+		removeStageHistory.mockRejectedValue(new Error("cleanup failed"));
+		await expect(removeAccountProjections("111111111111")).rejects.toThrow(
+			"cleanup failed"
+		);
+		expect(deleteStage).not.toHaveBeenCalled();
 	});
 });

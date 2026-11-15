@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { partitionStageOwnership } from "../../src/account/ownership";
+import { partitionStageOwnership } from "../../src/app/ownership";
 
 describe("stage ownership conflicts", () => {
 	it("keeps matching stages and skips stages owned by another account", () => {

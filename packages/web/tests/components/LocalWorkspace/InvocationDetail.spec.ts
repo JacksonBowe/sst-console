@@ -313,6 +313,27 @@ describe("InvocationLogPanel", () => {
 });
 
 describe("InvocationListRow", () => {
+	it("allows long HTTP routes to be visually truncated while keeping the full accessible label", () => {
+		const path =
+			"/accounts/691249328599/state/sst-console/jackson/snapshots";
+		const wrapper = mount(InvocationListRow, {
+			props: {
+				invocation: { ...invocation, http: { method: "GET", path } },
+				active: false
+			}
+		});
+
+		expect(wrapper.get(".invocation-list-row__source").classes()).toContain(
+			"ellipsis"
+		);
+		expect(wrapper.get(".invocation-list-row__http").text()).toContain(
+			path
+		);
+		expect(
+			wrapper.get('[role="option"]').attributes("aria-label")
+		).toContain(`GET ${path}`);
+	});
+
 	it("shows application error status indicator", () => {
 		const wrapper = mount(InvocationListRow, {
 			props: {

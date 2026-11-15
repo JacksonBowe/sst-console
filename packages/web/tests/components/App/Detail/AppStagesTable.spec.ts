@@ -14,7 +14,7 @@ const stage: AppStage = {
 	issueMonitoringEnabled: false,
 	createdAt: "2026-10-13T00:00:00.000Z",
 	updatedAt: "2026-10-13T00:00:00.000Z",
-	latestSnapshot: null,
+	state: null,
 	resourceCount: 1
 };
 

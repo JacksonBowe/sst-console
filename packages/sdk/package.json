@@ -3,6 +3,9 @@
 	"private": true,
 	"type": "module",
 	"module": "src/index.ts",
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
 	"dependencies": {
 		"@console/functions": "workspace:*",
 		"axios": "^1.13.2"

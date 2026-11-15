@@ -1,0 +1,26 @@
+info:
+    name: BackfillStageStateHistory
+    type: http
+    seq: 6
+
+http:
+    method: POST
+    url: "{{ApiBase}}/accounts/:accountId/state/:appName/:stageName/backfill"
+    params:
+        - name: accountId
+          value: "{{AwsAccountId}}"
+          type: path
+        - name: appName
+          value: "{{SSTApp}}"
+          type: path
+        - name: stageName
+          value: "{{SSTAppStage}}"
+          type: path
+    auth: inherit
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
+    forwardAuthorizationHeader: true

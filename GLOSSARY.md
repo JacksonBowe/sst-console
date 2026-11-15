@@ -41,7 +41,7 @@ Rules selecting which discovered App Stages from a Workload Account SST Console 
 _Avoid_: Filter, inclusion policy
 
 **Sync Run**:
-One attempt to reconcile a Workload Account's selected SST State with Console projections.
+One account-wide attempt to reconcile selected SST State with Console projections.
 _Avoid_: Refresh, scan
 
 ## Operations
@@ -76,7 +76,7 @@ _Avoid_: Account, Cognito user
 - A **Workload Account** has **Discovery** inventory and a **Sync Policy**.
 - An **App** contains **Stages**; a **Stage** belongs to one **App** and one **Workload Account**.
 - A **Stage** contains **Resources** and has **State Snapshots**.
-- A **Sync Run** reconciles selected **SST State** into App, Stage, Resource, and State Snapshot projections.
+- A **Sync Run** reconciles selected **SST State** into App, Stage, and Resource projections.
 - **Issue Monitoring** on a **Stage** produces **Issues**.
 - An **Alert Rule** matches **Issues** and routes Notifications to one or more **Notification Destinations**.
 - A **Console User** is authenticated through one Cognito identity.

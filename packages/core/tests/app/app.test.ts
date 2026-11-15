@@ -9,6 +9,8 @@ const appByTypeGo = vi.fn();
 const appPatch = vi.fn();
 const appSet = vi.fn();
 const appUpdateGo = vi.fn();
+const appDelete = vi.fn();
+const appDeleteGo = vi.fn();
 const stageCreate = vi.fn();
 const stageCreateGo = vi.fn();
 const stageGet = vi.fn();
@@ -20,8 +22,8 @@ const stageSet = vi.fn();
 const stageUpdateGo = vi.fn();
 const stageDelete = vi.fn();
 const stageDeleteGo = vi.fn();
-const snapshot = vi.fn();
-const snapshotGo = vi.fn();
+const state = vi.fn();
+const stateGo = vi.fn();
 const resource = vi.fn();
 const resourceGo = vi.fn();
 
@@ -32,6 +34,7 @@ vi.mock("../../src/db", () => ({
 				create: appCreate,
 				get: appGet,
 				patch: appPatch,
+				delete: appDelete,
 				query: { byType: appByType }
 			},
 			stage: {
@@ -41,7 +44,7 @@ vi.mock("../../src/db", () => ({
 				delete: stageDelete,
 				query: { stage: stageByApp }
 			},
-			stateSnapshot: { query: { snapshot } },
+			state: { get: state },
 			resource: { query: { resource } }
 		}
 	}
@@ -72,13 +75,14 @@ describe("App", () => {
 		appByType.mockReturnValue({ go: appByTypeGo });
 		appPatch.mockReturnValue({ set: appSet });
 		appSet.mockReturnValue({ go: appUpdateGo });
+		appDelete.mockReturnValue({ go: appDeleteGo });
 		stageCreate.mockReturnValue({ go: stageCreateGo });
 		stageGet.mockReturnValue({ go: stageGetGo });
 		stageByApp.mockReturnValue({ go: stageByAppGo });
 		stagePatch.mockReturnValue({ set: stageSet });
 		stageSet.mockReturnValue({ go: stageUpdateGo });
 		stageDelete.mockReturnValue({ go: stageDeleteGo });
-		snapshot.mockReturnValue({ go: snapshotGo });
+		state.mockReturnValue({ go: stateGo });
 		resource.mockReturnValue({ go: resourceGo });
 	});
 
@@ -100,8 +104,28 @@ describe("App", () => {
 		appGetGo.mockResolvedValue({ data: app });
 		stageGetGo.mockResolvedValue({ data: stage });
 		stageByAppGo.mockResolvedValue({ data: [stage] });
-		snapshotGo.mockResolvedValue({ data: [{ snapshotId: "snapshot" }] });
-		resourceGo.mockResolvedValue({ data: [{ resourceId: "bucket" }] });
+		stateGo.mockResolvedValue({
+			data: { sourceKey: "app/console/dev.json" }
+		});
+		resourceGo.mockResolvedValue({
+			data: [
+				{
+					resourceId: "bucket",
+					resourceKind: "resource",
+					resourceType: "aws:s3/bucket:Bucket"
+				},
+				{
+					resourceId: "link",
+					resourceKind: "component",
+					resourceType: "sst:sst:LinkRef"
+				},
+				{
+					resourceId: "function",
+					resourceKind: "component",
+					resourceType: "sst.aws.Function"
+				}
+			]
+		});
 
 		await App.Stage.create(stage);
 		await App.Stage.update({
@@ -125,8 +149,8 @@ describe("App", () => {
 					issueMonitoringEnabled: false,
 					createdAt: stage.createdAt,
 					updatedAt: stage.updatedAt,
-					latestSnapshot: { snapshotId: "snapshot" },
-					resourceCount: 1
+					state: { sourceKey: "app/console/dev.json" },
+					resourceCount: 2
 				}
 			]
 		});
@@ -141,8 +165,8 @@ describe("App", () => {
 						issueMonitoringEnabled: false,
 						createdAt: stage.createdAt,
 						updatedAt: stage.updatedAt,
-						latestSnapshot: { snapshotId: "snapshot" },
-						resourceCount: 1
+						state: { sourceKey: "app/console/dev.json" },
+						resourceCount: 2
 					}
 				]
 			}
@@ -167,6 +191,17 @@ describe("App", () => {
 			code: "app.not_found",
 			status: 404
 		});
+	});
+
+	it("removes an App only when Stage.list returns no Stages", async () => {
+		stageByAppGo
+			.mockResolvedValueOnce({ data: [stage] })
+			.mockResolvedValueOnce({ data: [] });
+		await App.removeIfEmpty({ appName: app.appName });
+		expect(appDelete).not.toHaveBeenCalled();
+		await App.removeIfEmpty({ appName: app.appName });
+		expect(stageByAppGo).toHaveBeenCalledWith({ pages: "all" });
+		expect(appDelete).toHaveBeenCalledWith({ appName: app.appName });
 	});
 
 	it("throws domain error for missing Stage projections", async () => {

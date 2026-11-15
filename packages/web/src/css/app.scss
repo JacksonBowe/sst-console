@@ -12,6 +12,31 @@ body {
 	color: var(--q-text-primary);
 }
 
+html {
+	scrollbar-width: thin;
+	scrollbar-color: var(--q-text-secondary) var(--q-page);
+}
+
+@supports not (scrollbar-color: auto) {
+	html::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+
+	html::-webkit-scrollbar-track {
+		background: var(--q-page);
+	}
+
+	html::-webkit-scrollbar-thumb {
+		background: var(--q-text-secondary);
+		border-radius: 4px;
+	}
+
+	html::-webkit-scrollbar-thumb:hover {
+		background: var(--q-text-primary);
+	}
+}
+
 :focus-visible {
 	outline: 2px solid var(--q-focus-ring);
 	outline-offset: 2px;

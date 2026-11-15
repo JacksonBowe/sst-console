@@ -11,13 +11,13 @@ import { issueSubscriptionEntity } from "../../src/issue/issue.dynamo";
 import { subscriberCode } from "../../src/issue/subscriber-code";
 
 describe("Issue monitoring", () => {
-	it("selects physical SST Lambda resources", () => {
+	it("selects SST Function components", () => {
 		expect(
 			lambdaFromResource({
 				accountId: "123456789012",
 				appName: "console",
 				stageName: "prod",
-				resourceKind: "physical",
+				resourceKind: "component",
 				resourceType: "sst.aws.Function",
 				normalizedArn:
 					"arn:aws:lambda:ap-southeast-2:123456789012:function:console-prod-api"
@@ -40,7 +40,7 @@ describe("Issue monitoring", () => {
 				accountId: "123456789012",
 				appName: "console",
 				stageName: "prod",
-				resourceKind: "physical",
+				resourceKind: "component",
 				resourceType: "sst.aws.Dynamo",
 				normalizedArn:
 					"arn:aws:dynamodb:ap-southeast-2:123456789012:table/console-prod"
@@ -51,7 +51,7 @@ describe("Issue monitoring", () => {
 				accountId: "123456789012",
 				appName: "console",
 				stageName: "prod",
-				resourceKind: "physical",
+				resourceKind: "component",
 				resourceType: "sst.aws.Function",
 				normalizedArn:
 					"arn:aws:lambda:ap-southeast-2:123456789012:function:console-prod-api:live"

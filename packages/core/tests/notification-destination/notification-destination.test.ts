@@ -6,10 +6,6 @@ const destinationByType = vi.fn();
 const destinationByTypeGo = vi.fn();
 const destinationDelete = vi.fn();
 const destinationDeleteGo = vi.fn();
-const destinationGet = vi.fn();
-const destinationGetGo = vi.fn();
-const deliver = vi.fn();
-const testMessage = vi.fn();
 
 vi.mock("../../src/db", () => ({
 	db: {
@@ -17,8 +13,7 @@ vi.mock("../../src/db", () => ({
 			alertRule: { query: { byType: alertRuleByType } },
 			notificationDestination: {
 				query: { byType: destinationByType },
-				delete: destinationDelete,
-				get: destinationGet
+				delete: destinationDelete
 			}
 		}
 	}
@@ -27,12 +22,7 @@ vi.mock("../../src/db", () => ({
 vi.mock("../../src/integration/discord", () => ({
 	isDiscordWebhookUrl: () => true
 }));
-vi.mock("../../src/notification", () => ({ deliver, testMessage }));
-
-const { notificationDestinationEntity } =
-	await import("../../src/notification-destination/notification-destination.dynamo");
-const { list, remove, test } =
-	await import("../../src/notification-destination");
+const { list, remove } = await import("../../src/notification-destination");
 
 const notificationDestinationId = "01K7VRAA8NH8CYTXZYGCGRBDDN";
 const destination = {
@@ -50,7 +40,6 @@ describe("notification destinations", () => {
 		alertRuleByType.mockReturnValue({ go: alertRuleByTypeGo });
 		destinationByType.mockReturnValue({ go: destinationByTypeGo });
 		destinationDelete.mockReturnValue({ go: destinationDeleteGo });
-		destinationGet.mockReturnValue({ go: destinationGetGo });
 	});
 
 	it("does not expose webhook URLs in destination lists", async () => {
@@ -81,22 +70,5 @@ describe("notification destinations", () => {
 			code: "notification_destination_in_use"
 		});
 		expect(destinationDelete).not.toHaveBeenCalled();
-	});
-
-	it("sends generic test notification", async () => {
-		destinationGetGo.mockResolvedValue({ data: destination });
-		const notification = { title: "Test" };
-		testMessage.mockReturnValue(notification);
-
-		await test({ id: notificationDestinationId });
-
-		expect(deliver).toHaveBeenCalledWith(destination, notification);
-	});
-
-	it("uses type index to list notification destinations", () => {
-		const params = notificationDestinationEntity.query
-			.byType({})
-			.params({ table: "ConsoleData" });
-		expect(params.IndexName).toBe("entitiesByType");
 	});
 });

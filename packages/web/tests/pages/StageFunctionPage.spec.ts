@@ -38,14 +38,14 @@ vi.mock("@/components/App/Detail/Stage", () => ({
 		props: { functions: { type: Array, required: true } },
 		template:
 			'<div data-function-navigator :data-count="functions.length" />'
-	},
-	StageDetailHeader: { template: "<div data-stage-header />" }
+	}
 }));
 
 vi.mock("@/components/ui/Dashboard", () => ({
 	DashboardPage: { template: "<main><slot /></main>" },
 	DashboardPageBreadcrumbs: { template: "<nav />" },
-	DashboardPageContent: { template: "<section><slot /></section>" }
+	DashboardPageContent: { template: "<section><slot /></section>" },
+	DashboardPageHeader: { template: "<div data-stage-header />" }
 }));
 
 describe("StageFunctionPage", () => {

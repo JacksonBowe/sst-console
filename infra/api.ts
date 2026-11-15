@@ -1,5 +1,6 @@
 import { cognitoUserPool, cognitoUserPoolClient, passwordPolicy } from "./auth";
 import { assumeAccountRolePermission, externalId } from "./console";
+import { bus } from "./event-bus";
 import {
 	issueEnvironment,
 	issueIngressQueue,
@@ -11,6 +12,7 @@ export const api = new sst.aws.Function("Api", {
 	url: true,
 	handler: "packages/functions/src/api/index.handler",
 	link: [
+		bus,
 		consoleData,
 		consoleConnections,
 		cognitoUserPool,
@@ -20,6 +22,7 @@ export const api = new sst.aws.Function("Api", {
 	],
 	environment: {
 		SST_CONSOLE_EXTERNAL_ID: externalId,
+		SST_CONSOLE_BUS_ARN: bus.arn,
 		SST_CONSOLE_PASSWORD_POLICY: JSON.stringify(passwordPolicy),
 		...issueEnvironment
 	},
@@ -27,7 +30,16 @@ export const api = new sst.aws.Function("Api", {
 });
 
 // export const testFunction = new sst.aws.Function("TestFunction", {
-// 	handler: "packages/functions/src/api/index.handler",
+// 	handler: "packages/functions/src/api/index2.handler",
+// 	link: [consoleData, consoleConnections],
+// 	environment: {
+// 		SST_CONSOLE_EXTERNAL_ID: externalId
+// 	},
+// 	permissions: [assumeAccountRolePermission]
+// });
+
+// export const testFunction2 = new sst.aws.Function("TestFunction2", {
+// 	handler: "packages/functions/src/api/index2.handler",
 // 	link: [consoleData, consoleConnections],
 // 	environment: {
 // 		SST_CONSOLE_EXTERNAL_ID: externalId

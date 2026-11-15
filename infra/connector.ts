@@ -173,30 +173,6 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 					]
 				}
 			},
-			SSTConsoleStateEventRule: {
-				Type: "AWS::Events::Rule",
-				DependsOn: ["SSTConsoleRegistration"],
-				Properties: {
-					EventPattern: {
-						source: ["aws.s3"],
-						"detail-type": ["Object Created", "Object Deleted"],
-						detail: { object: { key: [{ prefix: "app/" }] } }
-					},
-					State: "ENABLED",
-					Targets: [
-						{
-							Arn: { Ref: "ConsoleEventBusArn" },
-							Id: "SSTConsoleStateEvents",
-							RoleArn: {
-								"Fn::GetAtt": [
-									"SSTConsoleEventPublisherRole",
-									"Arn"
-								]
-							}
-						}
-					]
-				}
-			},
 			SSTConsoleRegistrationFunction: {
 				Type: "AWS::Lambda::Function",
 				Properties: {
@@ -213,7 +189,7 @@ new aws.s3.BucketObjectv2("ConnectorTemplate", {
 			},
 			SSTConsoleRegistration: {
 				Type: "Custom::SSTConsoleRegistration",
-				DependsOn: ["SSTConsoleRole"],
+				DependsOn: ["SSTConsoleRole", "SSTConsoleEventPublisherRole"],
 				Properties: {
 					ServiceToken: {
 						"Fn::GetAtt": ["SSTConsoleRegistrationFunction", "Arn"]

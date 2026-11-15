@@ -1,29 +1,73 @@
+import * as State from "@console/core/state";
 import * as Account from "@console/core/account";
+import * as Connection from "@console/core/connection";
 import { withActor } from "@console/core/actor";
+import { bus } from "sst/aws/bus";
 
-type S3StateEvent = {
-	account?: string;
-	detail?: {
-		bucket?: { name?: string };
-		object?: { key?: string };
-	};
-};
-
-export async function handler(event: S3StateEvent): Promise<void> {
-	const accountId = event.account;
-	const stateBucket = event.detail?.bucket?.name;
-	const stateKey = event.detail?.object?.key;
-	if (!accountId || !stateBucket || !stateKey) {
-		console.warn("Ignoring incomplete S3 state event", event);
-		return;
-	}
-
-	await withActor({ type: "system", properties: {} }, async () => {
-		const result = await Account.Sync.syncStateObject({
-			accountId,
-			stateBucket,
-			stateKey
-		});
-		console.log("State object reconciliation complete", result);
-	});
-}
+export const handler = bus.subscriber(
+	[
+		State.Events.UpdateCreated,
+		State.Events.SnapshotCreated,
+		State.Events.StateUpdated,
+		State.Events.EventLogCreated
+	],
+	async event =>
+		withActor({ type: "system", properties: {} }, async () => {
+			const { accountId, stateBucket } = event.properties;
+			const account = await Account.find({ accountId });
+			if (
+				account?.status !== "connected" ||
+				account.stateBucket !== stateBucket
+			)
+				return;
+			switch (event.type) {
+				case State.Events.UpdateCreated.type: {
+					const update = State.Keys.parseUpdateKey(
+						event.properties.stateKey
+					);
+					if (!update) return;
+					console.log(
+						"State Update ingestion complete",
+						await State.Update.receiveUpdate({
+							accountId,
+							appName: update.appName,
+							stageName: update.stageName,
+							updateId: update.updateId,
+							sequencer: event.properties.sequencer,
+							replay: event.properties.historical
+						})
+					);
+					return;
+				}
+				case State.Events.StateUpdated.type: {
+					const { stateKey } = event.properties;
+					const match =
+						/^snapshot\/([^/]+)\/([^/]+)\/([^/]+)\.json$/.exec(
+							stateKey
+						);
+					if (!match) return;
+					console.log(
+						"State refresh complete",
+						await State.sync({
+							accountId,
+							appName: match[1]!,
+							stageName: match[2]!,
+							policy: await Connection.getSyncPolicy(accountId)
+						})
+					);
+					return;
+				}
+				case State.Events.SnapshotCreated.type:
+					console.log(
+						"State Snapshot ingestion complete",
+						await State.Snapshot.receiveSnapshot(event.properties)
+					);
+					return;
+				case State.Events.EventLogCreated.type:
+					console.log(
+						"State Event Log ingestion complete",
+						await State.EventLog.receiveEventLog(event.properties)
+					);
+			}
+		})
+);
