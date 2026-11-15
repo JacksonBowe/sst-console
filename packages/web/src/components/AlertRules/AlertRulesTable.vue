@@ -28,33 +28,24 @@
 								dense
 								round
 								icon="sym_r_edit"
+								:aria-label="`Edit rule for ${sourceLabel(tableProps.row)}`"
 								@click="open"
 							>
 								<q-tooltip>Edit rule</q-tooltip>
 							</q-btn>
 						</template>
 					</AlertRuleTrigger>
-					<DialogTrigger>
-						<template #trigger="{ open }">
-							<q-btn
-								flat
-								dense
-								round
-								color="negative"
-								icon="sym_r_delete"
-								@click="open"
-							>
-								<q-tooltip>Delete rule</q-tooltip>
-							</q-btn>
-						</template>
-						<DialogConfirm
-							title="Delete alert rule"
-							:message="`Delete rule for ${sourceLabel(tableProps.row)}?`"
-							variant="negative"
-							confirm-label="Delete"
-							:perform="() => removeRule(tableProps.row)"
-						/>
-					</DialogTrigger>
+					<q-btn
+						flat
+						dense
+						round
+						color="negative"
+						icon="sym_r_delete"
+						:aria-label="`Delete rule for ${sourceLabel(tableProps.row)}`"
+						@click="confirmRemoveRule(tableProps.row)"
+					>
+						<q-tooltip>Delete rule</q-tooltip>
+					</q-btn>
 				</div>
 			</q-td>
 		</template>
@@ -63,9 +54,10 @@
 
 <script setup lang="ts">
 import type { AlertRule, NotificationDestination } from "@sst-console/sdk";
+import { Dialog } from "quasar";
 
 import { BaseTable, type ExtendedQTableColumn } from "@/components/ui/Table";
-import { DialogConfirm, DialogTrigger } from "@/components/ui/Dialog";
+import { DialogConfirm } from "@/components/ui/Dialog";
 import { useRemoveAlertRule } from "@/composables/alert-rules";
 
 import AlertRuleTrigger from "./AlertRuleTrigger.vue";
@@ -104,7 +96,16 @@ function targetLabels(notificationDestinationIds: string[]) {
 		.join(", ");
 }
 
-async function removeRule(alert: AlertRule) {
-	await removeAlertRuleMutation.mutateAsync(alert.id);
+function confirmRemoveRule(alert: AlertRule) {
+	Dialog.create({
+		component: DialogConfirm,
+		componentProps: {
+			title: "Delete alert rule",
+			message: `Delete rule for ${sourceLabel(alert)}?`,
+			variant: "negative",
+			confirmLabel: "Delete",
+			perform: () => removeAlertRuleMutation.mutateAsync(alert.id)
+		}
+	});
 }
 </script>
