@@ -35,7 +35,10 @@
 								aria-label="Discord, selected provider"
 							>
 								<q-item-section avatar>
-									<q-icon :name="`img:${discordIcon}`" size="sm" />
+									<q-icon
+										:name="`img:${discordIcon}`"
+										size="sm"
+									/>
 								</q-item-section>
 								<q-item-section
 									><q-item-label>Discord</q-item-label
@@ -51,7 +54,10 @@
 								disable
 							>
 								<q-item-section avatar>
-									<q-icon :name="`img:${slackIcon}`" size="sm" />
+									<q-icon
+										:name="`img:${slackIcon}`"
+										size="sm"
+									/>
 								</q-item-section>
 								<q-item-section
 									><q-item-label>Slack</q-item-label
@@ -112,15 +118,24 @@
 					class="bg-secondary-2 rounded-borders overflow-hidden"
 				>
 					<div class="q-px-md q-pb-md">
-						<ol class="q-my-none q-pl-md">
-							<li>Open your Discord server settings.</li>
-							<li>Choose Integrations, then Webhooks.</li>
-							<li>Create a webhook and choose its channel.</li>
-							<li>Copy webhook URL and paste it here.</li>
+						<ol class="q-my-none q-pl-md q-gutter-y-xs">
+							<li
+								>In Discord, open
+								<strong
+									>Server Settings → Integrations →
+									Webhooks</strong
+								>.</li
+							>
+							<li>Create a webhook and select a channel.</li>
+							<li>Copy the webhook URL and paste it above.</li>
 						</ol>
+						<div class="text-body2 text-muted q-mt-md">
+							Keep this URL private; anyone with it can post to
+							the channel.
+						</div>
 						<div class="q-mt-md">
 							<div class="text-weight-medium"
-								>Set webhook avatar</div
+								>Optional: Set an avatar</div
 							>
 							<div class="text-body2 text-muted q-mt-xs">
 								In Discord webhook settings, select Avatar and
@@ -143,6 +158,7 @@
 							color="primary"
 							class="q-mt-sm q-px-none"
 							label="Discord webhook guide"
+							icon-right="sym_r_open_in_new"
 							href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks"
 							target="_blank"
 							rel="noopener noreferrer"
