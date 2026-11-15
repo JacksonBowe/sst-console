@@ -28,33 +28,24 @@
 								dense
 								round
 								icon="sym_r_edit"
+								:aria-label="`Edit notification destination ${tableProps.row.name}`"
 								@click="open"
 							>
 								<q-tooltip>Edit channel</q-tooltip>
 							</q-btn>
 						</template>
 					</NotificationDestinationTrigger>
-					<DialogTrigger>
-						<template #trigger="{ open }">
-							<q-btn
-								flat
-								dense
-								round
-								color="negative"
-								icon="sym_r_delete"
-								@click="open"
-							>
-								<q-tooltip>Delete channel</q-tooltip>
-							</q-btn>
-						</template>
-						<DialogConfirm
-							title="Delete notification destination"
-							:message="`Delete ${tableProps.row.name}? Remove it from every alert rule first.`"
-							variant="negative"
-							confirm-label="Delete"
-							:perform="() => removeTarget(tableProps.row)"
-						/>
-					</DialogTrigger>
+					<q-btn
+						flat
+						dense
+						round
+						color="negative"
+						icon="sym_r_delete"
+						:aria-label="`Delete notification destination ${tableProps.row.name}`"
+						@click="confirmRemoveTarget(tableProps.row)"
+					>
+						<q-tooltip>Delete channel</q-tooltip>
+					</q-btn>
 				</div>
 			</q-td>
 		</template>
@@ -67,10 +58,11 @@
 
 <script setup lang="ts">
 import type { AlertRule, NotificationDestination } from "@sst-console/sdk";
+import { Dialog } from "quasar";
 import { ref } from "vue";
 
 import { BaseTable, type ExtendedQTableColumn } from "@/components/ui/Table";
-import { DialogConfirm, DialogTrigger } from "@/components/ui/Dialog";
+import { DialogConfirm } from "@/components/ui/Dialog";
 import {
 	useRemoveNotificationDestination,
 	useTestNotificationDestination
@@ -111,7 +103,17 @@ function testTarget(target: NotificationDestination) {
 		}
 	});
 }
-async function removeTarget(target: NotificationDestination) {
-	await removeNotificationDestinationMutation.mutateAsync(target.id);
+function confirmRemoveTarget(target: NotificationDestination) {
+	Dialog.create({
+		component: DialogConfirm,
+		componentProps: {
+			title: "Delete notification destination",
+			message: `Delete ${target.name}? Remove it from every alert rule first.`,
+			variant: "negative",
+			confirmLabel: "Delete",
+			perform: () =>
+				removeNotificationDestinationMutation.mutateAsync(target.id)
+		}
+	});
 }
 </script>
