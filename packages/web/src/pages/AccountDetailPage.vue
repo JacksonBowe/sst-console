@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
 import type { AccountSyncPolicy, StageAccountConflict } from "@sst-console/sdk";
+import { Dialog } from "quasar";
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
@@ -42,6 +43,7 @@ import {
 	DashboardPageBreadcrumbs,
 	DashboardPageHeader
 } from "@/components/ui/Dashboard";
+import { DialogConfirm } from "@/components/ui/Dialog";
 import { errorNotify, successNotify } from "@/components/ui/toast";
 import {
 	useAccount,
@@ -91,16 +93,28 @@ async function refresh() {
 	}
 }
 
-async function apply() {
+function apply() {
 	if (!policy.value) return;
-	try {
-		await applyPolicy.mutateAsync({
-			accountId: accountId.value,
-			policy: policy.value
-		});
-		successNotify("Sync policy applied and Workload synced");
-	} catch {
-		errorNotify("Unable to apply sync policy");
-	}
+	const account = accountId.value;
+	const selectedPolicy = policy.value;
+	Dialog.create({
+		component: DialogConfirm,
+		componentProps: {
+			title: "Apply policy and sync",
+			subtitle: `Account ${account}`,
+			message:
+				"This saves the sync policy and updates discovered Apps and Stages. It can remove entities no longer present in this account or excluded by the policy.",
+			icon: "sym_r_sync",
+			variant: "primary",
+			confirmLabel: "Apply and sync",
+			perform: async () => {
+				await applyPolicy.mutateAsync({
+					accountId: account,
+					policy: selectedPolicy
+				});
+				successNotify("Sync policy applied and Workload synced");
+			}
+		}
+	});
 }
 </script>
