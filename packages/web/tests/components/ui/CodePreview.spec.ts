@@ -43,5 +43,4 @@ describe("CodePreview", () => {
 		);
 		expect(wrapper.text()).toContain('"value"');
 	});
-
 });

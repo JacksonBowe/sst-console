@@ -34,5 +34,4 @@ describe("ResourceExplorer", () => {
 		});
 		expect(wrapper.text()).toContain("No resources discovered");
 	});
-
 });

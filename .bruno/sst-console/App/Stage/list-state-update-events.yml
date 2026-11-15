@@ -1,29 +1,29 @@
 info:
-  name: ListStageStateUpdateEvents
-  type: http
-  seq: 13
+    name: ListStageStateUpdateEvents
+    type: http
+    seq: 13
 
 http:
-  method: GET
-  url: "{{ApiBase}}/accounts/:accountId/state/:appName/:stageName/updates/:updateId/events"
-  params:
-    - name: accountId
-      value: "{{AwsAccountId}}"
-      type: path
-    - name: appName
-      value: "{{SSTApp}}"
-      type: path
-    - name: stageName
-      value: "{{SSTAppStage}}"
-      type: path
-    - name: updateId
-      value: "{{StateUpdateId}}"
-      type: path
-  auth: inherit
+    method: GET
+    url: "{{ApiBase}}/accounts/:accountId/state/:appName/:stageName/updates/:updateId/events"
+    params:
+        - name: accountId
+          value: "{{AwsAccountId}}"
+          type: path
+        - name: appName
+          value: "{{SSTApp}}"
+          type: path
+        - name: stageName
+          value: "{{SSTAppStage}}"
+          type: path
+        - name: updateId
+          value: "{{StateUpdateId}}"
+          type: path
+    auth: inherit
 
 settings:
-  encodeUrl: true
-  timeout: 0
-  followRedirects: true
-  maxRedirects: 5
-  forwardAuthorizationHeader: true
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
+    forwardAuthorizationHeader: true

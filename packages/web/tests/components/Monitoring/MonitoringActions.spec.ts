@@ -50,7 +50,10 @@ describe("MonitoringActions", () => {
 	it("opens disable monitoring confirmation with its existing mutation", async () => {
 		const wrapper = mount(MonitoringActions, {
 			props: { tab: "issues" },
-			global: { stubs: { QBtn, QMenu, QList, QItem, QItemSection }, directives: { closePopup: {} } }
+			global: {
+				stubs: { QBtn, QMenu, QList, QItem, QItemSection },
+				directives: { closePopup: {} }
+			}
 		});
 
 		await wrapper.get("button:nth-of-type(1)").trigger("click");
@@ -78,7 +81,10 @@ describe("MonitoringActions", () => {
 	it("opens purge confirmation with its existing mutation", async () => {
 		const wrapper = mount(MonitoringActions, {
 			props: { tab: "issues" },
-			global: { stubs: { QBtn, QMenu, QList, QItem, QItemSection }, directives: { closePopup: {} } }
+			global: {
+				stubs: { QBtn, QMenu, QList, QItem, QItemSection },
+				directives: { closePopup: {} }
+			}
 		});
 
 		await wrapper.get("button:nth-of-type(3)").trigger("click");
