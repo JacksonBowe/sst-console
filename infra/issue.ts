@@ -1,7 +1,7 @@
 import config from "../console.config";
 import { assumeAccountRolePermission, externalId } from "./console";
-import { consoleConnections, consoleData } from "./storage";
 import { bus } from "./event-bus";
+import { consoleConnections, consoleData } from "./storage";
 
 export const issueReconcileQueue = new sst.aws.Queue("IssueReconcileQueue");
 export const issueIngressQueue = new sst.aws.Queue("IssueIngressQueue");
