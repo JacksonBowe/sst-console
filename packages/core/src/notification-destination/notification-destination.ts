@@ -19,6 +19,11 @@ export const NotificationDestinationInputSchema = z.object({
 	channelConfig: DiscordConfigSchema
 });
 
+export const NotificationDestinationUpdateSchema = z.object({
+	name: z.string().min(1).max(100),
+	channelConfig: DiscordConfigSchema.optional()
+});
+
 export const NotificationDestinationSchema =
 	NotificationDestinationInputSchema.extend({
 		id: isULID(),
@@ -67,9 +72,9 @@ export async function list(): Promise<NotificationDestinationInfo[]> {
 	);
 }
 
-/** Replaces one notification destination. Existing alert rules use it. */
+/** Updates a destination, preserving its webhook unless a replacement is supplied. */
 export const update = fn(
-	NotificationDestinationInputSchema.extend({ id: isULID() }),
+	NotificationDestinationUpdateSchema.extend({ id: isULID() }),
 	async ({ id, ...input }) => {
 		await db.entities.notificationDestination
 			.patch({ id })

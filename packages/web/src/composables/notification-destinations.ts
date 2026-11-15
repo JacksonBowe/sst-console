@@ -1,6 +1,7 @@
 import type {
 	NotificationDestination,
-	NotificationDestinationInput
+	NotificationDestinationInput,
+	NotificationDestinationUpdate
 } from "@sst-console/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { Notify } from "quasar";
@@ -67,7 +68,7 @@ export function useUpdateNotificationDestination() {
 			input
 		}: {
 			id: string;
-			input: NotificationDestinationInput;
+			input: NotificationDestinationUpdate;
 		}) => api.updateNotificationDestination(id, input),
 		onSuccess: () =>
 			queryClient.invalidateQueries({

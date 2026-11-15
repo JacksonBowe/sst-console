@@ -45,49 +45,52 @@
 							webhook.
 						</div>
 					</div>
-					<q-banner rounded class="bg-secondary-2">
-						<template #avatar>
-							<q-icon name="sym_r_info" color="primary" />
-						</template>
-						<div class="text-weight-medium q-mb-sm">
-							Get a Discord webhook URL
-						</div>
-						<ol class="q-my-none q-pl-md">
-							<li>Open your Discord server settings.</li>
-							<li>Choose Integrations, then Webhooks.</li>
-							<li>Create a webhook and choose its channel.</li>
-							<li>Copy webhook URL and paste it here.</li>
-						</ol>
-						<div class="q-mt-md">
-							<div class="text-weight-medium"
-								>Set webhook avatar</div
-							>
-							<div class="text-body2 text-muted q-mt-xs">
-								In Discord webhook settings, select Avatar and
-								upload Console icon.
+					<q-expansion-item
+						icon="sym_r_info"
+						label="Discord webhook setup guide"
+						class="bg-secondary-2 rounded-borders"
+					>
+						<div class="q-px-md q-pb-md">
+							<ol class="q-my-none q-pl-md">
+								<li>Open your Discord server settings.</li>
+								<li>Choose Integrations, then Webhooks.</li>
+								<li
+									>Create a webhook and choose its
+									channel.</li
+								>
+								<li>Copy webhook URL and paste it here.</li>
+							</ol>
+							<div class="q-mt-md">
+								<div class="text-weight-medium"
+									>Set webhook avatar</div
+								>
+								<div class="text-body2 text-muted q-mt-xs">
+									In Discord webhook settings, select Avatar
+									and upload Console icon.
+								</div>
+								<q-btn
+									flat
+									no-caps
+									color="primary"
+									class="q-mt-sm q-px-none"
+									icon="sym_r_download"
+									label="Download Console icon"
+									href="/icons/favicon-128x128.png"
+									download="sst-console-icon.png"
+								/>
 							</div>
 							<q-btn
 								flat
 								no-caps
 								color="primary"
 								class="q-mt-sm q-px-none"
-								icon="sym_r_download"
-								label="Download Console icon"
-								href="/icons/favicon-128x128.png"
-								download="sst-console-icon.png"
+								label="Discord webhook guide"
+								href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks"
+								target="_blank"
+								rel="noopener noreferrer"
 							/>
 						</div>
-						<q-btn
-							flat
-							no-caps
-							color="primary"
-							class="q-mt-sm q-px-none"
-							label="Discord webhook guide"
-							href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks"
-							target="_blank"
-							rel="noopener noreferrer"
-						/>
-					</q-banner>
+					</q-expansion-item>
 					<SInput
 						v-model.trim="form.name"
 						label="Destination name"
@@ -99,13 +102,17 @@
 						v-model.trim="form.webhookUrl"
 						type="password"
 						label="Discord webhook URL"
-						:hint="
+						:placeholder="
 							target
-								? 'Enter a URL again to replace the saved webhook.'
+								? 'Leave blank to keep the existing or enter a new URL to replace it.'
 								: undefined
 						"
 						:rules="
-							rules.required('Discord webhook URL is required')
+							target
+								? []
+								: rules.required(
+										'Discord webhook URL is required'
+									)
 						"
 					/>
 				</div>
@@ -161,11 +168,6 @@ const { form, dirty } = useForm({
 
 function save() {
 	saving.value = true;
-	const input: NotificationDestinationInput = {
-		name: form.name,
-		channel: "discord",
-		channelConfig: { webhookUrl: form.webhookUrl }
-	};
 	const callbacks = {
 		onSuccess: () => emit("success"),
 		onSettled: () => {
@@ -174,10 +176,23 @@ function save() {
 	};
 	if (props.target) {
 		updateNotificationDestinationMutation.mutate(
-			{ id: props.target.id, input },
+			{
+				id: props.target.id,
+				input: {
+					name: form.name,
+					...(form.webhookUrl && {
+						channelConfig: { webhookUrl: form.webhookUrl }
+					})
+				}
+			},
 			callbacks
 		);
 	} else {
+		const input: NotificationDestinationInput = {
+			name: form.name,
+			channel: "discord",
+			channelConfig: { webhookUrl: form.webhookUrl }
+		};
 		createNotificationDestinationMutation.mutate(input, callbacks);
 	}
 }
