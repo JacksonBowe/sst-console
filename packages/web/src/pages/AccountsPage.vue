@@ -61,7 +61,7 @@ const connectedAccountCount = computed(
 const subtitle = computed(() => {
 	const connected = connectedAccountCount.value;
 	const disconnected = accounts.value.length - connected;
-	return `${connected} connected · ${disconnected}`;
+	return `${connected} connected · ${disconnected} disconnected`;
 });
 
 function confirmSync(account: Account): void {
@@ -69,7 +69,7 @@ function confirmSync(account: Account): void {
 		component: DialogConfirm,
 		componentProps: {
 			title: "Sync account",
-			target: account.accountId,
+			subtitle: `Account ${account.accountId}`,
 			message:
 				"Sync updates discovered Apps and Stages. It can remove entities no longer present in this account.",
 			icon: "sym_r_sync",
