@@ -1,5 +1,7 @@
 <template>
-	<DashboardPage>
+	<DashboardPage
+		:class="{ 'monitoring-page--issues': activeTab === 'issues' }"
+	>
 		<DashboardPageHeader
 			title="Monitoring"
 			subtitle="Investigate workload failures and configure notifications"
@@ -63,6 +65,11 @@ function tabFromQuery(value: unknown): Tab {
 </script>
 
 <style scoped lang="scss">
+// TODO: Reassess Monitoring layout CSS and shared Dashboard components as other tabs evolve.
+.monitoring-page--issues {
+	// QPage supplies the available viewport height as its inline min-height.
+	height: 0;
+}
 .monitoring-page__tabs {
 	border-bottom: 1px solid var(--q-border);
 	margin-bottom: 1rem;

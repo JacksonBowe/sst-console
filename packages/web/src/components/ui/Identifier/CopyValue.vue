@@ -1,5 +1,5 @@
 <template>
-	<span class="copy-value">
+	<span class="copy-value" :class="{ 'copy-value--wrap': wrap }">
 		<span
 			v-if="!copyOnly"
 			class="copy-value__text text-mono"
@@ -27,6 +27,7 @@ import { useCopyValue } from "./useCopyValue";
 const props = withDefaults(
 	defineProps<{
 		copyOnly?: boolean | undefined;
+		wrap?: boolean | undefined;
 		label?: string | undefined;
 		value: string;
 	}>(),
@@ -48,6 +49,14 @@ const { copied, copy } = useCopyValue(() => props.value);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+.copy-value--wrap {
+	align-items: flex-start;
+	max-width: 100%;
+}
+.copy-value--wrap .copy-value__text {
+	white-space: normal;
+	overflow-wrap: anywhere;
 }
 
 .sr-only {

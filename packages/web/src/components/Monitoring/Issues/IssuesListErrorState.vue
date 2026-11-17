@@ -1,5 +1,5 @@
 <template>
-	<q-card flat bordered class="q-pa-xl">
+	<div class="q-pa-xl">
 		<div class="column items-center text-center q-gutter-sm">
 			<q-icon name="sym_r_error" size="40px" color="negative" />
 			<div class="text-h6">Unable to load Issues</div>
@@ -14,7 +14,7 @@
 				@click="$emit('retry')"
 			/>
 		</div>
-	</q-card>
+	</div>
 </template>
 
 <script setup lang="ts">
