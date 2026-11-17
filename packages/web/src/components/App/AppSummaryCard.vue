@@ -71,6 +71,7 @@
 <script setup lang="ts">
 import type { AppSummary, Issue } from "@sst-console/sdk";
 import { computed } from "vue";
+import { relativeTime } from "@/components/ui/format";
 
 import AppStagePreviews from "./AppStagePreviews.vue";
 
@@ -102,22 +103,6 @@ const issuesRoute = computed(() => ({
 	name: "monitoring",
 	query: { app: props.app.appName, status: "open" }
 }));
-
-function relativeTime(timestamp: string) {
-	const elapsed = Math.max(0, Date.now() - new Date(timestamp).getTime());
-	if (elapsed < 60_000) return "just now";
-
-	const units = [
-		["year", 31_536_000_000],
-		["month", 2_592_000_000],
-		["day", 86_400_000],
-		["hour", 3_600_000],
-		["minute", 60_000]
-	] as const;
-	const [unit, duration] = units.find(([, duration]) => elapsed >= duration)!;
-	const count = Math.floor(elapsed / duration);
-	return `${count} ${unit}${count === 1 ? "" : "s"} ago`;
-}
 </script>
 
 <style scoped lang="scss">
