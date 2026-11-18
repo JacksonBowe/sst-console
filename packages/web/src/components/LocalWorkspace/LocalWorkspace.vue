@@ -13,6 +13,7 @@
 				<InvocationList
 					:invocations="invocations"
 					:status="status"
+					:is-streaming="isStreaming"
 					:selected-id="selectedId"
 					:filters="filters"
 					@select="selectedId = $event"

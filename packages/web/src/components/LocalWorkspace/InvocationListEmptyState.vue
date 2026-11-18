@@ -15,6 +15,7 @@ import type { LocalConnectionStatus } from "@/composables/local";
 
 const props = defineProps<{
 	status: LocalConnectionStatus;
+	isStreaming: boolean;
 	filtered?: boolean;
 }>();
 
@@ -27,10 +28,17 @@ const presentation = computed(() => {
 		};
 	}
 	if (props.status === "connected") {
+		if (!props.isStreaming) {
+			return {
+				icon: "sym_r_pause_circle",
+				title: "Streaming paused",
+				detail: "Resume streaming to show new local invocations."
+			};
+		}
 		return {
 			icon: "sym_r_terminal",
 			title: "Waiting for local invocations",
-			detail: "Connected to local SST CLI."
+			detail: "Invoke a local function to see activity here."
 		};
 	}
 	if (props.status === "connecting") {
@@ -43,7 +51,7 @@ const presentation = computed(() => {
 	return {
 		icon: "sym_r_cloud_off",
 		title: "Local SST CLI activity unavailable",
-		detail: "Reconnecting to local development session."
+		detail: "Start SST dev and allow local network access in your browser. Reconnection is automatic when local access is enabled."
 	};
 });
 </script>
