@@ -42,9 +42,7 @@
 						/>
 						<span>
 							Streaming
-							{{
-								localSession.isStreaming ? "active" : "paused"
-							}}
+							{{ localSession.isStreaming ? "active" : "paused" }}
 						</span>
 					</div>
 					<q-separator vertical inset class="q-mx-sm" />
