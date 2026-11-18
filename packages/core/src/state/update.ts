@@ -257,14 +257,6 @@ export const list = fn(
 	}
 );
 
-/** Derives the current outcome from Update completion and errors. */
-export function outcomeFor(
-	update: Pick<StateUpdate, "timeCompleted" | "errors">
-) {
-	if (!update.timeCompleted) return "running" as const;
-	return (update.errors?.length ?? 0) === 0 ? "succeeded" : "failed";
-}
-
 // TODO: This looks like a generic helper, does it need to be in this file?
 /** Bounds the serialized error list and reports whether it was truncated. */
 function truncateErrors(errors: Array<{ urn: string; message: string }>): {

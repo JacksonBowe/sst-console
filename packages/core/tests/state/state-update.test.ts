@@ -24,6 +24,58 @@ const stage = {
 describe("SST update ingestion", () => {
 	afterEach(() => vi.restoreAllMocks());
 
+	it.each([
+		[
+			"oversized first URN",
+			[{ urn: "x".repeat(65536), message: "failed" }],
+			0
+		],
+		[
+			"partial truncation",
+			[
+				{ urn: "first", message: "failed" },
+				{ urn: "second", message: "x".repeat(65536) }
+			],
+			2
+		]
+	])(
+		"bounds errors and preserves truncation metadata for %s",
+		async (_name, errors, storedCount) => {
+			vi.spyOn(dynamo, "send").mockResolvedValue({} as never);
+			const upsertUpdate = vi.spyOn(db.entities.stateUpdate, "upsert");
+			await upsert({
+				accountId: "123456789012",
+				appName: "app",
+				stageName: "dev",
+				updateId: "id",
+				sourceBucket: "bucket",
+				sourceKey: "update/app/dev/id.json",
+				sequencer: normalizeSequencer("1")!,
+				observedAt: "2026-01-01T00:00:00Z",
+				timeCompleted: "2026-01-01T00:00:00Z",
+				sstVersion: "4",
+				command: "deploy",
+				errors
+			});
+			const stored = upsertUpdate.mock.calls[0]![0] as {
+				timeCompleted?: string;
+				errors: Array<{ urn: string; message: string }>;
+				errorsSourceCount: number;
+				errorsTruncated: boolean;
+			};
+			expect(stored.errors).toHaveLength(storedCount);
+			expect(stored.errorsSourceCount).toBe(errors.length);
+			expect(stored.errorsTruncated).toBe(true);
+			expect(
+				stored.errors!.reduce(
+					(bytes, error) =>
+						bytes + Buffer.byteLength(JSON.stringify(error)),
+					0
+				)
+			).toBeLessThanOrEqual(65536);
+		}
+	);
+
 	it("updates optional fields and removes cleared resource counts", async () => {
 		const send = vi.spyOn(dynamo, "send").mockResolvedValue({} as never);
 		const key = { appName: "app", stageName: "dev", updateId: "id" };
