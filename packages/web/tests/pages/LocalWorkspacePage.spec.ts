@@ -43,6 +43,10 @@ const LocalWorkspace = {
 
 describe("LocalWorkspacePage", () => {
 	beforeEach(() => {
+		state.route.name = "stage-local-workspace";
+		state.localSession.identity = { app: "console", stage: "dev" };
+		state.localSession.status = "connected";
+		state.localSession.isStreaming = true;
 		state.stage.resources = [
 			{
 				resourceId: "api",
@@ -62,6 +66,68 @@ describe("LocalWorkspacePage", () => {
 				children: []
 			}
 		];
+	});
+
+	it.each([
+		["disconnected", true, "active"],
+		["connecting", true, "active"],
+		["connected", true, "active"],
+		["connected", false, "paused"],
+		["disconnected", false, "paused"]
+	])(
+		"shows %s connection and %s streaming preference",
+		(status, streaming, label) => {
+			state.localSession.status = status;
+			state.localSession.isStreaming = streaming;
+			const wrapper = mount(LocalWorkspacePage, {
+				global: {
+					stubs: {
+						LocalWorkspace,
+						DashboardPageBreadcrumbs: true,
+						DashboardPageHeader: {
+							template: '<header><slot name="actions" /></header>'
+						},
+						QIcon: true,
+						QSeparator: true
+					}
+				}
+			});
+			expect(wrapper.text()).toContain(
+				`WebSocket ${status[0]!.toUpperCase()}${status.slice(1)}`
+			);
+			expect(wrapper.text()).toContain(`Streaming ${label}`);
+			expect(wrapper.findAll("q-icon-stub")[1]!.attributes("color")).toBe(
+				streaming ? "positive" : "warning"
+			);
+			expect(wrapper.text()).not.toContain("Streaming live");
+			if (status === "disconnected")
+				expect(wrapper.text()).toContain("Connection lost.");
+			wrapper.unmount();
+		}
+	);
+
+	it("explains how to find a matching session", () => {
+		state.localSession.identity = { app: "other", stage: "dev" };
+		const wrapper = mount(LocalWorkspacePage, {
+			global: {
+				stubs: {
+					DashboardPageBreadcrumbs: true,
+					DashboardPage: { template: "<main><slot /></main>" },
+					DashboardPageHeader: {
+						template: "<header><slot name='actions' /></header>"
+					},
+					QIcon: true,
+					QSeparator: true,
+					QCard: { template: "<div><slot /></div>" }
+				}
+			}
+		});
+		expect(wrapper.text()).toContain("No matching local session");
+		expect(wrapper.text()).toContain(
+			"open the workspace for the currently connected session"
+		);
+		expect(wrapper.text()).not.toContain("other / dev");
+		wrapper.unmount();
 	});
 
 	it("passes only current stage Function resources to local activity", () => {

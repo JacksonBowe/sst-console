@@ -42,7 +42,7 @@
 						/>
 						<span>
 							Streaming
-							{{ localSession.isStreaming ? "live" : "paused" }}
+							{{ localSession.isStreaming ? "active" : "paused" }}
 						</span>
 					</div>
 					<q-separator vertical inset class="q-mx-sm" />
@@ -56,6 +56,16 @@
 		</DashboardPageHeader>
 
 		<DashboardPageContent class="local-workspace-page__content">
+			<div
+				v-if="
+					hasMatchingSession && localSession.status === 'disconnected'
+				"
+				class="text-body2 text-secondary q-mb-sm"
+			>
+				Connection lost. Check that SST dev is running and allow local
+				network access in your browser. Reconnection is automatic when
+				local access is enabled.
+			</div>
 			<LocalWorkspace
 				v-if="hasMatchingSession"
 				:invocations="localSession.invocations"
@@ -75,8 +85,7 @@
 					/>
 					<div class="text-h6">No matching local session</div>
 					<div class="text-body2 text-secondary">
-						Start SST dev for this App and Stage, then reopen this
-						workspace.
+						{{ sessionGuidance }}
 					</div>
 				</div>
 			</q-card>
@@ -136,9 +145,16 @@ const hasMatchingSession = computed(() => {
 });
 const subtitle = computed(() => {
 	const identity = localSession.identity;
-	if (!identity)
+	if (!identity || !hasMatchingSession.value)
 		return "Live invocation activity from your local SST dev environment.";
 	return `${identity.app} / ${identity.stage}`;
+});
+const sessionGuidance = computed(() => {
+	if (localSession.status === "connecting")
+		return "Connecting to the local SST CLI. Make sure SST dev is running and allow local network access in your browser.";
+	if (localSession.status === "disconnected")
+		return "Start SST dev for the desired App and Stage and allow local network access in your browser. Reconnection is automatic when local access is enabled.";
+	return "Start SST dev for the desired App and Stage, or open the workspace for the currently connected session.";
 });
 const connectionColor = computed(() =>
 	localSession.status === "connected"

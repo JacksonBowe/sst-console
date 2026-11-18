@@ -41,6 +41,7 @@
 		<InvocationListEmptyState
 			v-else
 			:status="status"
+			:is-streaming="isStreaming"
 			:filtered="invocations.length > 0"
 		/>
 	</q-card>
@@ -61,6 +62,7 @@ import { filterInvocations } from "./invocation-filters";
 const props = defineProps<{
 	invocations: LocalInvocation[];
 	status: LocalConnectionStatus;
+	isStreaming: boolean;
 	filters: Filters;
 	selectedId?: string | undefined;
 }>();
