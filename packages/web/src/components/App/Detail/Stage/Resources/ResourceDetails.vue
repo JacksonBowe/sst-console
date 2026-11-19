@@ -11,11 +11,13 @@
 			</div>
 			<q-btn
 				v-if="resource.normalizedArn"
+				class="resource-details__aws-link"
 				flat
 				no-caps
 				color="primary"
 				icon="sym_r_open_in_new"
-				label="Open in AWS Console"
+				:label="$q.screen.lt.sm ? undefined : 'Open in AWS Console'"
+				aria-label="Open in AWS Console"
 				:href="awsConsoleUrl(resource.normalizedArn)"
 				target="_blank"
 				rel="noopener noreferrer"
@@ -31,6 +33,7 @@
 					<CopyValue
 						:value="resourceName(resource)"
 						label="resource name"
+						wrap
 					/>
 				</dd>
 			</div>
@@ -40,17 +43,21 @@
 					><CopyValue
 						:value="resource.resourceId"
 						label="resource ID"
+						wrap
 				/></dd>
 			</div>
 			<div v-if="resource.normalizedArn">
 				<dt>ARN</dt>
 				<dd
-					><CopyValue :value="resource.normalizedArn" label="ARN"
+					><CopyValue
+						:value="resource.normalizedArn"
+						label="ARN"
+						wrap
 				/></dd>
 			</div>
 			<div>
 				<dt>URN</dt>
-				<dd><CopyValue :value="resource.urn" label="URN" /></dd>
+				<dd><CopyValue :value="resource.urn" label="URN" wrap /></dd>
 			</div>
 		</dl>
 	</div>
@@ -99,6 +106,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 .resource-details {
 	display: grid;
 	gap: 1.5rem;
+	grid-template-columns: minmax(0, 1fr);
 	padding: 1.25rem;
 }
 
@@ -112,7 +120,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 .resource-details__fields {
 	display: grid;
 	gap: 1rem;
+	grid-template-columns: minmax(0, 1fr);
 	margin: 0;
+}
+
+.resource-details__header > div {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.resource-details__aws-link {
+	flex: 0 0 auto;
 }
 
 .resource-details__fields dt {
@@ -124,12 +142,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 .resource-details__fields dd {
 	margin: 0;
 	min-width: 0;
-}
-
-@media (max-width: 599px) {
-	.resource-details__header {
-		align-items: stretch;
-		flex-direction: column;
-	}
 }
 </style>
