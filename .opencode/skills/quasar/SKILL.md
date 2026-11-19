@@ -55,19 +55,16 @@ quasar <command> --help
 
 Do not rely on remembered CLI flags when they can be verified locally.
 
-## Discover component APIs
+## Discover documentation and APIs
 
 Do not guess Quasar component props, events, slots, methods, directives, plugins, or CSS helpers.
 
-Inspect component APIs with:
+Prefer the Quasar MCP server for documentation and component APIs matching the installed packages:
 
-```sh
-quasar describe QBtn
-quasar describe QInput
-quasar describe QTable
-```
+- Use `search_docs` to find pages and `get_page` to read relevant sections.
+- Use `get_api` for component, plugin, and directive APIs; use `list_api` to discover descriptor names.
 
-Use the official Quasar documentation when the installed CLI output is insufficient.
+If the MCP server is unavailable or lacks the needed information, use `quasar describe <component>` and the official Quasar documentation.
 
 Ensure guidance applies to the Quasar version installed in the repository.
 
