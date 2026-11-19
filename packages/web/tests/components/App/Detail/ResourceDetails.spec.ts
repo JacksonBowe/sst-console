@@ -20,7 +20,10 @@ describe("ResourceDetails", () => {
 		};
 		const wrapper = mount(ResourceDetails, {
 			props: { resource },
-			global: { stubs: { QBtn: true, QIcon: true } }
+			global: {
+				stubs: { QBtn: true, QIcon: true },
+				mocks: { $q: { screen: { lt: { sm: false } } } }
+			}
 		});
 		const values = wrapper.findAll(".copy-value--wrap");
 		expect(
@@ -32,4 +35,42 @@ describe("ResourceDetails", () => {
 			resource.urn
 		]);
 	});
+
+	it.each([true, false])(
+		"keeps an accessible AWS link at mobile=%s",
+		mobile => {
+			const arn =
+				"arn:aws:lambda:ap-southeast-2:123456789012:function:api";
+			const wrapper = mount(ResourceDetails, {
+				props: {
+					resource: {
+						accountId: "123456789012",
+						appName: "app",
+						stageName: "prod",
+						resourceId: "api",
+						resourceKind: "component",
+						resourceType: "sst.aws.Function",
+						urn: "urn:api",
+						normalizedArn: arn,
+						name: "Api",
+						children: [],
+						createdAt: "2026-01-01",
+						updatedAt: "2026-01-01"
+					}
+				},
+				global: {
+					stubs: { QBtn: true, QIcon: true },
+					mocks: { $q: { screen: { lt: { sm: mobile } } } }
+				}
+			});
+			const link = wrapper.get('[aria-label="Open in AWS Console"]');
+			expect(link.attributes("href")).toBe(
+				`https://console.aws.amazon.com/go/view?arn=${encodeURIComponent(arn)}`
+			);
+			expect(link.attributes("target")).toBe("_blank");
+			expect(link.attributes("label")).toBe(
+				mobile ? undefined : "Open in AWS Console"
+			);
+		}
+	);
 });

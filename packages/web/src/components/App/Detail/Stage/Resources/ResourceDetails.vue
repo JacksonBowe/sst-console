@@ -11,11 +11,13 @@
 			</div>
 			<q-btn
 				v-if="resource.normalizedArn"
+				class="resource-details__aws-link"
 				flat
 				no-caps
 				color="primary"
 				icon="sym_r_open_in_new"
-				label="Open in AWS Console"
+				:label="$q.screen.lt.sm ? undefined : 'Open in AWS Console'"
+				aria-label="Open in AWS Console"
 				:href="awsConsoleUrl(resource.normalizedArn)"
 				target="_blank"
 				rel="noopener noreferrer"
@@ -127,6 +129,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	overflow-wrap: anywhere;
 }
 
+.resource-details__aws-link {
+	flex: 0 0 auto;
+}
+
 .resource-details__fields dt {
 	color: var(--q-text-secondary);
 	font-size: 0.75rem;
@@ -136,12 +142,5 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 .resource-details__fields dd {
 	margin: 0;
 	min-width: 0;
-}
-
-@media (max-width: 599px) {
-	.resource-details__header {
-		align-items: stretch;
-		flex-direction: column;
-	}
 }
 </style>
