@@ -31,6 +31,7 @@
 					<CopyValue
 						:value="resourceName(resource)"
 						label="resource name"
+						wrap
 					/>
 				</dd>
 			</div>
@@ -40,17 +41,21 @@
 					><CopyValue
 						:value="resource.resourceId"
 						label="resource ID"
+						wrap
 				/></dd>
 			</div>
 			<div v-if="resource.normalizedArn">
 				<dt>ARN</dt>
 				<dd
-					><CopyValue :value="resource.normalizedArn" label="ARN"
+					><CopyValue
+						:value="resource.normalizedArn"
+						label="ARN"
+						wrap
 				/></dd>
 			</div>
 			<div>
 				<dt>URN</dt>
-				<dd><CopyValue :value="resource.urn" label="URN" /></dd>
+				<dd><CopyValue :value="resource.urn" label="URN" wrap /></dd>
 			</div>
 		</dl>
 	</div>
@@ -99,6 +104,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 .resource-details {
 	display: grid;
 	gap: 1.5rem;
+	grid-template-columns: minmax(0, 1fr);
 	padding: 1.25rem;
 }
 
@@ -112,7 +118,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 .resource-details__fields {
 	display: grid;
 	gap: 1rem;
+	grid-template-columns: minmax(0, 1fr);
 	margin: 0;
+}
+
+.resource-details__header > div {
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .resource-details__fields dt {
