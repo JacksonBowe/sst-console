@@ -20,14 +20,14 @@ const props = defineProps<{
 
 const bannerClass = computed(() => {
 	if (props.status?.tone === "negative") {
-		return "bg-red-1 text-negative";
+		return "bg-negative-2 text-negative";
 	}
 
 	if (props.status?.tone === "positive") {
-		return "bg-green-1 text-positive";
+		return "bg-positive-2 text-positive";
 	}
 
-	return "bg-blue-1 text-info";
+	return "bg-info-2 text-info";
 });
 
 const icon = computed(() => {
