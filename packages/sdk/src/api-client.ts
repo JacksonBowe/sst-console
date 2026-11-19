@@ -36,7 +36,8 @@ export function createClient({
 	const instance = axios.create({ baseURL: baseUrl });
 
 	instance.interceptors.request.use(
-		async config => {
+		async (config: SdkInternalRequestConfig) => {
+			if (config._public) return config;
 			const token = await getAccessToken?.();
 			if (token) config.headers.Authorization = `Bearer ${token}`;
 			return config;
@@ -49,6 +50,8 @@ export function createClient({
 		async (error: AxiosError) => {
 			const config = error.config as SdkInternalRequestConfig | undefined;
 			const isUnauthorized = error.response?.status === 401;
+
+			if (config?._public) throw toApiError(error);
 
 			if (isUnauthorized && config?._noRetry) {
 				await onAuthFailure?.();

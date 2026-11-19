@@ -18,9 +18,19 @@ export type AuthResult = Session | AuthChallenge;
 
 export const authMethods = (request: RequestFn) => ({
 	login: (input: UserAuthJson): Promise<AuthResult> =>
-		request({ method: "POST", url: "noauth/auth", data: input }),
+		request({
+			method: "POST",
+			url: "noauth/auth",
+			data: input,
+			_public: true
+		}),
 	inviteConfirm: (input: UserInviteConfirmJson): Promise<Session> =>
-		request({ method: "POST", url: "noauth/invite/confirm", data: input }),
+		request({
+			method: "POST",
+			url: "noauth/invite/confirm",
+			data: input,
+			_public: true
+		}),
 	refresh: (input: UserRefreshJson): Promise<Session> =>
 		request({
 			method: "POST",
@@ -29,9 +39,19 @@ export const authMethods = (request: RequestFn) => ({
 			_noRetry: true
 		}),
 	recover: (input: UserRecoverJson): Promise<void> =>
-		request({ method: "POST", url: "noauth/recover", data: input }),
+		request({
+			method: "POST",
+			url: "noauth/recover",
+			data: input,
+			_public: true
+		}),
 	recoverConfirm: (input: UserRecoverConfirmJson): Promise<void> =>
-		request({ method: "POST", url: "noauth/recover/confirm", data: input })
+		request({
+			method: "POST",
+			url: "noauth/recover/confirm",
+			data: input,
+			_public: true
+		})
 });
 
 export type AuthMethods = ReturnType<typeof authMethods>;
