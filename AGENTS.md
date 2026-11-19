@@ -27,6 +27,7 @@
 
 - Use Bun from the repo root; `bun.lock` is the source of truth. Do not add pnpm/yarn/npm workspace files.
 - Repo-wide verification is `bun run check` from the root. It runs `oxfmt --check`, `oxlint`, then the web app typecheck.
+- Before creating a PR, inspect CI workflows and run their formatting, linting, typechecking, and test commands locally. Fix failures first; if a check cannot run, report the blocker and ask before creating the PR.
 - Formatting is Oxlint/Oxfmt only: `bun run format` fixes formatting, `bun run lint` runs `oxlint --fix`.
 - Formatter settings are intentionally tabs with width 4; keep `.editorconfig` and `oxfmt.config.ts` aligned.
 - Root `oxlint.config.ts` ignores `sst.config.ts` because fresh checkouts may not have generated `.sst/platform/config.d.ts` yet.
