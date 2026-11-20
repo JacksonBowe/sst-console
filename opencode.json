@@ -4,10 +4,9 @@
 			"quasar": {
 				"type": "local",
 				"command": [
-					"npx",
-					"-y",
-					"--fetch-retries=0",
-					"@quasar/mcp@latest"
+					"/bin/bash",
+					"-c",
+					"source \"$HOME/.nvm/nvm.sh\" && exec npx -y --fetch-retries=0 @quasar/mcp@latest"
 				]
 			}
 		}

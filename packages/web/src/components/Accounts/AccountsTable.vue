@@ -2,8 +2,11 @@
 	<BaseTable
 		:rows="accounts"
 		:columns="columns"
-		:rows-per-page-options="[12, 24, 48]"
+		:rows-per-page-options="[0]"
+		hide-pagination
 		:loading="loading"
+		:grid="$q.screen.lt.sm"
+		row-key="accountId"
 		:row-class="() => 'cursor-pointer'"
 		@row-click="openAccount"
 	>
@@ -23,6 +26,55 @@
 					and Stages.
 				</div>
 				<ConnectAccountTrigger />
+			</div>
+		</template>
+
+		<template #item="tableProps">
+			<div class="col-12 q-pb-md">
+				<q-card
+					flat
+					bordered
+					class="cursor-pointer"
+					@click="openAccount($event, tableProps.row)"
+				>
+					<q-card-section class="q-pa-md">
+						<div class="row items-center justify-between no-wrap">
+							<div class="accounts-table__account-id">
+								<router-link
+									class="accounts-table__link text-mono"
+									:to="accountRoute(tableProps.row.accountId)"
+								>
+									{{ tableProps.row.accountId }}
+								</router-link>
+								<CopyValue
+									copy-only
+									:value="tableProps.row.accountId"
+									label="account ID"
+								/>
+							</div>
+							<q-btn
+								flat
+								dense
+								no-caps
+								color="primary"
+								label="Sync"
+								:disable="tableProps.row.status !== 'connected'"
+								:title="
+									tableProps.row.status === 'disconnected'
+										? 'Reconnect this account before syncing.'
+										: undefined
+								"
+								@click.stop="$emit('sync', tableProps.row)"
+							/>
+						</div>
+						<div class="row items-center justify-between q-mt-sm">
+							<span>{{ tableProps.row.region }}</span>
+							<AccountConnectionStatus
+								:status="tableProps.row.status"
+							/>
+						</div>
+					</q-card-section>
+				</q-card>
 			</div>
 		</template>
 

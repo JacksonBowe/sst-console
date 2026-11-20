@@ -54,6 +54,10 @@
 			<slot name="body" v-bind="props" />
 		</template>
 
+		<template v-if="$slots.item" #item="props">
+			<slot name="item" v-bind="props" />
+		</template>
+
 		<!-- Pass through header slots -->
 		<template #header="props">
 			<slot name="header" v-bind="props">
