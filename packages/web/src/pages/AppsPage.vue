@@ -2,7 +2,7 @@
 	<DashboardPage>
 		<DashboardPageHeader title="Apps" :subtitle="subtitle">
 			<template #actions>
-				<ConnectAccountTrigger />
+				<ConnectAccountTrigger :icon-only="$q.screen.lt.sm" />
 			</template>
 		</DashboardPageHeader>
 
