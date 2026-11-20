@@ -11,7 +11,10 @@ Use this skill for every change in `packages/web`. Load `quasar` too for Quasar 
 
 1. Inspect closest completed sibling feature before editing. Existing project code is primary convention source.
 2. Reuse its patterns and smallest fitting surface. Ask user before adding a dependency, global state, architectural pattern, or abstraction without a local precedent.
-3. Keep new conventions out of this skill during normal feature work. User explicitly requests skill changes.
+3. For layout changes, start with content-sized and responsive Quasar utilities. Check installed Quasar documentation or source before adding custom CSS or fixed dimensions.
+4. Before finishing, review every added CSS declaration against existing primitives and Quasar utilities. Replace equivalent declarations; report any remaining custom CSS and the specific gap it fills.
+5. Verify visual layout in a browser when possible. Distinguish browser verification from markup-only tests and report when visual verification was unavailable.
+6. Keep new conventions out of this skill during normal feature work. User explicitly requests skill changes.
 
 ## Map
 

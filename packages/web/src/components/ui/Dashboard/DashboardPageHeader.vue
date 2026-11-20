@@ -1,12 +1,15 @@
 <template>
 	<div
-		class="row flex justify-between items-center"
-		:class="$q.screen.lt.sm ? 'q-mb-sm' : 'q-mb-lg'"
+		class="row flex justify-between"
+		:class="[
+			$q.screen.lt.sm ? 'q-mb-sm' : 'q-mb-lg',
+			$slots.default ? 'items-center' : 'no-wrap items-start'
+		]"
 	>
 		<slot v-if="$slots.default" />
 
 		<template v-else>
-			<div>
+			<div class="col">
 				<q-btn
 					v-if="backConfig"
 					flat
@@ -35,7 +38,10 @@
 				</div>
 			</div>
 
-			<DashboardPageHeaderActions v-if="$slots.actions">
+			<DashboardPageHeaderActions
+				v-if="$slots.actions"
+				class="col-shrink justify-end"
+			>
 				<slot name="actions" />
 			</DashboardPageHeaderActions>
 		</template>
