@@ -1,5 +1,5 @@
 <template>
-	<q-card v-bind="$attrs" class="cognito-auth" flat>
+	<q-card v-bind="$attrs">
 		<q-card-section
 			class="text-center q-gutter-y-sm q-px-lg q-pt-xl q-pb-md"
 		>
@@ -372,15 +372,6 @@ async function handleResendForgotPasswordCode(email: string) {
 </script>
 
 <style lang="scss" scoped>
-.cognito-auth {
-	width: 100%;
-	max-width: 460px;
-	border: 1px solid rgba(125, 125, 125, 0.18);
-	border-radius: 24px;
-	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12);
-	overflow: hidden;
-}
-
 .cognito-auth__logo {
 	display: block;
 	max-width: 180px;

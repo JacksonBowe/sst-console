@@ -1,6 +1,7 @@
 <template>
 	<CognitoAuth
-		class="full-width"
+		class="auth-form full-width bg-transparent"
+		flat
 		:handlers="handlers"
 		:password-policy="passwordPolicy"
 	/>
@@ -73,3 +74,9 @@ const handlers: CognitoAuthHandlers = {
 	}
 };
 </script>
+
+<style scoped>
+.auth-form {
+	max-width: 460px;
+}
+</style>
