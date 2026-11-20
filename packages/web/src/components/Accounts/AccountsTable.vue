@@ -30,7 +30,7 @@
 		</template>
 
 		<template #item="tableProps">
-			<div class="col-12 q-pb-md">
+			<div class="col-12 q-pb-sm">
 				<q-card
 					flat
 					bordered
@@ -41,7 +41,7 @@
 						<div class="row items-center justify-between no-wrap">
 							<div class="accounts-table__account-id">
 								<router-link
-									class="accounts-table__link text-mono"
+									class="accounts-table__link text-mono text-weight-medium"
 									:to="accountRoute(tableProps.row.accountId)"
 								>
 									{{ tableProps.row.accountId }}
@@ -54,9 +54,9 @@
 							</div>
 							<q-btn
 								flat
-								dense
 								no-caps
 								color="primary"
+								icon="sym_r_sync"
 								label="Sync"
 								:disable="tableProps.row.status !== 'connected'"
 								:title="
@@ -68,7 +68,9 @@
 							/>
 						</div>
 						<div class="row items-center justify-between q-mt-sm">
-							<span>{{ tableProps.row.region }}</span>
+							<span class="text-muted">{{
+								tableProps.row.region
+							}}</span>
 							<AccountConnectionStatus
 								:status="tableProps.row.status"
 							/>
