@@ -3,7 +3,8 @@
 		flat
 		no-caps
 		icon="sym_r_refresh"
-		label="Refresh discovery"
+		:label="$q.screen.lt.sm ? undefined : 'Refresh discovery'"
+		aria-label="Refresh discovery"
 		:loading="refreshing"
 		@click="$emit('refresh')"
 	/>
@@ -12,7 +13,8 @@
 		no-caps
 		color="primary"
 		icon="sym_r_sync"
-		label="Apply and sync"
+		:label="$q.screen.lt.sm ? undefined : 'Apply and sync'"
+		aria-label="Apply and sync"
 		:disable="!canApply"
 		:loading="applying"
 		@click="$emit('apply')"

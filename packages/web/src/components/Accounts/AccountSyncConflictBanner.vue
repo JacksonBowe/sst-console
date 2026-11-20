@@ -6,13 +6,13 @@
 		<template #avatar><q-icon name="sym_r_warning" /></template>
 		<div class="text-weight-medium">Some SST stages were skipped</div>
 		<div>
-			Ignore stale stage on this Workload, apply sync, then sync intended
-			Workload.
+			Ignore the stale stage on this account, apply sync, then sync the
+			intended account.
 		</div>
 		<ul class="q-mb-none q-mt-sm q-pl-md">
 			<li v-for="conflict in conflicts" :key="conflictKey(conflict)">
 				{{ conflict.appName }}/{{ conflict.stageName }} belongs to
-				Workload
+				account
 				{{ conflict.ownerAccountId }}
 			</li>
 		</ul>

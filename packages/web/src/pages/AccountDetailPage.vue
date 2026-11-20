@@ -2,7 +2,7 @@
 	<DashboardPage>
 		<DashboardPageBreadcrumbs :segments="breadcrumbs" class="q-mb-md" />
 		<DashboardPageHeader
-			:title="`Workload ${accountId}`"
+			:title="`Account ${accountId}`"
 			:subtitle="accountSubtitle"
 		>
 			<template #actions>
@@ -15,7 +15,6 @@
 				/>
 			</template>
 		</DashboardPageHeader>
-
 		<AccountSyncConflictBanner :conflicts="conflicts" />
 		<AccountAppsManager
 			:stages="manageQuery.data.value?.stages ?? []"
@@ -77,11 +76,11 @@ const conflicts = computed<StageAccountConflict[]>(
 );
 const accountSubtitle = computed(() => {
 	const value = account.data.value;
-	return value ? `${value.region} · ${value.status}` : "Loading Workload";
+	return value ? `${value.region} · ${value.status}` : "Loading account";
 });
 const breadcrumbs = computed(() => [
 	{ label: "Accounts", to: { name: "accounts" } },
-	{ label: `Workload ${accountId.value}` }
+	{ label: `Account ${accountId.value}` }
 ]);
 
 async function refresh() {
@@ -112,7 +111,7 @@ function apply() {
 					accountId: account,
 					policy: selectedPolicy
 				});
-				successNotify("Sync policy applied and Workload synced");
+				successNotify("Sync policy applied and account synced");
 			}
 		}
 	});
