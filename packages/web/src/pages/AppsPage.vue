@@ -7,19 +7,20 @@
 		</DashboardPageHeader>
 
 		<DashboardPageContent>
-			<TableToolbar v-if="apps.length">
-				<template #search>
+			<div
+				v-if="apps.length"
+				class="row no-wrap items-center q-gutter-sm"
+			>
+				<div :class="$q.screen.lt.sm ? 'col' : undefined">
 					<TableSearch v-model="search" />
-				</template>
-				<template #filters>
-					<TableFilter
-						v-model="accountIds"
-						label="Account"
-						:options="accountOptions"
-						searchable
-					/>
-				</template>
-			</TableToolbar>
+				</div>
+				<TableFilter
+					v-model="accountIds"
+					label="Account"
+					:options="accountOptions"
+					searchable
+				/>
+			</div>
 			<AppsListErrorState
 				v-if="appsQuery.isError.value"
 				@retry="appsQuery.refetch()"
@@ -52,7 +53,7 @@ import {
 	DashboardPageContent,
 	DashboardPageHeader
 } from "@/components/ui/Dashboard";
-import { TableFilter, TableSearch, TableToolbar } from "@/components/ui/Table";
+import { TableFilter, TableSearch } from "@/components/ui/Table";
 import { useApps } from "@/composables/apps";
 import { useIssues } from "@/composables/issues";
 
