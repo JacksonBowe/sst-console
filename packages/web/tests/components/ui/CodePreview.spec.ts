@@ -1,5 +1,6 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it, vi } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { nextTick } from "vue";
 
 import CodePreview from "@/components/ui/CodePreview/CodePreview.vue";
@@ -14,6 +15,8 @@ const stubs = {
 };
 
 describe("CodePreview", () => {
+	beforeEach(() => setActivePinia(createPinia()));
+
 	it("escapes plain text", () => {
 		const wrapper = mount(CodePreview, {
 			props: { code: '<script>alert("unsafe")</script>' },

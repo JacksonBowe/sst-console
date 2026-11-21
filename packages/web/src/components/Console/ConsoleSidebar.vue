@@ -27,8 +27,13 @@
 		<StageContextNavigation />
 
 		<template #footer>
-			<LocalSessionControl class="q-mb-sm" />
-			<ThemeToggle />
+			<LocalSessionControl />
+			<DialogTrigger>
+				<template #trigger="{ open }">
+					<AppDrawerItem :item="settingsItem" dense @click="open" />
+				</template>
+				<ConsoleSettingsDialog />
+			</DialogTrigger>
 			<ConsoleUserMenu />
 		</template>
 	</AppDrawer>
@@ -40,9 +45,10 @@ import {
 	AppDrawerItem,
 	type DrawerNavItem
 } from "@/components/ui/Drawer";
-import { ThemeToggle } from "@/components/ui/theme";
+import { DialogTrigger } from "@/components/ui/Dialog";
 import { useIssues } from "@/composables/issues";
 import { computed } from "vue";
+import ConsoleSettingsDialog from "./ConsoleSettingsDialog.vue";
 import ConsoleUserMenu from "./ConsoleUserMenu.vue";
 import LocalSessionControl from "./LocalSessionControl.vue";
 import StageContextNavigation from "./StageContextNavigation.vue";
@@ -52,6 +58,10 @@ defineProps<{ modelValue: boolean }>();
 const emit = defineEmits<{ "update:modelValue": [value: boolean] }>();
 
 const openIssuesQuery = useIssues({ status: "open" });
+const settingsItem: DrawerNavItem = {
+	label: "Settings",
+	icon: "sym_r_settings"
+};
 const navigation = computed<DrawerNavItem[]>(() => {
 	const openIssueCount = openIssuesQuery.data.value?.length ?? 0;
 

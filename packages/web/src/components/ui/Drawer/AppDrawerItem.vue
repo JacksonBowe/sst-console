@@ -50,20 +50,25 @@
 		:exact="item.exact"
 		:disable="item.disabled"
 		:dense="dense"
-		:active="isItemActive(item)"
+		:active="selected || isItemActive(item)"
 		class="app-drawer-item rounded-borders"
 		:class="{
 			'app-drawer-item--child': child,
-			'app-drawer-item--dense': dense
+			'app-drawer-item--dense': dense,
+			'justify-center q-px-none': iconOnly
 		}"
 		active-class="app-drawer-item--active"
 		@click="emit('click', $event)"
 	>
-		<q-item-section v-if="item.icon" side>
+		<q-item-section
+			v-if="item.icon"
+			side
+			:class="{ 'q-pr-none': iconOnly }"
+		>
 			<q-icon :name="item.icon" :size="child ? 'xs' : 'sm'" />
 		</q-item-section>
 
-		<q-item-section>
+		<q-item-section v-if="!iconOnly">
 			<q-item-label>{{ item.label }}</q-item-label>
 		</q-item-section>
 
@@ -87,10 +92,14 @@ const props = withDefaults(
 		item: DrawerNavItem;
 		child?: boolean;
 		dense?: boolean;
+		selected?: boolean;
+		iconOnly?: boolean;
 	}>(),
 	{
 		child: false,
-		dense: false
+		dense: false,
+		selected: false,
+		iconOnly: false
 	}
 );
 
