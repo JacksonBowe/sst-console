@@ -2,24 +2,9 @@
 	<DashboardPageContent class="issues-content">
 		<IssueMetrics :metrics="metrics" />
 		<div class="issues-workspace col row no-wrap q-gutter-x-md">
-			<q-card
-				v-if="$q.screen.gt.sm"
-				flat
-				bordered
-				class="col-2 q-pa-md scroll"
-			>
-				<IssueFilters
-					display-mode="desktop"
-					:issues="issues"
-					:filters="tableFilters"
-					@change="updateFilters"
-				/>
-			</q-card>
 			<div
 				class="issues-workspace__list column"
-				:class="
-					$q.screen.gt.sm ? 'col-4' : $q.screen.xs ? 'col' : 'col-5'
-				"
+				:class="$q.screen.xs ? 'col' : 'col-5'"
 			>
 				<div class="row no-wrap items-stretch q-gutter-sm q-mb-md">
 					<div class="col">
@@ -39,7 +24,6 @@
 						</SInput>
 					</div>
 					<IssueFilterButton
-						v-if="!$q.screen.gt.sm"
 						:active="hasFacetFilters"
 						@click="filtersOpen = true"
 					/>
@@ -95,7 +79,6 @@ import { IssueDetailPanel } from "./Issues";
 import IssueDetailDrawer from "./Issues/IssueDetailDrawer.vue";
 import IssueFilterButton from "./Issues/IssueFilterButton.vue";
 import IssueFilterSheet from "./Issues/IssueFilterSheet.vue";
-import IssueFilters from "./Issues/IssueFilters.vue";
 import IssueList from "./Issues/IssueList.vue";
 import IssueMetrics from "./Issues/IssueMetrics.vue";
 import { filterIssues } from "./Issues/issue-filters";
