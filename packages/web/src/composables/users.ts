@@ -1,10 +1,11 @@
+import { api, handleApiError } from "@/boot/api-client";
+import { successNotify } from "@/components/ui/toast";
 import type { InviteUserInput } from "@sst-console/sdk";
 import {
 	useInfiniteQuery,
 	useMutation,
 	useQueryClient
 } from "@tanstack/vue-query";
-import { api, handleApiError } from "@/boot/api-client";
 import { useAutoFetchAllPages } from "./useAutoFetchAllPages";
 
 export const userQueryKeys = {
@@ -53,8 +54,14 @@ export function useSetUserEnabled() {
 	return useMutation({
 		mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
 			api.setUserEnabled(id, enabled),
-		onSettled: () =>
-			queryClient.invalidateQueries({ queryKey: userQueryKeys.all }),
+		onSuccess: (_data, { enabled }) =>
+			successNotify(`User ${enabled ? "enabled" : "disabled"}`),
+		onSettled: async (_data, error) => {
+			await queryClient.invalidateQueries({
+				queryKey: userQueryKeys.all
+			});
+			if (error) return;
+		},
 		onError: handleApiError
 	});
 }

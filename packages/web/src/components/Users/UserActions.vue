@@ -54,7 +54,6 @@
 import type { User } from "@sst-console/sdk";
 import { Dialog } from "quasar";
 import { DialogConfirm } from "@/components/ui/Dialog";
-import { successNotify } from "@/components/ui/toast";
 import {
 	useRemoveUser,
 	useInviteUser,
@@ -66,14 +65,7 @@ const remove = useRemoveUser();
 const invite = useInviteUser();
 const setEnabled = useSetUserEnabled();
 function changeEnabled(enabled: boolean) {
-	setEnabled.mutate(
-		{ id: props.user.id, enabled },
-		{
-			onSuccess: () => {
-				successNotify(`User ${enabled ? "enabled" : "disabled"}`);
-			}
-		}
-	);
+	setEnabled.mutate({ id: props.user.id, enabled });
 }
 function confirmDelete() {
 	Dialog.create({

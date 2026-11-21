@@ -16,10 +16,13 @@ vi.mock("@/boot/api-client", () => ({
 import { useSetUserEnabled } from "@/composables/users";
 
 describe("useSetUserEnabled", () => {
-	it("invalidates users after a failed access change", () => {
+	it("invalidates users after a failed access change", async () => {
 		useSetUserEnabled();
 		const options = useMutation.mock.calls[0]?.[0];
-		options.onSettled(undefined, new Error("Cognito unavailable"));
+		await options.onSettled(undefined, new Error("Cognito unavailable"), {
+			id: "user-id",
+			enabled: false
+		});
 		expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ["users"] });
 	});
 });

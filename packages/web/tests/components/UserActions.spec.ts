@@ -66,10 +66,10 @@ describe("UserActions", () => {
 			.findAll("button")
 			.find(button => button.text() === "Disable")!
 			.trigger("click");
-		expect(setEnabled).toHaveBeenLastCalledWith(
-			{ id: user.id, enabled: false },
-			expect.objectContaining({ onSuccess: expect.any(Function) })
-		);
+		expect(setEnabled).toHaveBeenLastCalledWith({
+			id: user.id,
+			enabled: false
+		});
 		expect(
 			wrapper
 				.findAll("button")
