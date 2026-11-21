@@ -63,7 +63,11 @@ const stubs = {
 		template:
 			'<button :data-icon="icon" @click="$emit(\'click\')">{{ label }}<slot /></button>'
 	},
-	QItem: { template: "<button @click=\"$emit('click')\"><slot /></button>" },
+	QItem: {
+		props: ["disable"],
+		template:
+			'<button :disabled="disable" @click="$emit(\'click\')"><slot /></button>'
+	},
 	QDialog: {
 		props: ["modelValue"],
 		template: '<div v-if="modelValue"><slot /></div>'
@@ -183,6 +187,10 @@ describe("StageUpdates", () => {
 			},
 			{ updateId: "invalid", command: "invalid", timeStarted: "invalid" }
 		];
+		data.value = data.value.map(update => ({
+			...update,
+			processedAt: "2026-11-12T10:00:00Z"
+		}));
 		const wrapper = render(false);
 		expect(
 			wrapper
@@ -210,21 +218,19 @@ describe("StageUpdates", () => {
 			"missing",
 			"invalid"
 		]);
-		expect(wrapper.find(".update-timing").text()).not.toContain("→");
+		expect(wrapper.find(".update-metrics").text()).not.toContain("→");
 	});
 	it("shows partial history and operation-only failures", async () => {
+		data.value = [{ updateId: "one", processedAt: "2026-11-12T10:00:00Z" }];
 		const wrapper = render();
-		expect(wrapper.find(".update-item").attributes("title")).toBe(
-			"Unprocessed"
-		);
-		expect(wrapper.text()).toContain("Changes unavailable");
-		await wrapper.findAll("button")[1]!.trigger("click");
+		await wrapper.get(".update-item").trigger("click");
 		expect(wrapper.text()).toContain("Operation: failed");
 	});
 	it("shows no changes without zero counts or unchanged totals", () => {
 		data.value = [
 			{
 				updateId: "one",
+				processedAt: "2026-11-12T10:00:00Z",
 				resourceCounts: {
 					created: 0,
 					updated: 0,
@@ -268,15 +274,12 @@ describe("StageUpdates", () => {
 		expect(wrapper.text()).toContain("snapshot/key");
 		expect(wrapper.text()).toContain("Additional failures omitted");
 	});
-	it("reports that processing is queued", async () => {
+	it("processes an unprocessed update directly without opening the dialog", async () => {
 		process.mockResolvedValue({ published: 2 });
 		const wrapper = render();
-		await wrapper.findAll("button")[1]!.trigger("click");
-		const button = wrapper
-			.findAll("button")
-			.find(item => item.text() === "Process");
-		await button!.trigger("click");
+		await wrapper.get(".update-item").trigger("click");
 		await flushPromises();
+		expect(wrapper.text()).not.toContain("Resource events");
 		expect(process).toHaveBeenCalledWith({
 			key: { accountId: "123", appName: "app", stageName: "prod" },
 			updateId: "one"
@@ -286,6 +289,44 @@ describe("StageUpdates", () => {
 				message: expect.stringContaining("2 artifacts queued")
 			})
 		);
+	});
+
+	it("opens details for a processed update", async () => {
+		data.value = [{ updateId: "one", processedAt: "2026-11-12T10:00:00Z" }];
+		const wrapper = render();
+		await wrapper.get(".update-item").trigger("click");
+		expect(wrapper.text()).toContain("Resource events");
+		expect(process).not.toHaveBeenCalled();
+	});
+
+	it("blocks duplicate and concurrent queue requests", async () => {
+		data.value = [{ updateId: "one" }, { updateId: "two" }];
+		let resolve!: (value: { published: number }) => void;
+		process.mockReturnValue(new Promise(done => (resolve = done)));
+		const wrapper = render();
+		const items = wrapper.findAll(".update-item");
+		await items[0]!.trigger("click");
+		expect(items[0]!.text()).toContain("Queuing for processing");
+		expect(items[1]!.text()).toContain("Waiting for current request");
+		expect(items[1]!.attributes("disabled")).toBeDefined();
+		expect(process).toHaveBeenCalledTimes(1);
+
+		resolve({ published: 1 });
+		await flushPromises();
+		expect(items[0]!.text()).toContain("Queued for processing");
+		expect(items[0]!.attributes("disabled")).toBeDefined();
+		expect(items[1]!.attributes("disabled")).toBeUndefined();
+	});
+
+	it("allows retry after a failed queue request", async () => {
+		process.mockRejectedValue(new Error("Failed"));
+		const wrapper = render();
+		await wrapper.get(".update-item").trigger("click");
+		await flushPromises();
+		expect(
+			wrapper.get(".update-item").attributes("disabled")
+		).toBeUndefined();
+		expect(wrapper.text()).toContain("select to process");
 	});
 });
 

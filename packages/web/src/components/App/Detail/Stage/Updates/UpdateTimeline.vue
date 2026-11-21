@@ -14,6 +14,9 @@
 			<UpdateTimelineItem
 				:update="entry.update"
 				:is-newest="entry.isNewest"
+				:processing="processingId === entry.update.updateId"
+				:queued="queuedIds?.includes(entry.update.updateId)"
+				:blocked="Boolean(processingId) && !entry.update.processedAt"
 				@select="$emit('select', entry.update.updateId)"
 			/>
 		</q-timeline-entry>
@@ -27,7 +30,11 @@ import { formatDate } from "@/components/ui/format";
 import UpdateTimelineItem from "./UpdateTimelineItem.vue";
 import { statusColor } from "./update-format";
 
-const props = defineProps<{ updates: StateUpdate[] }>();
+const props = defineProps<{
+	updates: StateUpdate[];
+	processingId?: string;
+	queuedIds?: string[];
+}>();
 defineEmits<{ select: [updateId: string] }>();
 
 const entries = computed(() => {
