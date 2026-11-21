@@ -1,13 +1,23 @@
 <template>
+	<div class="text-subtitle1 text-weight-medium q-mb-sm">Stages</div>
 	<BaseTable
 		:rows="stages"
 		:columns="columns"
-		:rows-per-page-options="[12, 24, 48]"
+		:rows-per-page-options="[0]"
+		hide-pagination
+		:grid="$q.screen.lt.md"
+		row-key="stageName"
 		:row-class="() => 'cursor-pointer'"
 		@row-click="openStage"
 	>
-		<template #top>
-			<div class="q-pa-md text-subtitle1 text-weight-medium">Stages</div>
+		<template #item="tableProps">
+			<AppStageCard
+				:stage="tableProps.row"
+				:app-name="appName"
+				:updating-stage-name="updatingStageName"
+				@click="openStage($event, tableProps.row)"
+				@monitoring="$emit('monitoring', tableProps.row, $event)"
+			/>
 		</template>
 
 		<template #body-cell-stageName="props">
@@ -103,6 +113,8 @@ import { useRouter } from "vue-router";
 import { formatDateTime } from "@/components/ui/format";
 import { BaseTable, type ExtendedQTableColumn } from "@/components/ui/Table";
 
+import AppStageCard from "./AppStageCard.vue";
+
 const props = defineProps<{
 	appName: string;
 	stages: AppStage[];
@@ -112,7 +124,6 @@ const props = defineProps<{
 defineEmits<{ monitoring: [stage: AppStage, enabled: boolean] }>();
 
 const router = useRouter();
-
 const columns: ExtendedQTableColumn[] = [
 	{
 		name: "stageName",
