@@ -11,7 +11,7 @@
 		:loading="loading"
 		:filter="filters"
 		:filter-method="useCustomFilter"
-		:row-class="rowClass"
+		:table-row-class-fn="rowClass"
 		:expanded="expanded"
 		v-model:pagination="internalPagination"
 		@row-click="onRowClick"

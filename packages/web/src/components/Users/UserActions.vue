@@ -24,12 +24,12 @@
 					<q-item-section>Resend invitation</q-item-section>
 				</q-item>
 				<q-item
-					v-if="!user.cognitoEnabled"
+					v-if="!user.cognitoEnabled && disableFailed"
 					class="user-actions-menu__item q-px-sm q-py-xs"
 					clickable
 					dense
 					v-close-popup
-					@click="setEnabled.mutate({ id: user.id, enabled: false })"
+					@click="changeEnabled(false)"
 				>
 					<q-item-section>Retry disable</q-item-section>
 				</q-item>
@@ -38,12 +38,7 @@
 					clickable
 					dense
 					v-close-popup
-					@click="
-						setEnabled.mutate({
-							id: user.id,
-							enabled: !user.cognitoEnabled
-						})
-					"
+					@click="changeEnabled(!user.cognitoEnabled)"
 				>
 					<q-item-section>{{
 						user.cognitoEnabled ? "Disable" : "Enable"
@@ -68,7 +63,9 @@
 <script setup lang="ts">
 import type { User } from "@sst-console/sdk";
 import { Dialog } from "quasar";
+import { ref } from "vue";
 import { DialogConfirm } from "@/components/ui/Dialog";
+import { successNotify } from "@/components/ui/toast";
 import {
 	useRemoveUser,
 	useInviteUser,
@@ -79,6 +76,22 @@ const props = defineProps<{ user: User }>();
 const remove = useRemoveUser();
 const invite = useInviteUser();
 const setEnabled = useSetUserEnabled();
+const disableFailed = ref(false);
+
+function changeEnabled(enabled: boolean) {
+	setEnabled.mutate(
+		{ id: props.user.id, enabled },
+		{
+			onSuccess: () => {
+				disableFailed.value = false;
+				successNotify(`User ${enabled ? "enabled" : "disabled"}`);
+			},
+			onError: () => {
+				if (!enabled) disableFailed.value = true;
+			}
+		}
+	);
+}
 function confirmDelete() {
 	Dialog.create({
 		component: DialogConfirm,
