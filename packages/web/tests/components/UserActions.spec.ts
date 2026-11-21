@@ -1,6 +1,5 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import { nextTick, reactive } from "vue";
 import UserActions from "@/components/Users/UserActions.vue";
 
 const { setEnabled } = vi.hoisted(() => ({ setEnabled: vi.fn() }));
@@ -41,15 +40,15 @@ describe("UserActions", () => {
 		expect(retry).toBeUndefined();
 	});
 
-	it("offers retry only after a disable request fails", async () => {
-		const user = reactive({
+	it("keeps the normal disable action available", async () => {
+		const user = {
 			id: "user-id",
 			email: "user@example.com",
 			cognitoStatus: "CONFIRMED" as const,
 			cognitoEnabled: true,
 			createdAt: "2026-01-01",
 			updatedAt: "2026-01-01"
-		});
+		};
 		const wrapper = mount(UserActions, {
 			props: { user },
 			global: {
@@ -67,21 +66,19 @@ describe("UserActions", () => {
 			.findAll("button")
 			.find(button => button.text() === "Disable")!
 			.trigger("click");
-		const callbacks = setEnabled.mock.lastCall?.[1];
-		callbacks.onError(new Error("Cognito unavailable"));
-		user.cognitoEnabled = false;
-		await nextTick();
-		const retry = wrapper
-			.findAll("button")
-			.find(button => button.text() === "Retry disable");
-		expect(retry).toBeDefined();
-		await retry!.trigger("click");
 		expect(setEnabled).toHaveBeenLastCalledWith(
 			{ id: user.id, enabled: false },
-			expect.objectContaining({
-				onSuccess: expect.any(Function),
-				onError: expect.any(Function)
-			})
+			expect.objectContaining({ onSuccess: expect.any(Function) })
 		);
+		expect(
+			wrapper
+				.findAll("button")
+				.find(button => button.text() === "Retry disable")
+		).toBeUndefined();
+		expect(
+			wrapper
+				.findAll("button")
+				.find(button => button.text() === "Disable")
+		).toBeDefined();
 	});
 });

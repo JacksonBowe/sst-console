@@ -156,7 +156,7 @@ describe("user", () => {
 		).toThrow();
 	});
 
-	it("persists disabled state before disabling Cognito", async () => {
+	it("disables Cognito before persisting disabled state", async () => {
 		userGetGo.mockResolvedValue({ data: user });
 		cognitoSend.mockResolvedValue({});
 		userPatchGo.mockResolvedValue({});
@@ -170,8 +170,8 @@ describe("user", () => {
 		expect(userPatchSet).toHaveBeenCalledWith(
 			expect.objectContaining({ cognitoEnabled: false })
 		);
-		expect(userPatchGo.mock.invocationCallOrder[0]).toBeLessThan(
-			cognitoSend.mock.invocationCallOrder[0]!
+		expect(cognitoSend.mock.invocationCallOrder[0]).toBeLessThan(
+			userPatchGo.mock.invocationCallOrder[0]!
 		);
 	});
 
@@ -317,7 +317,7 @@ describe("user", () => {
 
 	it("can retry disabling after Cognito fails", async () => {
 		userGetGo.mockResolvedValue({
-			data: { ...user, cognitoEnabled: false }
+			data: user
 		});
 		transactionGo.mockResolvedValue({ canceled: false });
 		cognitoSend
@@ -326,10 +326,24 @@ describe("user", () => {
 		await expect(
 			setEnabled({ id: userId, enabled: false })
 		).rejects.toThrow();
+		expect(userPatch).not.toHaveBeenCalled();
 		await expect(
 			setEnabled({ id: userId, enabled: false })
 		).resolves.toBeUndefined();
 		expect(cognitoSend).toHaveBeenCalledTimes(2);
+		expect(userPatchSet).toHaveBeenCalledWith(
+			expect.objectContaining({ cognitoEnabled: false })
+		);
+	});
+
+	it("reports a persistence failure after Cognito has been updated", async () => {
+		userGetGo.mockResolvedValue({ data: user });
+		cognitoSend.mockResolvedValue({});
+		userPatchGo.mockRejectedValueOnce(new Error("DynamoDB unavailable"));
+		await expect(
+			setEnabled({ id: userId, enabled: false })
+		).rejects.toThrow("DynamoDB unavailable");
+		expect(cognitoSend).toHaveBeenCalledTimes(1);
 	});
 
 	it("exchanges a Cognito subject for its native user ID", async () => {

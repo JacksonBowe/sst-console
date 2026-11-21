@@ -162,8 +162,6 @@ export const setEnabled = fn(
 			UserPoolId: Resource.SSTConsoleCognitoUserPool.id,
 			Username: user.email
 		};
-		// Disable Console access first so a Cognito failure leaves access closed.
-		if (!enabled) await persistEnabled(user, false);
 		try {
 			await cognito.send(
 				enabled
@@ -176,16 +174,15 @@ export const setEnabled = fn(
 				error
 			);
 		}
-		if (enabled) await persistEnabled(user, true);
+		await db.entities.user
+			.patch({ id: user.id })
+			.set({
+				cognitoEnabled: enabled,
+				updatedAt: new Date().toISOString()
+			})
+			.go({ response: "none" });
 	}
 );
-
-async function persistEnabled(user: UserInfo, enabled: boolean) {
-	await db.entities.user
-		.patch({ id: user.id })
-		.set({ cognitoEnabled: enabled, updatedAt: new Date().toISOString() })
-		.go({ response: "none" });
-}
 
 /** Updates one or more user fields. */
 export const update = fn(
