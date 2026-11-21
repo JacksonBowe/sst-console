@@ -14,14 +14,23 @@ const identityDelete = vi.fn();
 const transactionWrite = vi.fn();
 const transactionGo = vi.fn();
 const cognitoSend = vi.fn();
+const userPatch = vi.fn();
+const userPatchSet = vi.fn();
+const userPatchGo = vi.fn();
+const identityPatch = vi.fn();
+const identityPatchSet = vi.fn();
 
 class Command {
 	constructor(public input: unknown) {}
 }
+class UsernameExists extends Error {}
 
 vi.mock("@aws-sdk/client-cognito-identity-provider", () => ({
 	AdminCreateUserCommand: Command,
 	AdminDeleteUserCommand: Command,
+	AdminDisableUserCommand: Command,
+	AdminEnableUserCommand: Command,
+	AdminGetUserCommand: Command,
 	CognitoIdentityProviderClient: class {
 		send = cognitoSend;
 	},
@@ -29,7 +38,7 @@ vi.mock("@aws-sdk/client-cognito-identity-provider", () => ({
 	InvalidPasswordException: class extends Error {},
 	LimitExceededException: class extends Error {},
 	UserNotFoundException: class extends Error {},
-	UsernameExistsException: class extends Error {}
+	UsernameExistsException: UsernameExists
 }));
 
 vi.mock("sst", () => ({
@@ -42,12 +51,14 @@ vi.mock("../../src/db", () => ({
 			user: {
 				create: userCreate,
 				get: userGet,
+				patch: userPatch,
 				query: { byType: userByType },
 				delete: userDelete
 			},
 			userIdentity: {
 				get: identityGet,
 				create: identityCreate,
+				patch: identityPatch,
 				delete: identityDelete
 			}
 		},
@@ -55,8 +66,17 @@ vi.mock("../../src/db", () => ({
 	}
 }));
 
-const { create, exchangeCognitoSub, get, invite, list, remove } =
-	await import("../../src/user/user");
+const {
+	CognitoStatus,
+	UserInfoSchema,
+	create,
+	getIdentity,
+	get,
+	invite,
+	list,
+	remove,
+	setEnabled
+} = await import("../../src/user/user");
 
 const input = {
 	cognitoSub: "cognito-sub",
@@ -65,6 +85,12 @@ const input = {
 	cognitoEnabled: true
 };
 const userId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+const identity = {
+	cognitoSub: input.cognitoSub,
+	userId,
+	createdAt: "2026-09-26T00:00:00.000Z",
+	schemaVersion: "1"
+};
 const user = {
 	id: userId,
 	cognitoSub: input.cognitoSub,
@@ -78,8 +104,14 @@ const user = {
 describe("user", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		cognitoSend.mockReset();
 		identityGet.mockImplementation(() => ({ go: identityGetGo }));
 		userGet.mockImplementation(() => ({ go: userGetGo }));
+		userPatch.mockReturnValue({ set: userPatchSet });
+		userPatchSet.mockReturnValue({ go: userPatchGo });
+		userPatchSet.mockReturnValue({ go: userPatchGo, commit: vi.fn() });
+		identityPatch.mockReturnValue({ set: identityPatchSet });
+		identityPatchSet.mockReturnValue({ commit: vi.fn() });
 		userByType.mockImplementation(() => {
 			const query = { go: userByTypeGo, where: userByTypeWhere };
 			userByTypeWhere.mockReturnValue(query);
@@ -91,8 +123,16 @@ describe("user", () => {
 		identityDelete.mockImplementation(() => ({ commit: vi.fn() }));
 		transactionWrite.mockImplementation(callback => {
 			callback({
-				user: { create: userCreate, delete: userDelete },
-				userIdentity: { create: identityCreate, delete: identityDelete }
+				user: {
+					create: userCreate,
+					delete: userDelete,
+					patch: userPatch
+				},
+				userIdentity: {
+					create: identityCreate,
+					delete: identityDelete,
+					patch: identityPatch
+				}
 			});
 			return { go: transactionGo };
 		});
@@ -103,6 +143,36 @@ describe("user", () => {
 
 		await expect(get({ id: userId })).resolves.toEqual(user);
 		expect(userGet).toHaveBeenCalledWith({ id: userId });
+	});
+
+	it("validates every Cognito status and rejects unknown values", () => {
+		for (const cognitoStatus of CognitoStatus) {
+			expect(
+				UserInfoSchema.parse({ ...user, cognitoStatus }).cognitoStatus
+			).toBe(cognitoStatus);
+		}
+		expect(() =>
+			UserInfoSchema.parse({ ...user, cognitoStatus: "NOT_A_STATUS" })
+		).toThrow();
+	});
+
+	it("disables Cognito before persisting disabled state", async () => {
+		userGetGo.mockResolvedValue({ data: user });
+		cognitoSend.mockResolvedValue({});
+		userPatchGo.mockResolvedValue({});
+		transactionGo.mockResolvedValue({ canceled: false });
+		await setEnabled({ id: userId, enabled: false });
+		expect(cognitoSend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				input: { UserPoolId: "user-pool", Username: user.email }
+			})
+		);
+		expect(userPatchSet).toHaveBeenCalledWith(
+			expect.objectContaining({ cognitoEnabled: false })
+		);
+		expect(cognitoSend.mock.invocationCallOrder[0]).toBeLessThan(
+			userPatchGo.mock.invocationCallOrder[0]!
+		);
 	});
 
 	it("lists users by descending ID with pagination", async () => {
@@ -144,7 +214,9 @@ describe("user", () => {
 		cognitoSend.mockResolvedValue({
 			User: { Attributes: [{ Name: "sub", Value: input.cognitoSub }] }
 		});
-		identityGetGo.mockResolvedValue({ data: { userId } });
+		identityGetGo.mockResolvedValue({
+			data: identity
+		});
 
 		await expect(invite({ email: input.email })).resolves.toEqual({
 			id: userId
@@ -160,15 +232,138 @@ describe("user", () => {
 		);
 	});
 
+	it("resends when an existing Console user still has a pending invitation", async () => {
+		cognitoSend
+			.mockRejectedValueOnce(new UsernameExists())
+			.mockResolvedValueOnce({
+				UserStatus: "FORCE_CHANGE_PASSWORD",
+				UserAttributes: [{ Name: "sub", Value: input.cognitoSub }]
+			})
+			.mockResolvedValueOnce({});
+		identityGetGo.mockResolvedValue({
+			data: identity
+		});
+		userGetGo.mockResolvedValue({ data: user });
+		await expect(invite({ email: input.email })).resolves.toEqual({
+			id: userId
+		});
+		expect(cognitoSend).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				input: expect.objectContaining({ MessageAction: "RESEND" })
+			})
+		);
+	});
+
+	it("does not resend an invitation to a confirmed user", async () => {
+		cognitoSend
+			.mockRejectedValueOnce(new UsernameExists())
+			.mockResolvedValueOnce({
+				UserStatus: "CONFIRMED",
+				UserAttributes: [{ Name: "sub", Value: input.cognitoSub }]
+			});
+		identityGetGo.mockResolvedValue({
+			data: identity
+		});
+		userGetGo.mockResolvedValue({
+			data: { ...user, cognitoStatus: "CONFIRMED" }
+		});
+		await expect(invite({ email: input.email })).rejects.toMatchObject({
+			code: "user.exists"
+		});
+		expect(cognitoSend).toHaveBeenCalledTimes(2);
+	});
+
+	it("never resends when Cognito is confirmed even if Console is stale", async () => {
+		cognitoSend
+			.mockRejectedValueOnce(new UsernameExists())
+			.mockResolvedValueOnce({
+				UserStatus: "CONFIRMED",
+				UserAttributes: [{ Name: "sub", Value: input.cognitoSub }]
+			})
+			.mockResolvedValueOnce({});
+		identityGetGo.mockResolvedValue({
+			data: identity
+		});
+		userGetGo.mockResolvedValue({ data: user });
+		await expect(invite({ email: input.email })).rejects.toMatchObject({
+			code: "user.exists"
+		});
+		expect(cognitoSend).toHaveBeenCalledTimes(2);
+	});
+
+	it("resends when Cognito is pending even if Console is confirmed", async () => {
+		cognitoSend
+			.mockRejectedValueOnce(new UsernameExists())
+			.mockResolvedValueOnce({
+				UserStatus: "FORCE_CHANGE_PASSWORD",
+				UserAttributes: [{ Name: "sub", Value: input.cognitoSub }]
+			})
+			.mockResolvedValueOnce({});
+		identityGetGo.mockResolvedValue({
+			data: identity
+		});
+		userGetGo.mockResolvedValue({
+			data: { ...user, cognitoStatus: "CONFIRMED" }
+		});
+		await expect(invite({ email: input.email })).resolves.toEqual({
+			id: userId
+		});
+		expect(cognitoSend).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				input: expect.objectContaining({ MessageAction: "RESEND" })
+			})
+		);
+	});
+
+	it("can retry disabling after Cognito fails", async () => {
+		userGetGo.mockResolvedValue({
+			data: user
+		});
+		transactionGo.mockResolvedValue({ canceled: false });
+		cognitoSend
+			.mockRejectedValueOnce(new Error("Cognito unavailable"))
+			.mockResolvedValueOnce({});
+		await expect(
+			setEnabled({ id: userId, enabled: false })
+		).rejects.toThrow();
+		expect(userPatch).not.toHaveBeenCalled();
+		await expect(
+			setEnabled({ id: userId, enabled: false })
+		).resolves.toBeUndefined();
+		expect(cognitoSend).toHaveBeenCalledTimes(2);
+		expect(userPatchSet).toHaveBeenCalledWith(
+			expect.objectContaining({ cognitoEnabled: false })
+		);
+	});
+
+	it("reports a persistence failure after Cognito has been updated", async () => {
+		userGetGo.mockResolvedValue({ data: user });
+		cognitoSend.mockResolvedValue({});
+		userPatchGo.mockRejectedValueOnce(new Error("DynamoDB unavailable"));
+		await expect(
+			setEnabled({ id: userId, enabled: false })
+		).rejects.toThrow("DynamoDB unavailable");
+		expect(cognitoSend).toHaveBeenCalledTimes(1);
+	});
+
 	it("exchanges a Cognito subject for its native user ID", async () => {
-		identityGetGo.mockResolvedValue({ data: { userId } });
+		identityGetGo.mockResolvedValue({
+			data: identity
+		});
 
 		await expect(
-			exchangeCognitoSub({ cognitoSub: input.cognitoSub })
-		).resolves.toBe(userId);
+			getIdentity({ cognitoSub: input.cognitoSub })
+		).resolves.toEqual(identity);
 		expect(identityGet).toHaveBeenCalledWith({
 			cognitoSub: input.cognitoSub
 		});
+	});
+
+	it("resolves identities without an enabled-state projection", async () => {
+		identityGetGo.mockResolvedValue({ data: identity });
+		await expect(
+			getIdentity({ cognitoSub: input.cognitoSub })
+		).resolves.toEqual(identity);
 	});
 
 	it("creates native user and Cognito identity together", async () => {

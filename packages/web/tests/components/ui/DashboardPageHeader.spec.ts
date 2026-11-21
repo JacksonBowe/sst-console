@@ -21,7 +21,8 @@ describe("DashboardPageHeader", () => {
 			},
 			slots: {
 				actions: '<button aria-label="More actions">More</button>'
-			}
+			},
+			global: { stubs: { QBtn: true, QIcon: true } }
 		});
 
 		expect(wrapper.classes()).toContain("no-wrap");
@@ -36,7 +37,8 @@ describe("DashboardPageHeader", () => {
 
 	it("preserves the custom default slot layout", () => {
 		const wrapper = mount(DashboardPageHeader, {
-			slots: { default: "<div data-custom-header>Custom header</div>" }
+			slots: { default: "<div data-custom-header>Custom header</div>" },
+			global: { stubs: { QBtn: true, QIcon: true } }
 		});
 
 		expect(wrapper.classes()).toContain("items-center");

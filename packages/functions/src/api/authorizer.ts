@@ -10,7 +10,7 @@ import type { MiddlewareHandler } from "hono";
 import type { Context } from "hono";
 import { Resource } from "sst";
 
-async function validateToken(c: Context): Promise<{ userId: string }> {
+async function validateToken(c: Context): Promise<User.UserInfo> {
 	const authorization = c.req.header("Authorization");
 	if (!authorization?.startsWith("Bearer ")) {
 		throw new AuthError(
@@ -27,17 +27,21 @@ async function validateToken(c: Context): Promise<{ userId: string }> {
 	});
 	if (!claims.sub)
 		throw new AuthError("invalid_token", "Invalid access token claims");
-	const userId = await User.exchangeCognitoSub({ cognitoSub: claims.sub });
-	if (!userId) throw new AuthError("user.not_found", "User not found");
-	return { userId };
+	const identity = await User.getIdentity({ cognitoSub: claims.sub });
+	if (!identity) throw new AuthError("user.not_found", "User not found");
+	const user = await User.get({ id: identity.userId });
+	if (!user.cognitoEnabled)
+		throw new AuthError("user.disabled", "User is disabled");
+	return user;
 }
 
 /** Validates Cognito access token and binds its native Console actor. */
 export const authorize: MiddlewareHandler = async (c, next) => {
 	try {
-		const { userId } = await validateToken(c);
-		return withActor({ type: "user", properties: { userId } }, () =>
-			next()
+		const user = await validateToken(c);
+		return withActor(
+			{ type: "user", properties: { userId: user.id } },
+			() => next()
 		);
 	} catch (error) {
 		if (error instanceof PublicError) throw error;

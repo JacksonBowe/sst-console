@@ -220,7 +220,15 @@ export type RecoverAccountsResult = {
 
 export type BackupConnectionsResult = { backedUp: number };
 
-export type CognitoStatus = "FORCE_CHANGE_PASSWORD" | "CONFIRMED";
+export type CognitoStatus =
+	| "UNCONFIRMED"
+	| "CONFIRMED"
+	| "ARCHIVED"
+	| "COMPROMISED"
+	| "UNKNOWN"
+	| "RESET_REQUIRED"
+	| "FORCE_CHANGE_PASSWORD"
+	| "EXTERNAL_PROVIDER";
 
 export type User = {
 	id: string;
@@ -461,6 +469,12 @@ export const consoleMethods = (request: RequestFn) => ({
 		request({ method: "GET", url: "users", params: filters }),
 	inviteUser: (input: InviteUserInput): Promise<InviteUserResult> =>
 		request({ method: "POST", url: "users", data: input }),
+	setUserEnabled: (id: string, enabled: boolean): Promise<void> =>
+		request({
+			method: "PATCH",
+			url: `users/${encodeURIComponent(id)}/enabled`,
+			data: { enabled }
+		}),
 	removeUser: (id: string): Promise<void> =>
 		request({ method: "DELETE", url: `users/${encodeURIComponent(id)}` })
 });

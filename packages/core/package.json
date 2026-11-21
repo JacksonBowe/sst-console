@@ -17,7 +17,7 @@
 		"./user*": "./src/user/index.ts"
 	},
 	"scripts": {
-		"test": "vitest run",
+		"test": "vitest run --silent=passed-only",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {

@@ -37,11 +37,11 @@ function cognitoSub(
 /** Ensures authenticated Cognito identity has enabled Console user record. */
 async function requireConsoleUser(email: string) {
 	const cognitoUser = await getCognitoByEmail({ email });
-	const id = await User.exchangeCognitoSub({
+	const identity = await User.getIdentity({
 		cognitoSub: cognitoSub(cognitoUser.UserAttributes)
 	});
-	if (!id) throw userErrors.notFound();
-	const user = await User.get({ id });
+	if (!identity) throw userErrors.notFound();
+	const user = await User.get({ id: identity.userId });
 	if (!user.cognitoEnabled) {
 		throw userErrors.invalidState("User is disabled");
 	}
