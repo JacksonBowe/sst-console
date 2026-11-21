@@ -179,6 +179,7 @@ const metrics = computed(() => [
 	},
 	{
 		label: "Open occurrences",
+		mobileLabel: "Occurrences",
 		value:
 			issuesQuery.isPending.value || issuesQuery.isError.value
 				? "—"
@@ -190,6 +191,7 @@ const metrics = computed(() => [
 	},
 	{
 		label: "Monitored stages (global)",
+		mobileLabel: "Stages (global)",
 		value:
 			appsQuery.isPending.value || appsQuery.isError.value
 				? "—"
