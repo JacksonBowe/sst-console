@@ -1,46 +1,67 @@
-import { Dark, LocalStorage, setCssVar } from "quasar";
+import { Dark, setCssVar } from "quasar";
+import { storeToRefs, type Pinia } from "pinia";
 import { readonly, ref } from "vue";
 
+import { useUISettingsStore, type ColorScheme } from "@/stores/ui-settings";
 import {
 	themeColors,
 	type ThemeColorKey,
 	type ThemeMode
 } from "@/theme/colors";
 
-const THEME_KEY = "theme";
-type ThemePreference = ThemeMode;
-
 const dark = ref(Dark.isActive);
+let systemTheme: MediaQueryList | undefined;
 
-function apply(preference: ThemePreference): void {
-	dark.value = preference === "dark";
+function apply(mode: ThemeMode): void {
+	dark.value = mode === "dark";
 	Dark.set(dark.value);
 
-	for (const [key, value] of Object.entries(themeColors[preference])) {
+	for (const [key, value] of Object.entries(themeColors[mode])) {
 		setCssVar(key as ThemeColorKey, value, document.documentElement);
 	}
 }
 
-export function restoreTheme(): void {
+function applyPreference(preference: ColorScheme): void {
+	const mode =
+		preference === "system"
+			? systemTheme?.matches
+				? "dark"
+				: "light"
+			: preference;
+	apply(mode);
+}
+
+export function restoreTheme(pinia?: Pinia): void {
 	if (typeof window === "undefined") return;
 
-	const storedPreference = LocalStorage.getItem<string>(THEME_KEY);
-	const preference: ThemePreference =
-		storedPreference === "light" || storedPreference === "dark"
-			? storedPreference
-			: window.matchMedia("(prefers-color-scheme: dark)").matches
-				? "dark"
-				: "light";
-
-	apply(preference);
+	const settings = useUISettingsStore(pinia);
+	if (!systemTheme) {
+		systemTheme = window.matchMedia("(prefers-color-scheme: dark)");
+		systemTheme.addEventListener("change", () => {
+			if (settings.colorScheme === "system")
+				applyPreference(settings.colorScheme);
+		});
+	}
+	applyPreference(settings.colorScheme);
 }
 
 export function useTheme() {
-	function toggleTheme(): void {
-		const preference: ThemePreference = dark.value ? "light" : "dark";
-		apply(preference);
-		LocalStorage.set(THEME_KEY, preference);
+	const settings = useUISettingsStore();
+	const { colorScheme } = storeToRefs(settings);
+
+	function setTheme(value: ColorScheme): void {
+		settings.setColorScheme(value);
+		applyPreference(value);
 	}
 
-	return { dark: readonly(dark), toggleTheme };
+	function toggleTheme(): void {
+		setTheme(dark.value ? "light" : "dark");
+	}
+
+	return {
+		dark: readonly(dark),
+		preference: readonly(colorScheme),
+		setTheme,
+		toggleTheme
+	};
 }

@@ -33,6 +33,7 @@ const routes: RouteRecordRaw[] = [
 			{
 				path: "apps/:appName/stages/:stageName/local",
 				name: "stage-local-workspace",
+				meta: { fullWidth: true },
 				component: () => import("@/pages/LocalWorkspacePage.vue")
 			},
 			{
@@ -43,6 +44,7 @@ const routes: RouteRecordRaw[] = [
 			{
 				path: "local",
 				name: "local-workspace",
+				meta: { fullWidth: true },
 				component: () => import("@/pages/LocalWorkspacePage.vue")
 			},
 			{

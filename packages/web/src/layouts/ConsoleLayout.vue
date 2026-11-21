@@ -16,7 +16,15 @@
 		<ConsoleSidebar v-model="drawerOpen" />
 
 		<q-page-container>
-			<router-view />
+			<div
+				:class="{
+					'console-layout__content--centered':
+						uiSettings.contentWidth === 'centered' &&
+						!route.meta.fullWidth
+				}"
+			>
+				<router-view />
+			</div>
 		</q-page-container>
 	</q-layout>
 </template>
@@ -24,16 +32,25 @@
 <script setup lang="ts">
 import { useQuasar } from "quasar";
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
 
 import { ConsoleHeader, ConsoleSidebar } from "@/components/Console";
 import { useLocalSessionStore } from "@/stores/local-session";
+import { useUISettingsStore } from "@/stores/ui-settings";
 
 const drawerOpen = ref(false);
 const $q = useQuasar();
 const localSession = useLocalSessionStore();
+const uiSettings = useUISettingsStore();
+const route = useRoute();
 
 onMounted(() => void localSession.initialize());
 onBeforeUnmount(() => localSession.stop());
 </script>
 
-<style lang="scss" scoped></style>
+<style scoped>
+.console-layout__content--centered {
+	max-width: 1248px;
+	margin-inline: auto;
+}
+</style>

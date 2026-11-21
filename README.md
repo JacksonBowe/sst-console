@@ -34,9 +34,25 @@ Development is moving quickly. Features, APIs, infrastructure, data models, and 
 
 ![SST Console Stage overview](docs/images/stage-overview.png)
 
+### Stage updates
+
+![SST Console Stage updates](docs/images/stage-updates.png)
+
 ### Issue Monitoring
 
 ![SST Console Issue Monitoring](docs/images/monitoring-issues.png)
+
+### Accounts
+
+![SST Console Accounts](docs/images/accounts.png)
+
+### Account details
+
+![SST Console Account details](docs/images/account-detail.png)
+
+### Users
+
+![SST Console Users](docs/images/users.png)
 
 ### Local Workspace
 

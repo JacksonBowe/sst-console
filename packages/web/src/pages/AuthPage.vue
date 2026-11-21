@@ -77,6 +77,6 @@ const handlers: CognitoAuthHandlers = {
 
 <style scoped>
 .auth-form {
-	max-width: 460px;
+	max-width: 380px;
 }
 </style>
