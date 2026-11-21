@@ -15,7 +15,7 @@
 				:update="entry.update"
 				:is-newest="entry.isNewest"
 				:processing="processingId === entry.update.updateId"
-				:queued="queuedIds?.includes(entry.update.updateId)"
+				:queued="queuedIds?.includes(entry.update.updateId) ?? false"
 				:blocked="Boolean(processingId) && !entry.update.processedAt"
 				@select="$emit('select', entry.update.updateId)"
 			/>
