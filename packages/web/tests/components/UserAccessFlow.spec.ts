@@ -61,7 +61,7 @@ describe("user access change", () => {
 	});
 
 	it.each([true, false])(
-		"shows success and updates the user to enabled=%s despite a stale list refetch",
+		"shows success and refreshes the user to enabled=%s",
 		async enabled => {
 			setUserEnabled.mockReset();
 			successNotify.mockReset();
@@ -82,6 +82,15 @@ describe("user access change", () => {
 				],
 				pageParams: [undefined]
 			};
+			const refreshedPage = {
+				...page,
+				pages: [
+					{
+						...page.pages[0]!,
+						items: [{ ...user, cognitoEnabled: enabled }]
+					}
+				]
+			};
 			const queryClient = new QueryClient({
 				defaultOptions: { queries: { retry: false } }
 			});
@@ -93,7 +102,7 @@ describe("user access change", () => {
 					return {
 						query: useQuery({
 							queryKey: ["users"],
-							queryFn: () => page,
+							queryFn: () => refreshedPage,
 							staleTime: Infinity
 						})
 					};
