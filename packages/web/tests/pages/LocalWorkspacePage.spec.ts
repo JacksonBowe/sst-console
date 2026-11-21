@@ -88,6 +88,8 @@ describe("LocalWorkspacePage", () => {
 							template: '<header><slot name="actions" /></header>'
 						},
 						QIcon: true,
+						QCard: { template: "<div><slot /></div>" },
+						QPage: { template: "<main><slot /></main>" },
 						QSeparator: true
 					}
 				}
@@ -117,6 +119,7 @@ describe("LocalWorkspacePage", () => {
 						template: "<header><slot name='actions' /></header>"
 					},
 					QIcon: true,
+					QPage: { template: "<main><slot /></main>" },
 					QSeparator: true,
 					QCard: { template: "<div><slot /></div>" }
 				}

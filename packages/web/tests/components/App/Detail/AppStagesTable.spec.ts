@@ -62,6 +62,7 @@ function render(mobile: boolean, updatingStageName?: string) {
 				QBtn,
 				QCard: { template: "<article><slot /></article>" },
 				QCardSection: { template: "<div><slot /></div>" },
+				QSeparator: true,
 				QTd: { template: "<div><slot /></div>" },
 				QBadge: {
 					props: ["label"],

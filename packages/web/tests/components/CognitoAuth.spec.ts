@@ -25,6 +25,7 @@ describe("CognitoAuth", () => {
 						template: '<div :data-flat="flat"><slot /></div>'
 					},
 					QCardSection: { template: "<div><slot /></div>" },
+					QSeparator: true,
 					CognitoSignInForm: true
 				}
 			}
