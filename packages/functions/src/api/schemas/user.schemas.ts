@@ -1,4 +1,5 @@
 import { isULID } from "@console/core/error";
+import { CognitoStatus } from "@console/core/user";
 import { z } from "zod";
 
 export const UserInviteJsonSchema = z.object({
@@ -13,7 +14,7 @@ export const UserListQuerySchema = z.object({
 	limit: z.coerce.number().int().min(1).max(100).default(50),
 	cursor: z.string().min(1).optional(),
 	email: z.email().optional(),
-	cognitoStatus: z.enum(["FORCE_CHANGE_PASSWORD", "CONFIRMED"]).optional(),
+	cognitoStatus: z.enum(CognitoStatus).optional(),
 	cognitoEnabled: z
 		.enum(["true", "false"])
 		.optional()

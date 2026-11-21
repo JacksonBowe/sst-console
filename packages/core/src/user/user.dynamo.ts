@@ -1,6 +1,15 @@
 import { Entity } from "electrodb";
 
-export const CognitoStatus = ["FORCE_CHANGE_PASSWORD", "CONFIRMED"] as const;
+export const CognitoStatus = [
+	"UNCONFIRMED",
+	"CONFIRMED",
+	"ARCHIVED",
+	"COMPROMISED",
+	"UNKNOWN",
+	"RESET_REQUIRED",
+	"FORCE_CHANGE_PASSWORD",
+	"EXTERNAL_PROVIDER"
+] as const;
 
 const model = {
 	service: "sstConsole",

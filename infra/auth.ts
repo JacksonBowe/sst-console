@@ -37,7 +37,16 @@ export const cognitoUserPool = new sst.aws.CognitoUserPool(
 					]
 				},
 				adminCreateUserConfig: {
-					allowAdminCreateUserOnly: true
+					allowAdminCreateUserOnly: true,
+					...config.auth.adminCreateUserConfig,
+					inviteMessageTemplate: {
+						emailSubject: "Your SST Console invitation",
+						emailMessage: `<p>You have been invited to SST Console.</p>${config.domain?.name ? `<p>Sign in at https://${config.domain.name}</p>` : ""}<p>Username: <strong>{username}</strong><br>Temporary password: <strong>{####}</strong></p><p>Change your password when prompted at first sign-in.</p>`,
+						smsMessage:
+							"Your SST Console username is {username} and temporary password is {####}",
+						...config.auth.adminCreateUserConfig
+							?.inviteMessageTemplate
+					}
 				},
 				deletionProtection:
 					$app.stage === "prod" ? "ACTIVE" : "INACTIVE",

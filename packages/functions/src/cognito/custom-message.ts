@@ -1,6 +1,6 @@
 import type { CustomMessageTriggerHandler } from "aws-lambda";
 
-import { create, exchangeCognitoSub } from "@console/core/user";
+import { create, getIdentity } from "@console/core/user";
 
 /** Provisions Console user before Cognito sends admin-created-user invite. */
 export const handler: CustomMessageTriggerHandler = async event => {
@@ -12,7 +12,7 @@ export const handler: CustomMessageTriggerHandler = async event => {
 		throw new Error("Cognito invite is missing required user attributes");
 	}
 
-	const existingId = await exchangeCognitoSub({ cognitoSub });
+	const existingId = await getIdentity({ cognitoSub });
 	if (existingId) return event;
 
 	try {
@@ -23,7 +23,7 @@ export const handler: CustomMessageTriggerHandler = async event => {
 			cognitoEnabled: true
 		});
 	} catch (error) {
-		const winningId = await exchangeCognitoSub({ cognitoSub });
+		const winningId = await getIdentity({ cognitoSub });
 		if (!winningId) throw error;
 	}
 	return event;

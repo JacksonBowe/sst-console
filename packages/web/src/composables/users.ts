@@ -1,18 +1,29 @@
-import type { InviteUserInput, UsersFilters } from "@sst-console/sdk";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
-
-import { api } from "@/boot/api-client";
+import type { InviteUserInput } from "@sst-console/sdk";
+import {
+	useInfiniteQuery,
+	useMutation,
+	useQueryClient
+} from "@tanstack/vue-query";
+import { api, handleApiError } from "@/boot/api-client";
+import { useAutoFetchAllPages } from "./useAutoFetchAllPages";
 
 export const userQueryKeys = {
-	all: ["users"] as const,
-	list: (filters: UsersFilters) => ["users", filters] as const
+	all: ["users"] as const
 };
 
-export function useUsers(filters: UsersFilters = {}) {
-	return useQuery({
-		queryKey: userQueryKeys.list(filters),
-		queryFn: () => api.listUsers(filters)
+export function useUsers() {
+	const query = useInfiniteQuery({
+		queryKey: userQueryKeys.all,
+		initialPageParam: undefined as string | undefined,
+		queryFn: ({ pageParam }) =>
+			api.listUsers({
+				limit: 100,
+				...(pageParam ? { cursor: pageParam } : {})
+			}),
+		getNextPageParam: page => page.meta.nextCursor ?? undefined
 	});
+	useAutoFetchAllPages(query);
+	return query;
 }
 
 export function useInviteUser() {
@@ -21,7 +32,8 @@ export function useInviteUser() {
 	return useMutation({
 		mutationFn: (input: InviteUserInput) => api.inviteUser(input),
 		onSuccess: () =>
-			queryClient.invalidateQueries({ queryKey: userQueryKeys.all })
+			queryClient.invalidateQueries({ queryKey: userQueryKeys.all }),
+		onError: handleApiError
 	});
 }
 
@@ -31,6 +43,18 @@ export function useRemoveUser() {
 	return useMutation({
 		mutationFn: (id: string) => api.removeUser(id),
 		onSuccess: () =>
-			queryClient.invalidateQueries({ queryKey: userQueryKeys.all })
+			queryClient.invalidateQueries({ queryKey: userQueryKeys.all }),
+		onError: handleApiError
+	});
+}
+
+export function useSetUserEnabled() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+			api.setUserEnabled(id, enabled),
+		onSettled: () =>
+			queryClient.invalidateQueries({ queryKey: userQueryKeys.all }),
+		onError: handleApiError
 	});
 }

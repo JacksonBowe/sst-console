@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const create = vi.fn();
-const exchangeCognitoSub = vi.fn();
+const getIdentity = vi.fn();
 
-vi.mock("@console/core/user", () => ({ create, exchangeCognitoSub }));
+vi.mock("@console/core/user", () => ({ create, getIdentity }));
 
 const { handler } = await import("../../src/cognito/custom-message");
 
@@ -21,7 +21,7 @@ describe("Cognito custom-message trigger", () => {
 			},
 			response: {}
 		};
-		exchangeCognitoSub.mockResolvedValue(null);
+		getIdentity.mockResolvedValue(null);
 
 		await expect(
 			handler(event as never, {} as never, () => {})
@@ -58,7 +58,10 @@ describe("Cognito custom-message trigger", () => {
 			},
 			response: {}
 		};
-		exchangeCognitoSub.mockResolvedValue("01ARZ3NDEKTSV4RRFFQ69G5FAV");
+		getIdentity.mockResolvedValue({
+			userId: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+			cognitoEnabled: true
+		});
 
 		await expect(
 			handler(event as never, {} as never, () => {})
@@ -77,7 +80,7 @@ describe("Cognito custom-message trigger", () => {
 			},
 			response: {}
 		};
-		exchangeCognitoSub
+		getIdentity
 			.mockResolvedValueOnce(null)
 			.mockResolvedValueOnce("01ARZ3NDEKTSV4RRFFQ69G5FAV");
 		create.mockRejectedValue(new Error("conditional write failed"));
