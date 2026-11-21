@@ -1,24 +1,33 @@
 <template>
 	<q-item
 		clickable
+		:disable="processing || queued || blocked"
 		class="update-item q-px-md q-py-sm"
 		:title="status(update, isNewest)"
 		@click="$emit('select')"
 	>
 		<q-item-section>
-			<div class="update-item__content">
+			<div v-if="!update.processedAt" class="text-body2">
+				{{
+					processing
+						? "Queuing for processing…"
+						: queued
+							? "Queued for processing."
+							: blocked
+								? "Waiting for current request…"
+								: "Update not processed yet - select to process."
+				}}
+			</div>
+			<div v-else class="update-item__content">
 				<span
 					class="update-item__command text-weight-medium text-mono"
 					>{{ update.command || "Command unavailable" }}</span
 				>
-				<span class="update-item__status">{{
-					status(update, isNewest)
-				}}</span>
 				<UpdateChangeCounts :counts="update.resourceCounts" />
 			</div>
 		</q-item-section>
 		<q-item-section side class="update-item__timing">
-			<UpdateTiming :update="update" />
+			<UpdateMetrics :update="update" :is-newest="isNewest" />
 		</q-item-section>
 	</q-item>
 </template>
@@ -26,10 +35,16 @@
 <script setup lang="ts">
 import type { StateUpdate } from "@sst-console/sdk";
 import UpdateChangeCounts from "./UpdateChangeCounts.vue";
-import UpdateTiming from "./UpdateTiming.vue";
+import UpdateMetrics from "./UpdateMetrics.vue";
 import { status } from "./update-format";
 
-defineProps<{ update: StateUpdate; isNewest: boolean }>();
+defineProps<{
+	update: StateUpdate;
+	isNewest: boolean;
+	processing?: boolean;
+	queued?: boolean;
+	blocked?: boolean;
+}>();
 defineEmits<{ select: [] }>();
 </script>
 
@@ -58,16 +73,6 @@ defineEmits<{ select: [] }>();
 }
 .update-item__command {
 	overflow-wrap: anywhere;
-}
-.update-item__status {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	padding: 0;
-	margin: -1px;
-	overflow: hidden;
-	clip-path: inset(50%);
-	white-space: nowrap;
 }
 .update-item__timing {
 	align-self: stretch;

@@ -61,7 +61,9 @@
 				>
 					<UpdateTimeline
 						:updates="updates"
-						@select="selectedId = $event"
+						:processing-id="processingId"
+						:queued-ids="queuedIds"
+						@select="selectUpdate"
 					/>
 					<div
 						v-if="history.hasNextPage.value"
@@ -92,7 +94,12 @@
 			"
 			@load="loadMore"
 		>
-			<UpdateTimeline :updates="updates" @select="selectedId = $event" />
+			<UpdateTimeline
+				:updates="updates"
+				:processing-id="processingId"
+				:queued-ids="queuedIds"
+				@select="selectUpdate"
+			/>
 			<div v-if="history.hasNextPage.value" class="text-center q-pa-md">
 				<div v-if="history.isFetchNextPageError.value"
 					>Unable to load more Updates.</div
@@ -231,7 +238,7 @@
 						no-caps
 						:label="selected.processedAt ? 'Reprocess' : 'Process'"
 						:loading="processing.isPending.value"
-						@click="process"
+						@click="process(selectedId)"
 				/></q-card-actions>
 			</q-card>
 		</q-dialog>
@@ -258,16 +265,20 @@ const key = computed(() => props.historyKey);
 const history = useStateHistory(key, true);
 const discovery = useDiscoverStateHistory();
 const processing = useProcessStateHistory();
+const processingId = ref("");
+const queuedIds = ref<string[]>([]);
 const selectedId = ref("");
 const detail = useStateUpdateDetail(key, selectedId);
 const updates = computed(
 	() => history.data.value?.pages.flatMap(page => page.items) ?? []
 );
-const selected = computed(
-	() =>
-		detail.data.value?.update ??
-		updates.value.find(update => update.updateId === selectedId.value)
-);
+const selected = computed(() => {
+	if (!selectedId.value) return undefined;
+	const detailUpdate = detail.data.value?.update;
+	return detailUpdate?.updateId === selectedId.value
+		? detailUpdate
+		: updates.value.find(update => update.updateId === selectedId.value);
+});
 const discoveryResult = ref<HistoryDiscoveryResult>();
 const showDiscovery = ref(false);
 
@@ -285,6 +296,9 @@ async function loadMore(_index: number, done: (stop?: boolean) => void) {
 }
 
 watch(updates, value => {
+	queuedIds.value = queuedIds.value.filter(id =>
+		value.some(item => item.updateId === id && !item.processedAt)
+	);
 	if (
 		selectedId.value &&
 		!value.some(item => item.updateId === selectedId.value)
@@ -299,6 +313,7 @@ watch(
 	],
 	() => {
 		selectedId.value = "";
+		queuedIds.value = [];
 	}
 );
 
@@ -310,18 +325,30 @@ async function discover() {
 		handleApiError(error);
 	}
 }
-async function process() {
+function selectUpdate(updateId: string) {
+	const update = updates.value.find(item => item.updateId === updateId);
+	if (!update) return;
+	if (update.processedAt) selectedId.value = updateId;
+	else void process(updateId);
+}
+
+async function process(updateId: string) {
+	if (processingId.value || queuedIds.value.includes(updateId)) return;
+	processingId.value = updateId;
 	try {
 		const result = await processing.mutateAsync({
 			key: key.value,
-			updateId: selectedId.value
+			updateId
 		});
+		if (result.published > 0) queuedIds.value.push(updateId);
 		Notify.create({
 			message: `${result.published} artifacts queued for processing. Results may appear later.`,
 			color: result.published ? "positive" : "warning"
 		});
 	} catch (error) {
 		handleApiError(error);
+	} finally {
+		processingId.value = "";
 	}
 }
 </script>

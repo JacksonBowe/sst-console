@@ -7,11 +7,12 @@
 					no-caps
 					color="primary"
 					icon="sym_r_sync"
-					label="Sync all"
+					:label="$q.screen.lt.sm ? undefined : 'Sync all'"
+					aria-label="Sync all"
 					:disable="connectedAccountCount === 0 || isSyncAllOpen"
 					@click="confirmSyncAll"
 				/>
-				<ConnectAccountTrigger />
+				<ConnectAccountTrigger :icon-only="$q.screen.lt.sm" />
 			</template>
 		</DashboardPageHeader>
 
