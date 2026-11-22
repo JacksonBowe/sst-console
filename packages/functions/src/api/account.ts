@@ -7,6 +7,8 @@ import { Stage } from "@console/core/app";
 import { AccountSyncPolicySchema } from "@console/core/connection";
 import { Hono } from "hono";
 import { z } from "zod";
+import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
+import { Resource } from "sst";
 
 const AccountIdParamSchema = z.object({
 	accountId: AccountIdSchema
@@ -60,6 +62,25 @@ function discoveryResponse<
 
 export const accountRoutes = new Hono()
 	.get("/", async c => c.json(await Account.list()))
+	.post("/reconcile-connectors", async c => {
+		const fingerprint = process.env.SST_CONSOLE_CONNECTOR_FINGERPRINT;
+		const templateUrl = process.env.SST_CONSOLE_CONNECTOR_TEMPLATE_URL;
+		if (!fingerprint || !templateUrl)
+			throw new Error(
+				"Connector reconciliation configuration is missing"
+			);
+
+		await new LambdaClient({}).send(
+			new InvokeCommand({
+				FunctionName: Resource.ConnectorReconciler.name,
+				InvocationType: "Event",
+				Payload: new TextEncoder().encode(
+					JSON.stringify({ fingerprint, templateUrl })
+				)
+			})
+		);
+		return c.json({ status: "reconciliation_requested" }, 202);
+	})
 	.post("/backup-connections", async c =>
 		c.json(await Connection.Recovery.backupConnections({}))
 	)

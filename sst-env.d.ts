@@ -21,6 +21,10 @@ declare module "sst" {
       "type": "sst.aws.Function"
       "url": string
     }
+    "ConnectorReconciler": {
+      "name": string
+      "type": "sst.aws.Function"
+    }
     "ConsoleConnections": {
       "name": string
       "type": "sst.aws.Dynamo"

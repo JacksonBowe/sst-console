@@ -1,0 +1,15 @@
+info:
+    name: ReconcileConnectors
+    type: http
+    seq: 10
+
+http:
+    method: POST
+    url: "{{ApiBase}}/accounts/reconcile-connectors"
+    auth: inherit
+
+settings:
+    encodeUrl: true
+    timeout: 0
+    followRedirects: true
+    maxRedirects: 5
