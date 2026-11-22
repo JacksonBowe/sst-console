@@ -127,6 +127,17 @@ This bucket must contain only public deployment artifacts. Console data, configu
 
 Deploy only release tags. Do not run `git pull`, deploy `main`, or use an older release tag as a rollback procedure.
 
+Deploying Console automatically requests connector stack updates in connected
+workload accounts when the connector template changes. These updates can change
+workload IAM permissions and other connector resources. Deployment waits for the
+update requests, but not for CloudFormation to finish the stack updates; check
+CloudFormation in each workload account for their final status. Automatic
+connector updates do not run during `sst dev`.
+The authenticated Bruno request **Account → ReconcileConnectors** can start
+reconciliation manually, including in `sst dev` or to retry an update. It
+requests updates for all connected accounts; check the reconciler logs and
+workload CloudFormation stacks for results.
+
 ## Contributing
 
 Contributions and feedback are welcome. Open a GitHub issue to discuss a feature or bug before starting a large change, then submit a pull request. Help is especially useful for AWS and IAM review, supported-resource coverage, UX, test coverage, and documentation.

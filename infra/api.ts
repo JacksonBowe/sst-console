@@ -1,5 +1,10 @@
 import { cognitoUserPool, cognitoUserPoolClient, passwordPolicy } from "./auth";
 import { assumeAccountRolePermission, externalId } from "./console";
+import {
+	connectorFingerprint,
+	connectorReconciler,
+	connectorTemplateUrl
+} from "./connector";
 import { bus } from "./event-bus";
 import {
 	issueEnvironment,
@@ -18,10 +23,13 @@ export const api = new sst.aws.Function("Api", {
 		cognitoUserPool,
 		cognitoUserPoolClient,
 		issueIngressQueue,
-		issueReconcileQueue
+		issueReconcileQueue,
+		connectorReconciler
 	],
 	environment: {
 		SST_CONSOLE_EXTERNAL_ID: externalId,
+		SST_CONSOLE_CONNECTOR_FINGERPRINT: connectorFingerprint,
+		SST_CONSOLE_CONNECTOR_TEMPLATE_URL: connectorTemplateUrl,
 		SST_CONSOLE_BUS_ARN: bus.arn,
 		SST_CONSOLE_PASSWORD_POLICY: JSON.stringify(passwordPolicy),
 		...issueEnvironment
